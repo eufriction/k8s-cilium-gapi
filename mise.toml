@@ -22,6 +22,7 @@ run = "hk run pre-commit --all"
 [env]
 NETSHOOT_VERSION = "v0.15"
 HTTPBIN_VERSION = "2.20.0"
+BACKEND_GRPC_VERSION = "0.1.0"
 CILIUM_VERSION = "1.19.1"
 HUBBLE_UI_VERSION = "0.13.3"
 CILIUM_ENVOY_VERSION = "1.35.9-1770979049-232ed4a26881e4ab4f766f251f258ed424fff663"
@@ -94,18 +95,25 @@ run = [
 ]
 
 [tasks."apps:pull"]
-description = "Pull demo app images from the registry to the local Docker daemon"
+description = "Pull remote demo app images from the registry to the local Docker daemon"
 run = [
   "docker pull nicolaka/netshoot:$NETSHOOT_VERSION",
   "docker pull mccutchen/go-httpbin:$HTTPBIN_VERSION",
 ]
 
+[tasks."apps:build"]
+description = "Build local demo app images"
+run = [
+  "docker build -t backend-grpc:$BACKEND_GRPC_VERSION images/backend-grpc",
+]
+
 [tasks."apps:load"]
 description = "Load demo app images from the local Docker daemon into the kind cluster nodes"
-depends = ["apps:pull"]
+depends = ["apps:pull", "apps:build"]
 run = [
   "kind load docker-image nicolaka/netshoot:$NETSHOOT_VERSION --name $KIND_CLUSTER_NAME",
   "kind load docker-image mccutchen/go-httpbin:$HTTPBIN_VERSION --name $KIND_CLUSTER_NAME",
+  "kind load docker-image backend-grpc:$BACKEND_GRPC_VERSION --name $KIND_CLUSTER_NAME",
 ]
 
 [tasks."cilium:uninstall"]

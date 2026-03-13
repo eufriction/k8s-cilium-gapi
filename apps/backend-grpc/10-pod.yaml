@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: grpc-api
+  labels:
+    app: grpc-api
+    app.kubernetes.io/name: backend-grpc
+    app.kubernetes.io/part-of: demo
+spec:
+  containers:
+    - name: backend-grpc
+      image: backend-grpc:0.1.0
+      imagePullPolicy: IfNotPresent
+      ports:
+        - name: grpc
+          containerPort: 9000

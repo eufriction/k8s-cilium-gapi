@@ -33,6 +33,10 @@ go.work.sum
 bin/
 dist/
 
+# Local Go caches created while verifying repo-owned app images
+images/backend-grpc/.cache/
+images/backend-grpc/.modcache/
+
 ###############################################################################
 # Kubernetes
 ###############################################################################
