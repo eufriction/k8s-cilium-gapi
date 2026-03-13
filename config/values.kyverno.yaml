@@ -1,0 +1,22 @@
+# Kyverno Helm values
+# https://kyverno.io/docs/installation/methods/
+# Chart version is pinned via KYVERNO_CHART_VERSION and image tags via KYVERNO_APP_VERSION in mise.toml
+
+# Enable Policy Exceptions feature gate
+features:
+  policyExceptions:
+    enabled: true
+    namespace: "*"
+
+# Single replica per controller for local dev
+admissionController:
+  replicas: 1
+
+backgroundController:
+  replicas: 1
+
+cleanupController:
+  replicas: 1
+
+reportsController:
+  replicas: 1

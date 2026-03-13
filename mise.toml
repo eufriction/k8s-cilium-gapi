@@ -1,0 +1,223 @@
+[tools]
+hk = "latest"
+pkl = "latest"
+k9s = "latest"
+kind = "latest"
+kubectl = "latest"
+helm = "latest"
+cilium-cli = "latest"
+cilium-hubble = "latest"
+kyverno = "latest"
+node = "latest"
+prettier = "latest"
+vale = "latest"
+
+[hooks]
+enter = "hk install"
+
+[tasks.lint]
+description = "Run all pre-commit checks against all files"
+run = "hk run pre-commit --all"
+
+[env]
+NETSHOOT_VERSION = "v0.15"
+HTTPBIN_VERSION = "2.20.0"
+CILIUM_VERSION = "1.19.1"
+HUBBLE_UI_VERSION = "0.13.3"
+CILIUM_ENVOY_VERSION = "1.35.9-1770979049-232ed4a26881e4ab4f766f251f258ed424fff663"
+GATEWAY_API_VERSION = "1.4.1"
+KYVERNO_CHART_VERSION = "3.7.0"
+KYVERNO_APP_VERSION = "1.17.0"
+KIND_CLUSTER_NAME = "k8s-cilium-gapi"
+
+[tasks."kind:start"]
+description = "Create the k8s-cilium-gapi kind cluster using config/kind.config"
+run = "kind create cluster --config config/kind.config"
+
+[tasks."kind:delete"]
+description = "Delete the k8s-cilium-gapi kind cluster"
+run = "kind delete cluster --name $KIND_CLUSTER_NAME"
+
+[tasks."kind:restart"]
+description = "Delete and recreate the k8s-cilium-gapi kind cluster"
+depends = ["kind:delete"]
+run = "mise run kind:start"
+
+[tasks."helm:repo:add"]
+description = "Add the Cilium and Kyverno Helm repos"
+run = [
+  "helm repo add cilium https://helm.cilium.io/",
+  "helm repo add kyverno https://kyverno.github.io/kyverno/",
+  "helm repo update"
+]
+
+[tasks."cilium:pull"]
+description = "Pull Cilium images from the registry to the local Docker daemon"
+run = [
+  "docker pull quay.io/cilium/cilium:v$CILIUM_VERSION",
+  "docker pull quay.io/cilium/operator-generic:v$CILIUM_VERSION",
+  "docker pull quay.io/cilium/hubble-relay:v$CILIUM_VERSION",
+  "docker pull quay.io/cilium/hubble-ui:v$HUBBLE_UI_VERSION",
+  "docker pull quay.io/cilium/hubble-ui-backend:v$HUBBLE_UI_VERSION",
+  "docker pull quay.io/cilium/cilium-envoy:v$CILIUM_ENVOY_VERSION",
+]
+
+[tasks."cilium:load"]
+description = "Load Cilium images from the local Docker daemon into the kind cluster nodes"
+depends = ["cilium:pull"]
+run = [
+  "kind load docker-image quay.io/cilium/cilium:v$CILIUM_VERSION --name $KIND_CLUSTER_NAME",
+  "kind load docker-image quay.io/cilium/operator-generic:v$CILIUM_VERSION --name $KIND_CLUSTER_NAME",
+  "kind load docker-image quay.io/cilium/hubble-relay:v$CILIUM_VERSION --name $KIND_CLUSTER_NAME",
+  "kind load docker-image quay.io/cilium/hubble-ui:v$HUBBLE_UI_VERSION --name $KIND_CLUSTER_NAME",
+  "kind load docker-image quay.io/cilium/hubble-ui-backend:v$HUBBLE_UI_VERSION --name $KIND_CLUSTER_NAME",
+  "kind load docker-image quay.io/cilium/cilium-envoy:v$CILIUM_ENVOY_VERSION --name $KIND_CLUSTER_NAME",
+]
+
+[tasks."kyverno:pull"]
+description = "Pull Kyverno images from the registry to the local Docker daemon"
+run = [
+  "docker pull ghcr.io/kyverno/kyverno:v$KYVERNO_APP_VERSION",
+  "docker pull ghcr.io/kyverno/background-controller:v$KYVERNO_APP_VERSION",
+  "docker pull ghcr.io/kyverno/cleanup-controller:v$KYVERNO_APP_VERSION",
+  "docker pull ghcr.io/kyverno/reports-controller:v$KYVERNO_APP_VERSION",
+]
+
+[tasks."kyverno:load"]
+description = "Load Kyverno images from the local Docker daemon into the kind cluster nodes"
+depends = ["kyverno:pull"]
+run = [
+  "kind load docker-image ghcr.io/kyverno/kyverno:v$KYVERNO_APP_VERSION --name $KIND_CLUSTER_NAME",
+  "kind load docker-image ghcr.io/kyverno/background-controller:v$KYVERNO_APP_VERSION --name $KIND_CLUSTER_NAME",
+  "kind load docker-image ghcr.io/kyverno/cleanup-controller:v$KYVERNO_APP_VERSION --name $KIND_CLUSTER_NAME",
+  "kind load docker-image ghcr.io/kyverno/reports-controller:v$KYVERNO_APP_VERSION --name $KIND_CLUSTER_NAME",
+]
+
+[tasks."apps:pull"]
+description = "Pull demo app images from the registry to the local Docker daemon"
+run = [
+  "docker pull nicolaka/netshoot:$NETSHOOT_VERSION",
+  "docker pull mccutchen/go-httpbin:$HTTPBIN_VERSION",
+]
+
+[tasks."apps:load"]
+description = "Load demo app images from the local Docker daemon into the kind cluster nodes"
+depends = ["apps:pull"]
+run = [
+  "kind load docker-image nicolaka/netshoot:$NETSHOOT_VERSION --name $KIND_CLUSTER_NAME",
+  "kind load docker-image mccutchen/go-httpbin:$HTTPBIN_VERSION --name $KIND_CLUSTER_NAME",
+]
+
+[tasks."cilium:uninstall"]
+description = "Uninstall Cilium from the cluster using Helm"
+run = "helm uninstall cilium --namespace kube-system"
+
+[tasks."gateway-api:install"]
+description = "Install Gateway API CRDs before enabling Cilium Gateway API support"
+run = """
+kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v$GATEWAY_API_VERSION/standard-install.yaml
+"""
+
+[tasks."kyverno:uninstall"]
+description = "Uninstall Kyverno from the cluster using Helm"
+run = "helm uninstall kyverno --namespace kyverno"
+
+[tasks."cilium:install"]
+description = "Install Cilium in kube-proxy-free mode using Helm"
+depends = ["helm:repo:add", "cilium:load", "gateway-api:install"]
+run = """
+APISERVER_IP=$(docker inspect -f '{% raw %}{{.NetworkSettings.Networks.kind.IPAddress}}{% endraw %}' ${KIND_CLUSTER_NAME}-control-plane)
+if [ -z "$APISERVER_IP" ]; then
+  echo "ERROR: could not resolve control-plane IP from Docker – is the kind cluster running?" >&2
+  exit 1
+fi
+helm install cilium cilium/cilium \
+  --namespace kube-system \
+  --version $CILIUM_VERSION \
+  --values config/values.cilium.yaml \
+  --set k8sServiceHost=$APISERVER_IP \
+  --set k8sServicePort=6443 \
+  --set securityContext.privileged=true
+"""
+run_windows = """
+$APISERVER_IP = docker inspect -f '{% raw %}{{.NetworkSettings.Networks.kind.IPAddress}}{% endraw %}' "${env:KIND_CLUSTER_NAME}-control-plane"
+if (-not $APISERVER_IP) {
+  Write-Error "ERROR: could not resolve control-plane IP from Docker - is the kind cluster running?"
+  exit 1
+}
+helm install cilium cilium/cilium `
+  --namespace kube-system `
+  --version $env:CILIUM_VERSION `
+  --values config/values.cilium.yaml `
+  --set k8sServiceHost=$APISERVER_IP `
+  --set k8sServicePort=6443
+"""
+
+[tasks."scenario:00:start"]
+description = "Deploy the multi-namespace HTTP Gateway API scenario"
+depends = ["apps:load"]
+depends_post = ["scenario:00:verify"]
+run = "kubectl apply -k scenarios/00-multi-namespace-http/"
+
+[tasks."scenario:00:delete"]
+description = "Delete the multi-namespace HTTP Gateway API scenario"
+run = "kubectl delete -k scenarios/00-multi-namespace-http/ --ignore-not-found"
+
+[tasks."scenario:00:restart"]
+description = "Tear down and recreate the multi-namespace HTTP Gateway API scenario"
+depends = ["scenario:00:delete"]
+run = "mise run scenario:00:start"
+
+[tasks."scenario:00:verify"]
+description = "Verify the multi-namespace HTTP Gateway API scenario is healthy"
+run = """
+kubectl wait pod/netshoot-client -n client --for=condition=Ready --timeout=60s
+kubectl wait pod/api -n backend-a --for=condition=Ready --timeout=60s
+kubectl wait pod/api -n backend-b --for=condition=Ready --timeout=60s
+kubectl wait gateway/multi-namespace-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
+kubectl wait httproute/backend-a-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
+kubectl wait httproute/backend-b-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
+curl -fsS -H 'Host: backend-a.example.test' http://localhost:8080/headers >/dev/null
+curl -fsS -H 'Host: backend-b.example.test' http://localhost:8080/headers >/dev/null
+"""
+
+[tasks."cluster:start"]
+description = "Bootstrap the full cluster: kind + Cilium + Kyverno in order"
+depends = ["kind:start"]
+depends_post = ["cluster:verify"]
+run = "mise run cilium:install && cilium status --wait && mise run kyverno:install"
+run_windows = "mise run cilium:install && cilium status --wait && mise run kyverno:install"
+
+[tasks."cluster:verify"]
+description = "Verify the cluster is healthy: Cilium status and Kyverno pods ready"
+run = [
+  "cilium status --wait",
+  "kubectl wait pods --all -n kyverno --for=condition=Ready --timeout=120s"
+]
+
+[tasks."cluster:delete"]
+description = "Delete the full cluster"
+run = "mise run kind:delete"
+
+[tasks."cluster:restart"]
+description = "Delete and fully rebuild the cluster"
+depends = ["cluster:delete"]
+run = "mise run cluster:start"
+
+[tasks."kyverno:install"]
+description = "Install Kyverno using Helm"
+depends = ["helm:repo:add", "kyverno:load"]
+run = """
+helm install kyverno kyverno/kyverno \
+  --namespace kyverno \
+  --create-namespace \
+  --version $KYVERNO_CHART_VERSION \
+  --values config/values.kyverno.yaml
+"""
+run_windows = """
+helm install kyverno kyverno/kyverno `
+  --namespace kyverno `
+  --create-namespace `
+  --version $env:KYVERNO_CHART_VERSION `
+  --values config/values.kyverno.yaml
+"""

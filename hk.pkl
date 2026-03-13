@@ -1,0 +1,15 @@
+amends "package://github.com/jdx/hk/releases/download/v1.36.0/hk@1.36.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.36.0/hk@1.36.0#/Builtins.pkl"
+
+hooks {
+  ["pre-commit"] {
+    fix = true
+    stash = "git"
+    steps {
+      ["prettier"] = Builtins.prettier
+      ["vale"] = (Builtins.vale) {
+        glob = List("**/*.md")
+      }
+    }
+  }
+}

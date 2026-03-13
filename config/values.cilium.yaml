@@ -1,0 +1,37 @@
+# Cilium Helm values for kube-proxy-free mode
+# https://docs.cilium.io/en/stable/network/kubernetes/kubeproxy-free/
+# Version is pinned via CILIUM_VERSION in mise.toml and passed to helm install --version
+
+# Enable kube-proxy replacement
+kubeProxyReplacement: true
+
+# Enable Gateway API for Cilium Service Mesh testing
+gatewayAPI:
+  enabled: true
+  hostNetwork:
+    enabled: true
+
+# Keep the Ingress controller disabled
+ingressController:
+  enabled: false
+
+# k8sServiceHost and k8sServicePort are resolved dynamically at install time
+# via docker inspect in the cilium:install mise task
+
+# Use VXLAN tunnel mode (required for kind)
+tunnelProtocol: vxlan
+
+# Match the podSubnet defined in kind/kind.config
+ipam:
+  mode: kubernetes
+
+# Enable Hubble observability
+hubble:
+  enabled: true
+  relay:
+    enabled: true
+  ui:
+    enabled: true
+
+# Enabel policy enforcement
+policyAuditMode: false

@@ -1,0 +1,126 @@
+###############################################################################
+# Go
+###############################################################################
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below to include it)
+vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Go build cache
+/tmp/
+
+# Go module download cache
+# (comment out if you want to cache modules)
+# $GOPATH/pkg/mod/
+
+# Build output
+bin/
+dist/
+
+###############################################################################
+# Kubernetes
+###############################################################################
+
+# Local kubeconfig files
+kubeconfig
+kubeconfig.yaml
+.kubeconfig
+*.kubeconfig
+
+# Helm
+*.tgz
+charts/*.tgz
+
+# Skaffold
+.skaffold/
+
+# Kustomize
+kustomization.yaml.bak
+
+# Generated Kubernetes manifests
+/manifests/generated/
+
+###############################################################################
+# macOS (OSX)
+###############################################################################
+
+# General
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon must end with two \r
+Icon
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP share, NFS,
+# or CIFS mounts
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+###############################################################################
+# mise
+###############################################################################
+
+# mise local config (contains local overrides)
+.mise.local.toml
+mise.local.toml
+
+# mise environment files (may contain secrets)
+.env
+.env.local
+.env.*.local
+
+###############################################################################
+# General / Editor
+###############################################################################
+
+# Editor directories and files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Local environment files
+.env
+.envrc
+.direnv/
+
+# Log files
+*.log
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
