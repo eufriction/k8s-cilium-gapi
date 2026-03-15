@@ -35,8 +35,8 @@ dist/
 .bin/
 
 # Local Go caches created while verifying repo-owned app images
-images/backend-grpc/.cache/
-images/backend-grpc/.modcache/
+apps/backend-grpc/image/.cache/
+apps/backend-grpc/image/.modcache/
 
 ###############################################################################
 # Kubernetes

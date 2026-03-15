@@ -113,7 +113,7 @@ run = [
 [tasks."apps:build"]
 description = "Build local demo app images"
 run = [
-  "docker build -t backend-grpc:$BACKEND_GRPC_VERSION images/backend-grpc",
+  "docker build -t backend-grpc:$BACKEND_GRPC_VERSION apps/backend-grpc/image",
 ]
 
 [tasks."apps:load"]

@@ -9,7 +9,7 @@ metadata:
 spec:
   containers:
     - name: backend-grpc
-      image: backend-grpc:0.1.0
+      image: backend-grpc:0.1.1
       imagePullPolicy: IfNotPresent
       ports:
         - name: grpc

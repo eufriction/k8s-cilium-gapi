@@ -18,3 +18,4 @@ Conventions:
 - Use `Pod` for disposable demo clients or very small single-instance workloads.
 - Use `Deployment` when rollout behavior, restart semantics, or scaling are part of what you want to test.
 - Keep each app base small enough that a scenario overlay only needs to set namespace and occasional tiny patches.
+- If the repo owns the workload implementation, keep its container source in `image/` and any checked-in client fixtures in `proto/` under the same app directory.

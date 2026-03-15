@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package grpc.testing;
+
+message SimpleRequest {
+  int32 response_size = 2;
+  bool fill_server_id = 9;
+}
+
+message SimpleResponse {
+  string server_id = 4;
+  string hostname = 6;
+}
+
+service TestService {
+  rpc UnaryCall(SimpleRequest) returns (SimpleResponse);
+}
