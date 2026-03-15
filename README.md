@@ -106,7 +106,7 @@ Gap numbering leaves room for insertion without renaming existing scenarios.
 | -------------------------------------------------- | ---------------------------------------------------------------------------- | ------- |
 | [`01-http`](scenarios/01-http/README.md)           | HTTPRoute, plaintext, one gateway, two backend namespaces                    | ✅ Done |
 | [`02-grpc`](scenarios/02-grpc/README.md)           | GRPCRoute, TLS termination at gateway, two backend namespaces                | ✅ Done |
-| `03-https`                                         | HTTPRoute over HTTPS, TLS termination at gateway, two backend namespaces     | Planned |
+| [`03-https`](scenarios/03-https/README.md)         | HTTPRoute over HTTPS, TLS termination at gateway, two backend namespaces     | ✅ Done |
 | [`04-mtls`](scenarios/04-mtls/README.md)           | TLSRoute passthrough, mTLS at backend, per-namespace PKI                     | ✅ Done |
 | `05-tcp`                                           | TCPRoute, no TLS                                                             | Planned |
 | `06-http-header-routing`                           | HTTPRoute with header-based match rules                                      | Planned |
@@ -121,10 +121,6 @@ Gap numbering leaves room for insertion without renaming existing scenarios.
 | `50-clustermesh-grpc`                              | Cross-cluster gRPC with Cilium ClusterMesh                                   | Planned |
 
 ### Planned scenario details
-
-#### `03-https` — HTTPS termination baseline
-
-The HTTPS counterpart to `01-http`. One Gateway terminates TLS on port `443` via a self-signed cert-manager certificate, with two HTTPRoute backends in separate namespaces (`https-a.example.test`, `https-b.example.test`). This fills the gap between plaintext HTTP and the gRPC/mTLS scenarios by establishing the simplest possible TLS-termination pattern.
 
 #### `21-http-grpc-shared-port` — Shared-port multi-protocol (Cilium bug validation)
 
