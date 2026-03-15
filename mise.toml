@@ -4,6 +4,8 @@ pkl = "latest"
 k9s = "latest"
 kind = "latest"
 kubectl = "latest"
+grpcurl = "latest"
+go = "latest"
 helm = "latest"
 cilium-cli = "latest"
 cilium-hubble = "latest"
@@ -22,11 +24,14 @@ run = "hk run pre-commit --all"
 [env]
 NETSHOOT_VERSION = "v0.15"
 HTTPBIN_VERSION = "2.20.0"
-BACKEND_GRPC_VERSION = "0.1.0"
+NGINX_VERSION = "1.27.5-alpine"
+BACKEND_GRPC_VERSION = "0.1.1"
 CILIUM_VERSION = "1.19.1"
 HUBBLE_UI_VERSION = "0.13.3"
 CILIUM_ENVOY_VERSION = "1.35.9-1770979049-232ed4a26881e4ab4f766f251f258ed424fff663"
-GATEWAY_API_VERSION = "1.4.1"
+CLOUD_PROVIDER_KIND_VERSION = "0.8.0"
+CERT_MANAGER_VERSION = "1.20.0"
+GATEWAY_API_VERSION = "1.5.0"
 KYVERNO_CHART_VERSION = "3.7.0"
 KYVERNO_APP_VERSION = "1.17.0"
 KIND_CLUSTER_NAME = "k8s-cilium-gapi"
@@ -34,6 +39,10 @@ KIND_CLUSTER_NAME = "k8s-cilium-gapi"
 [tasks."kind:start"]
 description = "Create the k8s-cilium-gapi kind cluster using config/kind.config"
 run = "kind create cluster --config config/kind.config"
+
+[tasks."kind:start:lb"]
+description = "Create the k8s-cilium-gapi kind cluster using config/kind.lb.config"
+run = "kind create cluster --config config/kind.lb.config"
 
 [tasks."kind:delete"]
 description = "Delete the k8s-cilium-gapi kind cluster"
@@ -121,14 +130,91 @@ description = "Uninstall Cilium from the cluster using Helm"
 run = "helm uninstall cilium --namespace kube-system"
 
 [tasks."gateway-api:install"]
-description = "Install Gateway API CRDs before enabling Cilium Gateway API support"
+description = "Install Gateway API experimental CRDs before enabling Cilium Gateway API support"
 run = """
-kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v$GATEWAY_API_VERSION/standard-install.yaml
+kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v$GATEWAY_API_VERSION/experimental-install.yaml
 """
 
-[tasks."kyverno:uninstall"]
-description = "Uninstall Kyverno from the cluster using Helm"
-run = "helm uninstall kyverno --namespace kyverno"
+[tasks."cloud-provider-kind:install"]
+description = "Install cloud-provider-kind into .bin for load-balancer scenarios"
+run = """
+mkdir -p .bin
+GOBIN=$PWD/.bin go install sigs.k8s.io/cloud-provider-kind@v$CLOUD_PROVIDER_KIND_VERSION
+"""
+
+[tasks."cloud-provider-kind:start"]
+description = "Start cloud-provider-kind in a dedicated terminal for load-balancer scenarios"
+depends = ["cloud-provider-kind:install"]
+run = "sudo --preserve-env=KUBECONFIG ./.bin/cloud-provider-kind -enable-lb-port-mapping"
+
+[tasks."cert-manager:install"]
+description = "Install cert-manager for TLS-focused scenarios"
+depends_post = ["cert-manager:verify"]
+run = """
+helm upgrade --install cert-manager oci://quay.io/jetstack/charts/cert-manager \
+  --namespace cert-manager \
+  --create-namespace \
+  --version v$CERT_MANAGER_VERSION \
+  --set crds.enabled=true \
+  --set prometheus.enabled=false \
+  --wait \
+  --timeout 5m
+"""
+
+[tasks."cert-manager:verify"]
+description = "Verify the cert-manager control plane and CRDs are ready"
+run = """
+kubectl wait deployment/cert-manager -n cert-manager --for=condition=Available --timeout=180s
+kubectl wait deployment/cert-manager-cainjector -n cert-manager --for=condition=Available --timeout=180s
+kubectl wait deployment/cert-manager-webhook -n cert-manager --for=condition=Available --timeout=180s
+kubectl get crd certificates.cert-manager.io issuers.cert-manager.io clusterissuers.cert-manager.io >/dev/null
+"""
+
+[tasks."cert-manager:delete"]
+description = "Remove cert-manager when TLS scenarios are no longer needed"
+run = [
+  "helm uninstall cert-manager --namespace cert-manager --ignore-not-found",
+  "kubectl delete namespace cert-manager --ignore-not-found=true --wait=false"
+]
+
+[tasks."kyverno:install"]
+description = "Install Kyverno for future policy-focused scenarios"
+depends = ["helm:repo:add", "kyverno:load"]
+depends_post = ["kyverno:verify"]
+run = """
+helm upgrade --install kyverno kyverno/kyverno \
+  --namespace kyverno \
+  --create-namespace \
+  --version $KYVERNO_CHART_VERSION \
+  --values config/values.kyverno.yaml \
+  --wait \
+  --timeout 5m
+"""
+run_windows = """
+helm upgrade --install kyverno kyverno/kyverno `
+  --namespace kyverno `
+  --create-namespace `
+  --version $env:KYVERNO_CHART_VERSION `
+  --values config/values.kyverno.yaml `
+  --wait `
+  --timeout 5m
+"""
+
+[tasks."kyverno:verify"]
+description = "Verify the Kyverno control plane is ready"
+run = """
+kubectl wait deployment/kyverno-admission-controller -n kyverno --for=condition=Available --timeout=180s
+kubectl wait deployment/kyverno-background-controller -n kyverno --for=condition=Available --timeout=180s
+kubectl wait deployment/kyverno-cleanup-controller -n kyverno --for=condition=Available --timeout=180s
+kubectl wait deployment/kyverno-reports-controller -n kyverno --for=condition=Available --timeout=180s
+"""
+
+[tasks."kyverno:delete"]
+description = "Remove Kyverno when policy-focused scenarios are no longer needed"
+run = [
+  "helm uninstall kyverno --namespace kyverno --ignore-not-found",
+  "kubectl delete namespace kyverno --ignore-not-found=true --wait=false"
+]
 
 [tasks."cilium:install"]
 description = "Install Cilium in kube-proxy-free mode using Helm"
@@ -157,6 +243,37 @@ helm install cilium cilium/cilium `
   --namespace kube-system `
   --version $env:CILIUM_VERSION `
   --values config/values.cilium.yaml `
+  --set k8sServiceHost=$APISERVER_IP `
+  --set k8sServicePort=6443
+"""
+
+[tasks."cilium:install:lb"]
+description = "Install Cilium in load-balancer mode for Gateway API comparison scenarios"
+depends = ["helm:repo:add", "cilium:load", "gateway-api:install"]
+run = """
+APISERVER_IP=$(docker inspect -f '{% raw %}{{.NetworkSettings.Networks.kind.IPAddress}}{% endraw %}' ${KIND_CLUSTER_NAME}-control-plane)
+if [ -z "$APISERVER_IP" ]; then
+  echo "ERROR: could not resolve control-plane IP from Docker – is the kind cluster running?" >&2
+  exit 1
+fi
+helm install cilium cilium/cilium \
+  --namespace kube-system \
+  --version $CILIUM_VERSION \
+  --values config/values.cilium.lb.yaml \
+  --set k8sServiceHost=$APISERVER_IP \
+  --set k8sServicePort=6443 \
+  --set securityContext.privileged=true
+"""
+run_windows = """
+$APISERVER_IP = docker inspect -f '{% raw %}{{.NetworkSettings.Networks.kind.IPAddress}}{% endraw %}' "${env:KIND_CLUSTER_NAME}-control-plane"
+if (-not $APISERVER_IP) {
+  Write-Error "ERROR: could not resolve control-plane IP from Docker - is the kind cluster running?"
+  exit 1
+}
+helm install cilium cilium/cilium `
+  --namespace kube-system `
+  --version $env:CILIUM_VERSION `
+  --values config/values.cilium.lb.yaml `
   --set k8sServiceHost=$APISERVER_IP `
   --set k8sServicePort=6443
 """
@@ -190,18 +307,22 @@ curl -fsS -H 'Host: backend-b.example.test' http://localhost:8080/headers >/dev/
 """
 
 [tasks."cluster:start"]
-description = "Bootstrap the full cluster: kind + Cilium + Kyverno in order"
+description = "Bootstrap the full cluster: kind + Cilium in order"
 depends = ["kind:start"]
 depends_post = ["cluster:verify"]
-run = "mise run cilium:install && cilium status --wait && mise run kyverno:install"
-run_windows = "mise run cilium:install && cilium status --wait && mise run kyverno:install"
+run = "mise run cilium:install && cilium status --wait"
+run_windows = "mise run cilium:install && cilium status --wait"
+
+[tasks."cluster:start:lb"]
+description = "Bootstrap the load-balancer comparison cluster: kind + Cilium load-balancer mode"
+depends = ["kind:start:lb"]
+depends_post = ["cluster:verify"]
+run = "mise run cilium:install:lb && cilium status --wait"
+run_windows = "mise run cilium:install:lb && cilium status --wait"
 
 [tasks."cluster:verify"]
-description = "Verify the cluster is healthy: Cilium status and Kyverno pods ready"
-run = [
-  "cilium status --wait",
-  "kubectl wait pods --all -n kyverno --for=condition=Ready --timeout=120s"
-]
+description = "Verify the cluster is healthy: Cilium status ready"
+run = ["cilium status --wait"]
 
 [tasks."cluster:delete"]
 description = "Delete the full cluster"
@@ -212,20 +333,7 @@ description = "Delete and fully rebuild the cluster"
 depends = ["cluster:delete"]
 run = "mise run cluster:start"
 
-[tasks."kyverno:install"]
-description = "Install Kyverno using Helm"
-depends = ["helm:repo:add", "kyverno:load"]
-run = """
-helm install kyverno kyverno/kyverno \
-  --namespace kyverno \
-  --create-namespace \
-  --version $KYVERNO_CHART_VERSION \
-  --values config/values.kyverno.yaml
-"""
-run_windows = """
-helm install kyverno kyverno/kyverno `
-  --namespace kyverno `
-  --create-namespace `
-  --version $env:KYVERNO_CHART_VERSION `
-  --values config/values.kyverno.yaml
-"""
+[tasks."cluster:restart:lb"]
+description = "Delete and fully rebuild the load-balancer comparison cluster"
+depends = ["cluster:delete"]
+run = "mise run cluster:start:lb"

@@ -1,0 +1,26 @@
+# Cilium Helm values for kube-proxy-free mode in load-balancer Gateway mode.
+# Version is pinned via CILIUM_VERSION in mise.toml and passed to helm install --version.
+
+kubeProxyReplacement: true
+
+gatewayAPI:
+  enabled: true
+  # Required for TLS-terminated gRPC listeners so clients can negotiate HTTP/2.
+  enableAlpn: true
+
+ingressController:
+  enabled: false
+
+tunnelProtocol: vxlan
+
+ipam:
+  mode: kubernetes
+
+hubble:
+  enabled: true
+  relay:
+    enabled: true
+  ui:
+    enabled: true
+
+policyAuditMode: false

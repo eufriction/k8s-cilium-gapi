@@ -32,6 +32,7 @@ go.work.sum
 # Build output
 bin/
 dist/
+.bin/
 
 # Local Go caches created while verifying repo-owned app images
 images/backend-grpc/.cache/

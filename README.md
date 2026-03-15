@@ -1,6 +1,6 @@
 # Introduction
 
-This repository demonstrates how **Cilium Service Mesh** implements the **Gateway API** in a **kind** cluster. It provides a set of scenarios that tests different congiruation, each paired with a mitigation, so you can observe the difference in behaviour before and after applying the controls.
+This repository demonstrates how **Cilium Service Mesh** implements the **Gateway API** in a **kind** cluster. It provides a set of scenarios that exercise different configuration models so you can compare their behavior directly.
 
 ---
 
@@ -48,7 +48,7 @@ Avoid setting the token using `export GITHUB_TOKEN=token` or `mise set GITHUB_TO
 mise run cluster:start
 ```
 
-This creates a `kind` cluster, installs Cilium in kube-proxy-free mode with Hubble observability, and installs Kyverno with Pod Security restrictions enabled.
+This creates a `kind` cluster and installs Cilium in kube-proxy-free mode with Hubble observability.
 
 #### Verify the cluster is healthy
 
@@ -76,8 +76,8 @@ This deploys one `gateway-system` namespace with the Gateway, one `client` names
 Test the two HTTPRoutes from your machine:
 
 ```sh
-curl -i -H 'Host: backend-a.example.test' http://localhost:8080/headers
-curl -i -H 'Host: backend-b.example.test' http://localhost:8080/headers
+curl -i -H 'Host: backend-a.example.test' http://localhost/headers
+curl -i -H 'Host: backend-b.example.test' http://localhost/headers
 ```
 
 ---

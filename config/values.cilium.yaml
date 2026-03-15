@@ -8,6 +8,8 @@ kubeProxyReplacement: true
 # Enable Gateway API for Cilium Service Mesh testing
 gatewayAPI:
   enabled: true
+  # Required for TLS-terminated gRPC listeners so clients can negotiate HTTP/2.
+  enableAlpn: true
   hostNetwork:
     enabled: true
 
