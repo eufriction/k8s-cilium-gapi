@@ -16,16 +16,16 @@ The Gateway exposes:
 
 ## Purpose
 
-This is the first multi-protocol scenario in the `10+` series. It is the direct combination of scenario 00 and scenario 01, keeping the same multi-namespace fan-out pattern but serving both HTTPS and gRPC from one Gateway.
+This is the first multi-protocol scenario in the `20+` series. It is the direct combination of scenario 01 and scenario 02, keeping the same multi-namespace fan-out pattern but serving both HTTPS and gRPC from one Gateway.
 
 ## Apply
 
 ```sh
-mise run scenario:10:start
-mise run scenario:10:verify
+mise run scenario:20:start
+mise run scenario:20:verify
 ```
 
-`scenario:10:start` installs `cert-manager` first if it is not already present, then issues a self-signed certificate in `gateway-system`.
+`scenario:20:start` installs `cert-manager` first if it is not already present, then issues a self-signed certificate in `gateway-system`.
 
 ## Manual Check
 
@@ -54,4 +54,4 @@ grpcurl -insecure \
   grpc.testing.TestService/UnaryCall
 ```
 
-For the single-protocol gRPC variant, see [`scenarios/01-multi-namespace-grpc`](../01-multi-namespace-grpc/README.md).
+For the single-protocol gRPC variant, see [`scenarios/02-grpc`](../02-grpc/README.md).

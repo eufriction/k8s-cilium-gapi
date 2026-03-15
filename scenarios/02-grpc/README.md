@@ -11,11 +11,11 @@ This is the fixed-port host-network variant of the gRPC setup for multi-namespac
 ## Apply
 
 ```sh
-mise run scenario:01:start
-mise run scenario:01:verify
+mise run scenario:02:start
+mise run scenario:02:verify
 ```
 
-`scenario:01:start` installs `cert-manager` first if it is not already present, then issues a self-signed certificate in `gateway-system`.
+`scenario:02:start` installs `cert-manager` first if it is not already present, then issues a self-signed certificate in `gateway-system`.
 
 ## Manual Check
 

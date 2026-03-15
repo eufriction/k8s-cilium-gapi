@@ -5,8 +5,8 @@ This scenario deploys the shared `backend-http` app base twice, once in `backend
 Apply the scenario:
 
 ```sh
-mise run scenario:00:start
-mise run scenario:00:verify
+mise run scenario:01:start
+mise run scenario:01:verify
 ```
 
 Test the two routes from your machine:

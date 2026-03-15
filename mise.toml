@@ -280,22 +280,22 @@ helm install cilium cilium/cilium `
   --set k8sServicePort=6443
 """
 
-[tasks."scenario:00:start"]
+[tasks."scenario:01:start"]
 description = "Deploy the multi-namespace HTTP Gateway API scenario"
 depends = ["apps:load"]
-depends_post = ["scenario:00:verify"]
-run = "kubectl apply -k scenarios/00-multi-namespace-http/"
+depends_post = ["scenario:01:verify"]
+run = "kubectl apply -k scenarios/01-http/"
 
-[tasks."scenario:00:delete"]
+[tasks."scenario:01:delete"]
 description = "Delete the multi-namespace HTTP Gateway API scenario"
-run = "kubectl delete -k scenarios/00-multi-namespace-http/ --ignore-not-found"
+run = "kubectl delete -k scenarios/01-http/ --ignore-not-found"
 
-[tasks."scenario:00:restart"]
+[tasks."scenario:01:restart"]
 description = "Tear down and recreate the multi-namespace HTTP Gateway API scenario"
-depends = ["scenario:00:delete"]
-run = "mise run scenario:00:start"
+depends = ["scenario:01:delete"]
+run = "mise run scenario:01:start"
 
-[tasks."scenario:00:verify"]
+[tasks."scenario:01:verify"]
 description = "Verify the multi-namespace HTTP Gateway API scenario is healthy"
 run = """
 kubectl wait pod/netshoot-client -n client --for=condition=Ready --timeout=60s
@@ -308,22 +308,22 @@ curl -fsS -H 'Host: backend-a.example.test' http://localhost/headers >/dev/null
 curl -fsS -H 'Host: backend-b.example.test' http://localhost/headers >/dev/null
 """
 
-[tasks."scenario:01:start"]
+[tasks."scenario:02:start"]
 description = "Deploy the host-network multi-namespace TLS gRPC Gateway API scenario"
 depends = ["apps:load", "cert-manager:install"]
-depends_post = ["scenario:01:verify"]
-run = "kubectl apply -k scenarios/01-multi-namespace-grpc/"
+depends_post = ["scenario:02:verify"]
+run = "kubectl apply -k scenarios/02-grpc/"
 
-[tasks."scenario:01:delete"]
+[tasks."scenario:02:delete"]
 description = "Delete the host-network multi-namespace TLS gRPC Gateway API scenario"
-run = "kubectl delete -k scenarios/01-multi-namespace-grpc/ --ignore-not-found"
+run = "kubectl delete -k scenarios/02-grpc/ --ignore-not-found"
 
-[tasks."scenario:01:restart"]
+[tasks."scenario:02:restart"]
 description = "Tear down and recreate the host-network multi-namespace TLS gRPC Gateway API scenario"
-depends = ["scenario:01:delete"]
-run = "mise run scenario:01:start"
+depends = ["scenario:02:delete"]
+run = "mise run scenario:02:start"
 
-[tasks."scenario:01:verify"]
+[tasks."scenario:02:verify"]
 description = "Verify the host-network multi-namespace TLS gRPC Gateway API scenario is healthy"
 run = """
 kubectl wait pod/grpc-api -n grpc-backend-a --for=condition=Ready --timeout=60s
@@ -347,22 +347,22 @@ grpcurl -insecure \
 """
 
 
-[tasks."scenario:10:start"]
+[tasks."scenario:20:start"]
 description = "Deploy the host-network multi-namespace HTTPS + gRPC Gateway API scenario"
 depends = ["apps:load", "cert-manager:install"]
-depends_post = ["scenario:10:verify"]
-run = "kubectl apply -k scenarios/10-multi-namespace-https-grpc/"
+depends_post = ["scenario:20:verify"]
+run = "kubectl apply -k scenarios/20-http-grpc/"
 
-[tasks."scenario:10:delete"]
+[tasks."scenario:20:delete"]
 description = "Delete the host-network multi-namespace HTTPS + gRPC Gateway API scenario"
-run = "kubectl delete -k scenarios/10-multi-namespace-https-grpc/ --ignore-not-found"
+run = "kubectl delete -k scenarios/20-http-grpc/ --ignore-not-found"
 
-[tasks."scenario:10:restart"]
+[tasks."scenario:20:restart"]
 description = "Tear down and recreate the host-network multi-namespace HTTPS + gRPC Gateway API scenario"
-depends = ["scenario:10:delete"]
-run = "mise run scenario:10:start"
+depends = ["scenario:20:delete"]
+run = "mise run scenario:20:start"
 
-[tasks."scenario:10:verify"]
+[tasks."scenario:20:verify"]
 description = "Verify the host-network multi-namespace HTTPS + gRPC Gateway API scenario is healthy"
 run = """
 kubectl wait pod/api -n backend-a --for=condition=Ready --timeout=60s

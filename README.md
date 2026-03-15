@@ -61,8 +61,8 @@ mise run cluster:verify
 #### Start the first scenario
 
 ```sh
-mise run scenario:00:start
-mise run scenario:00:verify
+mise run scenario:01:start
+mise run scenario:01:verify
 ```
 
 This deploys one `gateway-system` namespace with the Gateway, one `client` namespace with a `netshoot-client` pod, and two backend namespaces that both reuse the same `backend-http` app base:
@@ -86,17 +86,39 @@ curl -i -H 'Host: backend-b.example.test' http://localhost/headers
 
 Read each scenario README for the scenario-specific test flow.
 
-Rule:
+### Numbering convention
 
-- `00` to `09` are reserved for focused scenarios built around one route type or one tightly scoped routing concept.
-- `10+` is used for comparison scenarios, multi-protocol scenarios, and broader compositions.
+Scenarios use a numbered-tier system. The prefix tells you the category at a glance; the slug tells you the content.
 
-| Scenario                                                                             | Scope                                                                  | Works   | Comments                                                                |
-| ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------- |
-| [`00-multi-namespace-http`](scenarios/00-multi-namespace-http/README.md)             | Host-network HTTP baseline with one Gateway and two backend namespaces | Yes     | Stable starting point for the repo                                      |
-| [`01-multi-namespace-grpc`](scenarios/01-multi-namespace-grpc/README.md)             | Host-network TLS gRPC with one Gateway and two backend namespaces      | Yes     | Uses `grpc-a.example.test` and `grpc-b.example.test` on `localhost:443` |
-| `02-mtls`                                                                            | Reserved slot for a focused mTLS scenario                              | Planned | Placeholder only                                                        |
-| [`10-multi-namespace-https-grpc`](scenarios/10-multi-namespace-https-grpc/README.md) | Host-network HTTPS plus gRPC with 4 total routes across 2 namespaces   | Yes     | 2 `HTTPRoute`s on `443` and 2 `GRPCRoute`s on `50051`                   |
+| Range   | Category                        | Rule                                                               |
+| ------- | ------------------------------- | ------------------------------------------------------------------ |
+| `01–09` | Single protocol, single gateway | One route type, one gateway — vary the protocol or routing feature |
+| `20–29` | Multi-protocol, single gateway  | Multiple route types on one gateway                                |
+| `30–39` | Multi-gateway                   | Topology is the variable — multiple gateways                       |
+| `40–49` | Policy & filters                | Kyverno, rate limiting, auth — the protocol is incidental          |
+| `50+`   | Advanced topology               | ClusterMesh, federation, cross-cluster                             |
+
+Gap numbering leaves room for insertion without renaming existing scenarios.
+
+### Scenario table
+
+| Scenario                                           | Scope                                                          | Status  |
+| -------------------------------------------------- | -------------------------------------------------------------- | ------- |
+| [`01-http`](scenarios/01-http/README.md)           | HTTPRoute, plaintext, one gateway, two backend namespaces      | ✅ Done |
+| [`02-grpc`](scenarios/02-grpc/README.md)           | GRPCRoute, TLS termination at gateway, two backend namespaces  | ✅ Done |
+| `03-https`                                         | HTTPRoute over HTTPS, TLS termination at gateway               | Planned |
+| `04-mtls`                                          | TLSRoute passthrough, mTLS at backend, per-namespace PKI       | Planned |
+| `05-tcp`                                           | TCPRoute, no TLS                                               | Planned |
+| `06-http-header-routing`                           | HTTPRoute with header-based match rules                        | Planned |
+| `07-http-canary`                                   | HTTPRoute with weighted backendRefs for traffic splitting      | Planned |
+| [`20-http-grpc`](scenarios/20-http-grpc/README.md) | HTTPS + gRPC on one gateway, four routes across two namespaces | ✅ Done |
+| `21-http-grpc-mtls`                                | HTTP, HTTPS, mTLS, and gRPC on one gateway                     | Planned |
+| `30-multi-gateway-grpc`                            | Two gateways, each serving gRPC                                | Planned |
+| `31-multi-gateway-multi-protocol`                  | Two gateways, mixed protocols                                  | Planned |
+| `40-kyverno-route-mutation`                        | Kyverno policy injects or mutates routes automatically         | Planned |
+| `41-http-rate-limit`                               | HTTPRoute with Envoy rate-limit filter                         | Planned |
+| `42-http-ext-auth`                                 | HTTPRoute with OIDC / external authorization                   | Planned |
+| `50-clustermesh-grpc`                              | Cross-cluster gRPC with Cilium ClusterMesh                     | Planned |
 
 ## Repo Model
 
@@ -178,6 +200,6 @@ Basic navigation:
 ## Clean up
 
 ```sh
-mise run scenario:00:delete
+mise run scenario:01:delete
 mise run cluster:delete
 ```
