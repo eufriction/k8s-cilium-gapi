@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-mtls-config
+  labels:
+    app: backend-mtls
+    app.kubernetes.io/name: backend-mtls
+    app.kubernetes.io/part-of: demo
+data:
+  envoy.yaml: |
+    static_resources:
+      listeners:
+        - name: downstream_mtls
+          address:
+            socket_address:
+              address: 0.0.0.0
+              port_value: 9443
+          filter_chains:
+            - transport_socket:
+                name: envoy.transport_sockets.tls
+                typed_config:
+                  "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
+                  require_client_certificate: true
+                  common_tls_context:
+                    tls_certificates:
+                      - certificate_chain:
+                          filename: /etc/envoy/tls/tls.crt
+                        private_key:
+                          filename: /etc/envoy/tls/tls.key
+                    validation_context:
+                      trusted_ca:
+                        filename: /etc/envoy/tls/ca.crt
+              filters:
+                - name: envoy.filters.network.http_connection_manager
+                  typed_config:
+                    "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                    stat_prefix: backend_mtls
+                    codec_type: AUTO
+                    route_config:
+                      name: local_route
+                      virtual_hosts:
+                        - name: backend_mtls
+                          domains: ["*"]
+                          routes:
+                            - match:
+                                prefix: /
+                              direct_response:
+                                status: 200
+                                body:
+                                  inline_string: "backend-mtls\n"
+                    http_filters:
+                      - name: envoy.filters.http.router
+                        typed_config:
+                          "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+    admin:
+      address:
+        socket_address:
+          address: 127.0.0.1
+          port_value: 9901
