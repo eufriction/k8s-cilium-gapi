@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: grpc-client
+  labels:
+    app.kubernetes.io/part-of: demo
+    team: client

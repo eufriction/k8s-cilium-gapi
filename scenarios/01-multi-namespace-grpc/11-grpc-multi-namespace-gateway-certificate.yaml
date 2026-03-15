@@ -1,0 +1,18 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: grpc-multi-namespace-gateway-certificate
+  namespace: gateway-system
+spec:
+  secretName: grpc-multi-namespace-gateway-tls
+  commonName: grpc-a.example.test
+  dnsNames:
+    - "*.example.test"
+    - grpc-a.example.test
+    - grpc-b.example.test
+    - localhost
+  ipAddresses:
+    - 127.0.0.1
+  issuerRef:
+    kind: Issuer
+    name: grpc-multi-namespace-selfsigned

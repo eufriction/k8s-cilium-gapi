@@ -306,6 +306,45 @@ curl -fsS -H 'Host: backend-a.example.test' http://localhost/headers >/dev/null
 curl -fsS -H 'Host: backend-b.example.test' http://localhost/headers >/dev/null
 """
 
+[tasks."scenario:01:start"]
+description = "Deploy the host-network multi-namespace TLS gRPC Gateway API scenario"
+depends = ["apps:load", "cert-manager:install"]
+depends_post = ["scenario:01:verify"]
+run = "kubectl apply -k scenarios/01-multi-namespace-grpc/"
+
+[tasks."scenario:01:delete"]
+description = "Delete the host-network multi-namespace TLS gRPC Gateway API scenario"
+run = "kubectl delete -k scenarios/01-multi-namespace-grpc/ --ignore-not-found"
+
+[tasks."scenario:01:restart"]
+description = "Tear down and recreate the host-network multi-namespace TLS gRPC Gateway API scenario"
+depends = ["scenario:01:delete"]
+run = "mise run scenario:01:start"
+
+[tasks."scenario:01:verify"]
+description = "Verify the host-network multi-namespace TLS gRPC Gateway API scenario is healthy"
+run = """
+kubectl wait pod/grpc-api -n grpc-backend-a --for=condition=Ready --timeout=60s
+kubectl wait pod/grpc-api -n grpc-backend-b --for=condition=Ready --timeout=60s
+kubectl wait certificate/grpc-multi-namespace-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s
+kubectl wait gateway/grpc-multi-namespace-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
+kubectl wait grpcroute/grpc-backend-a-route -n grpc-backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
+kubectl wait grpcroute/grpc-backend-b-route -n grpc-backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
+grpcurl -insecure \
+  -authority grpc-a.example.test \
+  -proto apps/backend-grpc/proto/grpc/testing/testservice.proto \
+  -d '{"response_size":32,"fill_server_id":true}' \
+  localhost:443 \
+  grpc.testing.TestService/UnaryCall >/dev/null
+grpcurl -insecure \
+  -authority grpc-b.example.test \
+  -proto apps/backend-grpc/proto/grpc/testing/testservice.proto \
+  -d '{"response_size":32,"fill_server_id":true}' \
+  localhost:443 \
+  grpc.testing.TestService/UnaryCall >/dev/null
+"""
+
+
 [tasks."cluster:start"]
 description = "Bootstrap the full cluster: kind + Cilium in order"
 depends = ["kind:start"]

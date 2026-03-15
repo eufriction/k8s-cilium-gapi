@@ -1,0 +1,22 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: grpc-multi-namespace-gateway
+  namespace: gateway-system
+  labels:
+    app.kubernetes.io/part-of: demo
+spec:
+  gatewayClassName: cilium
+  listeners:
+    - name: grpcs
+      protocol: HTTPS
+      port: 443
+      hostname: "*.example.test"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: grpc-multi-namespace-gateway-tls
+      allowedRoutes:
+        namespaces:
+          from: All
