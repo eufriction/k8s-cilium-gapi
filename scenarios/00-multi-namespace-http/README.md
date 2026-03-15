@@ -12,8 +12,8 @@ mise run scenario:00:verify
 Test the two routes from your machine:
 
 ```sh
-curl -i -H 'Host: backend-a.example.test' http://localhost:8080/headers
-curl -i -H 'Host: backend-b.example.test' http://localhost:8080/headers
+curl -i -H 'Host: backend-a.example.test' http://localhost/headers
+curl -i -H 'Host: backend-b.example.test' http://localhost/headers
 ```
 
 The hostname determines which namespace-local backend receives the request.

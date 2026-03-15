@@ -302,8 +302,8 @@ kubectl wait pod/api -n backend-b --for=condition=Ready --timeout=60s
 kubectl wait gateway/multi-namespace-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
 kubectl wait httproute/backend-a-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
 kubectl wait httproute/backend-b-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-curl -fsS -H 'Host: backend-a.example.test' http://localhost:8080/headers >/dev/null
-curl -fsS -H 'Host: backend-b.example.test' http://localhost:8080/headers >/dev/null
+curl -fsS -H 'Host: backend-a.example.test' http://localhost/headers >/dev/null
+curl -fsS -H 'Host: backend-b.example.test' http://localhost/headers >/dev/null
 """
 
 [tasks."cluster:start"]
