@@ -107,7 +107,7 @@ Gap numbering leaves room for insertion without renaming existing scenarios.
 | [`01-http`](scenarios/01-http/README.md)           | HTTPRoute, plaintext, one gateway, two backend namespaces      | ✅ Done |
 | [`02-grpc`](scenarios/02-grpc/README.md)           | GRPCRoute, TLS termination at gateway, two backend namespaces  | ✅ Done |
 | `03-https`                                         | HTTPRoute over HTTPS, TLS termination at gateway               | Planned |
-| `04-mtls`                                          | TLSRoute passthrough, mTLS at backend, per-namespace PKI       | Planned |
+| [`04-mtls`](scenarios/04-mtls/README.md)           | TLSRoute passthrough, mTLS at backend, per-namespace PKI       | ✅ Done |
 | `05-tcp`                                           | TCPRoute, no TLS                                               | Planned |
 | `06-http-header-routing`                           | HTTPRoute with header-based match rules                        | Planned |
 | `07-http-canary`                                   | HTTPRoute with weighted backendRefs for traffic splitting      | Planned |

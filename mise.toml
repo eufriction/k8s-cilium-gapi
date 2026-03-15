@@ -346,6 +346,86 @@ grpcurl -insecure \
   grpc.testing.TestService/UnaryCall >/dev/null
 """
 
+[tasks."scenario:04:start"]
+description = "Deploy the multi-namespace mTLS Gateway API scenario"
+depends = ["apps:load", "cert-manager:install"]
+depends_post = ["scenario:04:verify"]
+run = "kubectl apply -k scenarios/04-mtls/"
+
+[tasks."scenario:04:delete"]
+description = "Delete the multi-namespace mTLS Gateway API scenario"
+run = "kubectl delete -k scenarios/04-mtls/ --ignore-not-found"
+
+[tasks."scenario:04:restart"]
+description = "Tear down and recreate the multi-namespace mTLS Gateway API scenario"
+depends = ["scenario:04:delete"]
+run = "mise run scenario:04:start"
+
+[tasks."scenario:04:verify"]
+description = "Verify the multi-namespace mTLS Gateway API scenario is healthy"
+run = """
+set -euo pipefail
+kubectl wait pod/backend-mtls -n backend-a --for=condition=Ready --timeout=60s
+kubectl wait pod/backend-mtls -n backend-b --for=condition=Ready --timeout=60s
+kubectl wait certificate/backend-a-mtls-ca -n backend-a --for=condition=Ready --timeout=180s
+kubectl wait certificate/backend-a-mtls-server -n backend-a --for=condition=Ready --timeout=180s
+kubectl wait certificate/backend-a-mtls-client -n backend-a --for=condition=Ready --timeout=180s
+kubectl wait certificate/backend-b-mtls-ca -n backend-b --for=condition=Ready --timeout=180s
+kubectl wait certificate/backend-b-mtls-server -n backend-b --for=condition=Ready --timeout=180s
+kubectl wait certificate/backend-b-mtls-client -n backend-b --for=condition=Ready --timeout=180s
+kubectl wait gateway/mtls-multi-namespace-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
+kubectl wait tlsroute/backend-a-mtls-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
+kubectl wait tlsroute/backend-b-mtls-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
+
+TMPDIR=$(mktemp -d)
+trap 'rm -rf "$TMPDIR"' EXIT
+
+# Extract backend-a certs
+kubectl get secret backend-a-mtls-server -n backend-a -o jsonpath='{.data.ca\\.crt}' | base64 -d > "$TMPDIR/a-ca.crt"
+kubectl get secret backend-a-mtls-client -n backend-a -o jsonpath='{.data.tls\\.crt}' | base64 -d > "$TMPDIR/a-client.crt"
+kubectl get secret backend-a-mtls-client -n backend-a -o jsonpath='{.data.tls\\.key}' | base64 -d > "$TMPDIR/a-client.key"
+
+# Extract backend-b certs
+kubectl get secret backend-b-mtls-server -n backend-b -o jsonpath='{.data.ca\\.crt}' | base64 -d > "$TMPDIR/b-ca.crt"
+kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\\.crt}' | base64 -d > "$TMPDIR/b-client.crt"
+kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\\.key}' | base64 -d > "$TMPDIR/b-client.key"
+
+# Positive: backend-a with correct client cert
+curl -fsS --resolve "mtls-a.example.test:9443:127.0.0.1" \
+  --cacert "$TMPDIR/a-ca.crt" \
+  --cert "$TMPDIR/a-client.crt" \
+  --key "$TMPDIR/a-client.key" \
+  https://mtls-a.example.test:9443/ >/dev/null
+echo "PASS: backend-a accepts correct client cert"
+
+# Positive: backend-b with correct client cert
+curl -fsS --resolve "mtls-b.example.test:9443:127.0.0.1" \
+  --cacert "$TMPDIR/b-ca.crt" \
+  --cert "$TMPDIR/b-client.crt" \
+  --key "$TMPDIR/b-client.key" \
+  https://mtls-b.example.test:9443/ >/dev/null
+echo "PASS: backend-b accepts correct client cert"
+
+# Negative: backend-a without client cert (must fail)
+if curl -fsS --resolve "mtls-a.example.test:9443:127.0.0.1" \
+  --cacert "$TMPDIR/a-ca.crt" \
+  https://mtls-a.example.test:9443/ >/dev/null 2>&1; then
+  echo "FAIL: backend-a should reject requests without client cert" >&2
+  exit 1
+fi
+echo "PASS: backend-a rejects missing client cert"
+
+# Negative: backend-b with backend-a's client cert (must fail — CA isolation)
+if curl -fsS --resolve "mtls-b.example.test:9443:127.0.0.1" \
+  --cacert "$TMPDIR/b-ca.crt" \
+  --cert "$TMPDIR/a-client.crt" \
+  --key "$TMPDIR/a-client.key" \
+  https://mtls-b.example.test:9443/ >/dev/null 2>&1; then
+  echo "FAIL: backend-b should reject backend-a client cert (CA isolation)" >&2
+  exit 1
+fi
+echo "PASS: backend-b rejects cross-namespace client cert"
+"""
 
 [tasks."scenario:20:start"]
 description = "Deploy the host-network multi-namespace HTTPS + gRPC Gateway API scenario"

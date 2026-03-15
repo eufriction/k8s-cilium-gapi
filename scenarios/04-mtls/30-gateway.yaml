@@ -1,0 +1,19 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: mtls-multi-namespace-gateway
+  namespace: gateway-system
+  labels:
+    app.kubernetes.io/part-of: demo
+spec:
+  gatewayClassName: cilium
+  listeners:
+    - name: mtls
+      protocol: TLS
+      port: 9443
+      hostname: "*.example.test"
+      tls:
+        mode: Passthrough
+      allowedRoutes:
+        namespaces:
+          from: All
