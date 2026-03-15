@@ -86,11 +86,57 @@ curl -i -H 'Host: backend-b.example.test' http://localhost/headers
 
 Read each scenario README for the scenario-specific test flow.
 
+Rule:
+
+- `00` to `09` are reserved for focused scenarios built around one route type or one tightly scoped routing concept.
+- `10+` is used for comparison scenarios, multi-protocol scenarios, and broader compositions.
+
+| Scenario                                                                             | Scope                                                                  | Works   | Comments                                                                |
+| ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------- |
+| [`00-multi-namespace-http`](scenarios/00-multi-namespace-http/README.md)             | Host-network HTTP baseline with one Gateway and two backend namespaces | Yes     | Stable starting point for the repo                                      |
+| [`01-multi-namespace-grpc`](scenarios/01-multi-namespace-grpc/README.md)             | Host-network TLS gRPC with one Gateway and two backend namespaces      | Yes     | Uses `grpc-a.example.test` and `grpc-b.example.test` on `localhost:443` |
+| `02-mtls`                                                                            | Reserved slot for a focused mTLS scenario                              | Planned | Placeholder only                                                        |
+| [`10-multi-namespace-https-grpc`](scenarios/10-multi-namespace-https-grpc/README.md) | Host-network HTTPS plus gRPC with 4 total routes across 2 namespaces   | Yes     | 2 `HTTPRoute`s on `443` and 2 `GRPCRoute`s on `50051`                   |
+
 ## Repo Model
 
 - `apps/` contains reusable, namespace-agnostic app bases.
 - `scenarios/` contains namespaces, app instances, and Gateway API resources.
 - App-base conventions live in [`apps/README.md`](apps/README.md).
+
+## TLS Foundation
+
+TLS-focused scenarios use `cert-manager`, but it is intentionally not part of `mise run cluster:start`.
+
+Install it only when a scenario needs certificates:
+
+```sh
+mise run cert-manager:install
+mise run cert-manager:verify
+```
+
+The self-signed certificate pattern for this repo lives in [`docs/tls-selfsigned.md`](docs/tls-selfsigned.md).
+
+Gateway API CRDs are installed by the repo tasks before Cilium is installed. This repo now uses the Gateway API `experimental` CRD bundle at `v1.5.0`, because current Cilium Gateway behavior can log `v1alpha2.TLSRouteList` registration errors when only the `standard` bundle is installed.
+
+For local TLS and gRPC checks in this repo, use insecure client flags against the self-signed certificates:
+
+```sh
+curl -k https://...
+grpcurl -insecure ...
+```
+
+## Policy Foundation
+
+Kyverno is also optional and is intentionally not part of `mise run cluster:start` because no current scenario depends on it yet.
+
+Install it only when a scenario or experiment needs policy enforcement:
+
+```sh
+mise run kyverno:install
+mise run kyverno:verify
+mise run kyverno:delete
+```
 
 ---
 
