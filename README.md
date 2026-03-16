@@ -102,23 +102,24 @@ Gap numbering leaves room for insertion without renaming existing scenarios.
 
 ### Scenario table
 
-| Scenario                                                                   | Scope                                                                        | Status  |
-| -------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------- |
-| [`01-http`](scenarios/01-http/README.md)                                   | HTTPRoute, plaintext, one gateway, two backend namespaces                    | ✅ Done |
-| [`02-grpc`](scenarios/02-grpc/README.md)                                   | GRPCRoute, TLS termination at gateway, two backend namespaces                | ✅ Done |
-| [`03-https`](scenarios/03-https/README.md)                                 | HTTPRoute over HTTPS, TLS termination at gateway, two backend namespaces     | ✅ Done |
-| [`04-mtls`](scenarios/04-mtls/README.md)                                   | TLSRoute passthrough, mTLS at backend, per-namespace PKI                     | ✅ Done |
-| `05-tcp`                                                                   | TCPRoute, no TLS                                                             | Planned |
-| `06-http-header-routing`                                                   | HTTPRoute with header-based match rules                                      | Planned |
-| `07-http-canary`                                                           | HTTPRoute with weighted backendRefs for traffic splitting                    | Planned |
-| [`20-http-grpc`](scenarios/20-http-grpc/README.md)                         | HTTPS + gRPC on one gateway, separate ports, two namespaces                  | ✅ Done |
-| [`21-http-grpc-shared-port`](scenarios/21-http-grpc-shared-port/README.md) | HTTPRoute + GRPCRoute on one HTTPS listener (same port, different hostnames) | ✅ Done |
-| `30-multi-gateway-grpc`                                                    | Two gateways, each serving gRPC                                              | Planned |
-| `31-multi-gateway-multi-protocol`                                          | Two gateways, mixed protocols                                                | Planned |
-| `40-kyverno-route-governance`                                              | Mutating + validating policies for Gateway API route hygiene                 | Planned |
-| `41-http-rate-limit`                                                       | HTTPRoute with Envoy rate-limit filter                                       | Planned |
-| `42-http-ext-auth`                                                         | HTTPRoute with OIDC / external authorization                                 | Planned |
-| `50-clustermesh-grpc`                                                      | Cross-cluster gRPC with Cilium ClusterMesh                                   | Planned |
+| Scenario                                                                         | Scope                                                                        | Status  |
+| -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------- |
+| [`01-http`](scenarios/01-http/README.md)                                         | HTTPRoute, plaintext, one gateway, two backend namespaces                    | ✅ Done |
+| [`02-grpc`](scenarios/02-grpc/README.md)                                         | GRPCRoute, TLS termination at gateway, two backend namespaces                | ✅ Done |
+| [`03-https`](scenarios/03-https/README.md)                                       | HTTPRoute over HTTPS, TLS termination at gateway, two backend namespaces     | ✅ Done |
+| [`04-mtls`](scenarios/04-mtls/README.md)                                         | TLSRoute passthrough, mTLS at backend, per-namespace PKI                     | ✅ Done |
+| `05-tcp`                                                                         | TCPRoute, no TLS                                                             | Planned |
+| `06-http-header-routing`                                                         | HTTPRoute with header-based match rules                                      | Planned |
+| `07-http-canary`                                                                 | HTTPRoute with weighted backendRefs for traffic splitting                    | Planned |
+| [`20-http-grpc`](scenarios/20-http-grpc/README.md)                               | HTTPS + gRPC on one gateway, separate ports, two namespaces                  | ✅ Done |
+| [`21-http-grpc-shared-port`](scenarios/21-http-grpc-shared-port/README.md)       | HTTPRoute + GRPCRoute on one HTTPS listener (same port, different hostnames) | ✅ Done |
+| [`22-http-grpc-allowed-routes`](scenarios/22-http-grpc-allowed-routes/README.md) | HTTPS + gRPC on separate ports with per-listener `allowedRoutes.kinds`       | ✅ Done |
+| `30-multi-gateway-grpc`                                                          | Two gateways, each serving gRPC                                              | Planned |
+| `31-multi-gateway-multi-protocol`                                                | Two gateways, mixed protocols                                                | Planned |
+| `40-kyverno-route-governance`                                                    | Mutating + validating policies for Gateway API route hygiene                 | Planned |
+| `41-http-rate-limit`                                                             | HTTPRoute with Envoy rate-limit filter                                       | Planned |
+| `42-http-ext-auth`                                                               | HTTPRoute with OIDC / external authorization                                 | Planned |
+| `50-clustermesh-grpc`                                                            | Cross-cluster gRPC with Cilium ClusterMesh                                   | Planned |
 
 ### Planned scenario details
 
