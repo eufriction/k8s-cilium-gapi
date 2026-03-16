@@ -1,0 +1,18 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: GRPCRoute
+metadata:
+  name: backend-a-grpc-route
+  namespace: backend-a
+  labels:
+    app.kubernetes.io/part-of: demo
+spec:
+  parentRefs:
+    - name: shared-port-gateway
+      namespace: gateway-system
+      sectionName: https
+  hostnames:
+    - backend-grpc.example.test
+  rules:
+    - backendRefs:
+        - name: grpc-api
+          port: 9000

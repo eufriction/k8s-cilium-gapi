@@ -1,0 +1,20 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: shared-port-gateway-certificate
+  namespace: gateway-system
+spec:
+  secretName: shared-port-gateway-tls
+  commonName: backend.example.test
+  dnsNames:
+    - "*.example.test"
+    - backend.example.test
+    - backend-b.example.test
+    - backend-grpc.example.test
+    - backend-grpc-b.example.test
+    - localhost
+  ipAddresses:
+    - 127.0.0.1
+  issuerRef:
+    kind: Issuer
+    name: shared-port-selfsigned

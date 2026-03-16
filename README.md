@@ -102,31 +102,25 @@ Gap numbering leaves room for insertion without renaming existing scenarios.
 
 ### Scenario table
 
-| Scenario                                           | Scope                                                                        | Status  |
-| -------------------------------------------------- | ---------------------------------------------------------------------------- | ------- |
-| [`01-http`](scenarios/01-http/README.md)           | HTTPRoute, plaintext, one gateway, two backend namespaces                    | ✅ Done |
-| [`02-grpc`](scenarios/02-grpc/README.md)           | GRPCRoute, TLS termination at gateway, two backend namespaces                | ✅ Done |
-| [`03-https`](scenarios/03-https/README.md)         | HTTPRoute over HTTPS, TLS termination at gateway, two backend namespaces     | ✅ Done |
-| [`04-mtls`](scenarios/04-mtls/README.md)           | TLSRoute passthrough, mTLS at backend, per-namespace PKI                     | ✅ Done |
-| `05-tcp`                                           | TCPRoute, no TLS                                                             | Planned |
-| `06-http-header-routing`                           | HTTPRoute with header-based match rules                                      | Planned |
-| `07-http-canary`                                   | HTTPRoute with weighted backendRefs for traffic splitting                    | Planned |
-| [`20-http-grpc`](scenarios/20-http-grpc/README.md) | HTTPS + gRPC on one gateway, separate ports, two namespaces                  | ✅ Done |
-| `21-http-grpc-shared-port`                         | HTTPRoute + GRPCRoute on one HTTPS listener (same port, different hostnames) | Planned |
-| `30-multi-gateway-grpc`                            | Two gateways, each serving gRPC                                              | Planned |
-| `31-multi-gateway-multi-protocol`                  | Two gateways, mixed protocols                                                | Planned |
-| `40-kyverno-route-governance`                      | Mutating + validating policies for Gateway API route hygiene                 | Planned |
-| `41-http-rate-limit`                               | HTTPRoute with Envoy rate-limit filter                                       | Planned |
-| `42-http-ext-auth`                                 | HTTPRoute with OIDC / external authorization                                 | Planned |
-| `50-clustermesh-grpc`                              | Cross-cluster gRPC with Cilium ClusterMesh                                   | Planned |
+| Scenario                                                                   | Scope                                                                        | Status  |
+| -------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------- |
+| [`01-http`](scenarios/01-http/README.md)                                   | HTTPRoute, plaintext, one gateway, two backend namespaces                    | ✅ Done |
+| [`02-grpc`](scenarios/02-grpc/README.md)                                   | GRPCRoute, TLS termination at gateway, two backend namespaces                | ✅ Done |
+| [`03-https`](scenarios/03-https/README.md)                                 | HTTPRoute over HTTPS, TLS termination at gateway, two backend namespaces     | ✅ Done |
+| [`04-mtls`](scenarios/04-mtls/README.md)                                   | TLSRoute passthrough, mTLS at backend, per-namespace PKI                     | ✅ Done |
+| `05-tcp`                                                                   | TCPRoute, no TLS                                                             | Planned |
+| `06-http-header-routing`                                                   | HTTPRoute with header-based match rules                                      | Planned |
+| `07-http-canary`                                                           | HTTPRoute with weighted backendRefs for traffic splitting                    | Planned |
+| [`20-http-grpc`](scenarios/20-http-grpc/README.md)                         | HTTPS + gRPC on one gateway, separate ports, two namespaces                  | ✅ Done |
+| [`21-http-grpc-shared-port`](scenarios/21-http-grpc-shared-port/README.md) | HTTPRoute + GRPCRoute on one HTTPS listener (same port, different hostnames) | ✅ Done |
+| `30-multi-gateway-grpc`                                                    | Two gateways, each serving gRPC                                              | Planned |
+| `31-multi-gateway-multi-protocol`                                          | Two gateways, mixed protocols                                                | Planned |
+| `40-kyverno-route-governance`                                              | Mutating + validating policies for Gateway API route hygiene                 | Planned |
+| `41-http-rate-limit`                                                       | HTTPRoute with Envoy rate-limit filter                                       | Planned |
+| `42-http-ext-auth`                                                         | HTTPRoute with OIDC / external authorization                                 | Planned |
+| `50-clustermesh-grpc`                                                      | Cross-cluster gRPC with Cilium ClusterMesh                                   | Planned |
 
 ### Planned scenario details
-
-#### `21-http-grpc-shared-port` — Shared-port multi-protocol (Cilium bug validation)
-
-Tests whether Cilium can serve HTTPRoute and GRPCRoute traffic on a **single HTTPS listener on port `443`** with distinct hostnames (e.g. `backend.example.test` for HTTP, `backend-grpc.example.test` for gRPC). The Gateway API spec allows this — routes with non-overlapping hostnames on the same listener are not conflicted. However, [cilium/cilium#43679](https://github.com/cilium/cilium/issues/43679) reports that Cilium's Envoy translator forces HTTP/2 on the upstream cluster when a GRPCRoute is present, breaking HTTP/1.1 traffic from the HTTPRoute to the same backend service. This scenario exists to reproduce and track the bug. The verify task should document the expected failure mode and link to the upstream issue.
-
-Compared to `20-http-grpc` (which works around the issue by using separate ports `443` and `50051`), this scenario deliberately collapses everything onto one port to surface the limitation.
 
 #### `40-kyverno-route-governance` — Policy-driven route hygiene
 

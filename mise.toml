@@ -500,6 +500,60 @@ grpcurl -insecure \
   grpc.testing.TestService/UnaryCall >/dev/null
 """
 
+[tasks."scenario:21:start"]
+description = "Deploy the shared-port HTTP + gRPC Gateway API scenario"
+depends = ["apps:load", "cert-manager:install"]
+depends_post = ["scenario:21:verify"]
+run = "kubectl apply -k scenarios/21-http-grpc-shared-port/"
+
+[tasks."scenario:21:delete"]
+description = "Delete the shared-port HTTP + gRPC Gateway API scenario"
+run = "kubectl delete -k scenarios/21-http-grpc-shared-port/ --ignore-not-found"
+
+[tasks."scenario:21:restart"]
+description = "Tear down and recreate the shared-port HTTP + gRPC Gateway API scenario"
+depends = ["scenario:21:delete"]
+run = "mise run scenario:21:start"
+
+[tasks."scenario:21:verify"]
+description = "Verify the shared-port HTTP + gRPC Gateway API scenario"
+run = """
+set -euo pipefail
+kubectl wait pod/api -n backend-a --for=condition=Ready --timeout=60s
+kubectl wait pod/api -n backend-b --for=condition=Ready --timeout=60s
+kubectl wait pod/grpc-api -n backend-a --for=condition=Ready --timeout=60s
+kubectl wait pod/grpc-api -n backend-b --for=condition=Ready --timeout=60s
+kubectl wait pod/netshoot-client -n client --for=condition=Ready --timeout=60s
+kubectl wait certificate/shared-port-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s
+kubectl wait gateway/shared-port-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
+kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
+kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
+kubectl wait grpcroute/backend-a-grpc-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
+kubectl wait grpcroute/backend-b-grpc-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
+
+echo "--- gRPC checks (shared port 443) ---"
+grpcurl -insecure \
+  -authority backend-grpc.example.test \
+  -proto apps/backend-grpc/proto/grpc/testing/testservice.proto \
+  -d '{"response_size":32,"fill_server_id":true}' \
+  localhost:443 \
+  grpc.testing.TestService/UnaryCall >/dev/null
+echo "PASS: gRPC backend-a on port 443"
+grpcurl -insecure \
+  -authority backend-grpc-b.example.test \
+  -proto apps/backend-grpc/proto/grpc/testing/testservice.proto \
+  -d '{"response_size":32,"fill_server_id":true}' \
+  localhost:443 \
+  grpc.testing.TestService/UnaryCall >/dev/null
+echo "PASS: gRPC backend-b on port 443"
+
+echo "--- HTTPS checks (shared port 443) ---"
+curl -kfsS --resolve "backend.example.test:443:127.0.0.1" https://backend.example.test/headers >/dev/null
+echo "PASS: HTTPS backend-a on port 443"
+curl -kfsS --resolve "backend-b.example.test:443:127.0.0.1" https://backend-b.example.test/headers >/dev/null
+echo "PASS: HTTPS backend-b on port 443"
+"""
+
 [tasks."cluster:start"]
 description = "Bootstrap the full cluster: kind + Cilium in order"
 depends = ["kind:start"]
