@@ -1,0 +1,19 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: same-hostname-split-ports-gateway-certificate
+  namespace: gateway-system
+  labels:
+    app.kubernetes.io/part-of: demo
+spec:
+  secretName: same-hostname-split-ports-gateway-tls
+  commonName: api.example.test
+  dnsNames:
+    - "*.example.test"
+    - api.example.test
+    - localhost
+  ipAddresses:
+    - 127.0.0.1
+  issuerRef:
+    kind: Issuer
+    name: same-hostname-split-ports-selfsigned
