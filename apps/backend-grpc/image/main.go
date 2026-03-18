@@ -33,9 +33,14 @@ func newTestService() *testService {
 		hostname = "backend-grpc"
 	}
 
+	serverID := os.Getenv("INSTANCE_ID")
+	if serverID == "" {
+		serverID = hostname
+	}
+
 	return &testService{
 		hostname: hostname,
-		serverID: hostname,
+		serverID: serverID,
 	}
 }
 

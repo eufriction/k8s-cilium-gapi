@@ -14,3 +14,8 @@ spec:
       ports:
         - name: grpc
           containerPort: 9000
+      env:
+        - name: INSTANCE_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace

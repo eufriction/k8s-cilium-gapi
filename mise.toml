@@ -326,24 +326,60 @@ run = "mise run scenario:02:start"
 [tasks."scenario:02:verify"]
 description = "Verify the host-network multi-namespace TLS gRPC Gateway API scenario is healthy"
 run = """
+set -euo pipefail
 kubectl wait pod/grpc-api -n grpc-backend-a --for=condition=Ready --timeout=60s
 kubectl wait pod/grpc-api -n grpc-backend-b --for=condition=Ready --timeout=60s
 kubectl wait certificate/grpc-multi-namespace-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s
 kubectl wait gateway/grpc-multi-namespace-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
 kubectl wait grpcroute/grpc-backend-a-route -n grpc-backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
 kubectl wait grpcroute/grpc-backend-b-route -n grpc-backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-grpcurl -insecure \
-  -authority grpc-a.example.test \
-  -proto apps/backend-grpc/proto/grpc/testing/testservice.proto \
-  -d '{"response_size":32,"fill_server_id":true}' \
-  localhost:443 \
-  grpc.testing.TestService/UnaryCall >/dev/null
-grpcurl -insecure \
-  -authority grpc-b.example.test \
-  -proto apps/backend-grpc/proto/grpc/testing/testservice.proto \
-  -d '{"response_size":32,"fill_server_id":true}' \
-  localhost:443 \
-  grpc.testing.TestService/UnaryCall >/dev/null
+
+GRPC_PROTO=apps/backend-grpc/proto/grpc/testing/testservice.proto
+GRPC_REQ='{"response_size":32,"fill_server_id":true}'
+GRPC_METHOD=grpc.testing.TestService/UnaryCall
+ITERATIONS=10
+
+echo "--- gRPC affinity checks (port 443) ---"
+
+# grpc-a.example.test must always route to grpc-backend-a
+misrouted=0
+for i in $(seq 1 $ITERATIONS); do
+  server_id=$(grpcurl -insecure \
+    -authority grpc-a.example.test \
+    -proto "$GRPC_PROTO" \
+    -d "$GRPC_REQ" \
+    localhost:443 \
+    "$GRPC_METHOD" | jq -r '.serverId')
+  if [ "$server_id" != "grpc-backend-a" ]; then
+    echo "  iteration $i: grpc-a.example.test routed to '$server_id' (expected grpc-backend-a)" >&2
+    misrouted=$((misrouted + 1))
+  fi
+done
+if [ "$misrouted" -gt 0 ]; then
+  echo "FAIL: grpc-a.example.test mis-routed $misrouted/$ITERATIONS requests" >&2
+  exit 1
+fi
+echo "PASS: grpc-a.example.test — all $ITERATIONS requests routed to grpc-backend-a"
+
+# grpc-b.example.test must always route to grpc-backend-b
+misrouted=0
+for i in $(seq 1 $ITERATIONS); do
+  server_id=$(grpcurl -insecure \
+    -authority grpc-b.example.test \
+    -proto "$GRPC_PROTO" \
+    -d "$GRPC_REQ" \
+    localhost:443 \
+    "$GRPC_METHOD" | jq -r '.serverId')
+  if [ "$server_id" != "grpc-backend-b" ]; then
+    echo "  iteration $i: grpc-b.example.test routed to '$server_id' (expected grpc-backend-b)" >&2
+    misrouted=$((misrouted + 1))
+  fi
+done
+if [ "$misrouted" -gt 0 ]; then
+  echo "FAIL: grpc-b.example.test mis-routed $misrouted/$ITERATIONS requests" >&2
+  exit 1
+fi
+echo "PASS: grpc-b.example.test — all $ITERATIONS requests routed to grpc-backend-b"
 """
 
 [tasks."scenario:03:start"]
@@ -474,6 +510,7 @@ run = "mise run scenario:20:start"
 [tasks."scenario:20:verify"]
 description = "Verify the host-network multi-namespace HTTPS + gRPC Gateway API scenario is healthy"
 run = """
+set -euo pipefail
 kubectl wait pod/api -n backend-a --for=condition=Ready --timeout=60s
 kubectl wait pod/api -n backend-b --for=condition=Ready --timeout=60s
 kubectl wait pod/grpc-api -n backend-a --for=condition=Ready --timeout=60s
@@ -484,20 +521,59 @@ kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.stat
 kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
 kubectl wait grpcroute/backend-a-grpc-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
 kubectl wait grpcroute/backend-b-grpc-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
+
+echo "--- HTTPS smoke checks (port 443) ---"
 curl -kfsS --resolve "https-a.example.test:443:127.0.0.1" https://https-a.example.test/headers >/dev/null
+echo "PASS: HTTPS backend-a on port 443"
 curl -kfsS --resolve "https-b.example.test:443:127.0.0.1" https://https-b.example.test/headers >/dev/null
-grpcurl -insecure \
-  -authority grpc-a.example.test \
-  -proto apps/backend-grpc/proto/grpc/testing/testservice.proto \
-  -d '{"response_size":32,"fill_server_id":true}' \
-  localhost:50051 \
-  grpc.testing.TestService/UnaryCall >/dev/null
-grpcurl -insecure \
-  -authority grpc-b.example.test \
-  -proto apps/backend-grpc/proto/grpc/testing/testservice.proto \
-  -d '{"response_size":32,"fill_server_id":true}' \
-  localhost:50051 \
-  grpc.testing.TestService/UnaryCall >/dev/null
+echo "PASS: HTTPS backend-b on port 443"
+
+GRPC_PROTO=apps/backend-grpc/proto/grpc/testing/testservice.proto
+GRPC_REQ='{"response_size":32,"fill_server_id":true}'
+GRPC_METHOD=grpc.testing.TestService/UnaryCall
+ITERATIONS=10
+
+echo "--- gRPC affinity checks (port 50051) ---"
+
+# grpc-a.example.test must always route to backend-a
+misrouted=0
+for i in $(seq 1 $ITERATIONS); do
+  server_id=$(grpcurl -insecure \
+    -authority grpc-a.example.test \
+    -proto "$GRPC_PROTO" \
+    -d "$GRPC_REQ" \
+    localhost:50051 \
+    "$GRPC_METHOD" | jq -r '.serverId')
+  if [ "$server_id" != "backend-a" ]; then
+    echo "  iteration $i: grpc-a.example.test routed to '$server_id' (expected backend-a)" >&2
+    misrouted=$((misrouted + 1))
+  fi
+done
+if [ "$misrouted" -gt 0 ]; then
+  echo "FAIL: grpc-a.example.test mis-routed $misrouted/$ITERATIONS requests" >&2
+  exit 1
+fi
+echo "PASS: grpc-a.example.test — all $ITERATIONS requests routed to backend-a"
+
+# grpc-b.example.test must always route to backend-b
+misrouted=0
+for i in $(seq 1 $ITERATIONS); do
+  server_id=$(grpcurl -insecure \
+    -authority grpc-b.example.test \
+    -proto "$GRPC_PROTO" \
+    -d "$GRPC_REQ" \
+    localhost:50051 \
+    "$GRPC_METHOD" | jq -r '.serverId')
+  if [ "$server_id" != "backend-b" ]; then
+    echo "  iteration $i: grpc-b.example.test routed to '$server_id' (expected backend-b)" >&2
+    misrouted=$((misrouted + 1))
+  fi
+done
+if [ "$misrouted" -gt 0 ]; then
+  echo "FAIL: grpc-b.example.test mis-routed $misrouted/$ITERATIONS requests" >&2
+  exit 1
+fi
+echo "PASS: grpc-b.example.test — all $ITERATIONS requests routed to backend-b"
 """
 
 [tasks."scenario:21:start"]
@@ -531,21 +607,52 @@ kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.stat
 kubectl wait grpcroute/backend-a-grpc-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
 kubectl wait grpcroute/backend-b-grpc-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
 
-echo "--- gRPC checks (shared port 443) ---"
-grpcurl -insecure \
-  -authority backend-grpc.example.test \
-  -proto apps/backend-grpc/proto/grpc/testing/testservice.proto \
-  -d '{"response_size":32,"fill_server_id":true}' \
-  localhost:443 \
-  grpc.testing.TestService/UnaryCall >/dev/null
-echo "PASS: gRPC backend-a on port 443"
-grpcurl -insecure \
-  -authority backend-grpc-b.example.test \
-  -proto apps/backend-grpc/proto/grpc/testing/testservice.proto \
-  -d '{"response_size":32,"fill_server_id":true}' \
-  localhost:443 \
-  grpc.testing.TestService/UnaryCall >/dev/null
-echo "PASS: gRPC backend-b on port 443"
+GRPC_PROTO=apps/backend-grpc/proto/grpc/testing/testservice.proto
+GRPC_REQ='{"response_size":32,"fill_server_id":true}'
+GRPC_METHOD=grpc.testing.TestService/UnaryCall
+ITERATIONS=10
+
+echo "--- gRPC affinity checks (shared port 443) ---"
+
+# backend-grpc.example.test must always route to backend-a
+misrouted=0
+for i in $(seq 1 $ITERATIONS); do
+  server_id=$(grpcurl -insecure \
+    -authority backend-grpc.example.test \
+    -proto "$GRPC_PROTO" \
+    -d "$GRPC_REQ" \
+    localhost:443 \
+    "$GRPC_METHOD" | jq -r '.serverId')
+  if [ "$server_id" != "backend-a" ]; then
+    echo "  iteration $i: backend-grpc.example.test routed to '$server_id' (expected backend-a)" >&2
+    misrouted=$((misrouted + 1))
+  fi
+done
+if [ "$misrouted" -gt 0 ]; then
+  echo "FAIL: backend-grpc.example.test mis-routed $misrouted/$ITERATIONS requests" >&2
+  exit 1
+fi
+echo "PASS: backend-grpc.example.test — all $ITERATIONS requests routed to backend-a"
+
+# backend-grpc-b.example.test must always route to backend-b
+misrouted=0
+for i in $(seq 1 $ITERATIONS); do
+  server_id=$(grpcurl -insecure \
+    -authority backend-grpc-b.example.test \
+    -proto "$GRPC_PROTO" \
+    -d "$GRPC_REQ" \
+    localhost:443 \
+    "$GRPC_METHOD" | jq -r '.serverId')
+  if [ "$server_id" != "backend-b" ]; then
+    echo "  iteration $i: backend-grpc-b.example.test routed to '$server_id' (expected backend-b)" >&2
+    misrouted=$((misrouted + 1))
+  fi
+done
+if [ "$misrouted" -gt 0 ]; then
+  echo "FAIL: backend-grpc-b.example.test mis-routed $misrouted/$ITERATIONS requests" >&2
+  exit 1
+fi
+echo "PASS: backend-grpc-b.example.test — all $ITERATIONS requests routed to backend-b"
 
 echo "--- HTTPS checks (shared port 443) ---"
 curl -kfsS --resolve "backend.example.test:443:127.0.0.1" https://backend.example.test/headers >/dev/null
@@ -591,21 +698,52 @@ echo "PASS: HTTPS backend-a on port 443"
 curl -kfsS --resolve "https-b.example.test:443:127.0.0.1" https://https-b.example.test/headers >/dev/null
 echo "PASS: HTTPS backend-b on port 443"
 
-echo "--- gRPC checks (port 50051, kind-restricted to GRPCRoute) ---"
-grpcurl -insecure \
-  -authority grpc-a.example.test \
-  -proto apps/backend-grpc/proto/grpc/testing/testservice.proto \
-  -d '{"response_size":32,"fill_server_id":true}' \
-  localhost:50051 \
-  grpc.testing.TestService/UnaryCall >/dev/null
-echo "PASS: gRPC backend-a on port 50051"
-grpcurl -insecure \
-  -authority grpc-b.example.test \
-  -proto apps/backend-grpc/proto/grpc/testing/testservice.proto \
-  -d '{"response_size":32,"fill_server_id":true}' \
-  localhost:50051 \
-  grpc.testing.TestService/UnaryCall >/dev/null
-echo "PASS: gRPC backend-b on port 50051"
+GRPC_PROTO=apps/backend-grpc/proto/grpc/testing/testservice.proto
+GRPC_REQ='{"response_size":32,"fill_server_id":true}'
+GRPC_METHOD=grpc.testing.TestService/UnaryCall
+ITERATIONS=10
+
+echo "--- gRPC affinity checks (port 50051, kind-restricted to GRPCRoute) ---"
+
+# grpc-a.example.test must always route to backend-a
+misrouted=0
+for i in $(seq 1 $ITERATIONS); do
+  server_id=$(grpcurl -insecure \
+    -authority grpc-a.example.test \
+    -proto "$GRPC_PROTO" \
+    -d "$GRPC_REQ" \
+    localhost:50051 \
+    "$GRPC_METHOD" | jq -r '.serverId')
+  if [ "$server_id" != "backend-a" ]; then
+    echo "  iteration $i: grpc-a.example.test routed to '$server_id' (expected backend-a)" >&2
+    misrouted=$((misrouted + 1))
+  fi
+done
+if [ "$misrouted" -gt 0 ]; then
+  echo "FAIL: grpc-a.example.test mis-routed $misrouted/$ITERATIONS requests" >&2
+  exit 1
+fi
+echo "PASS: grpc-a.example.test — all $ITERATIONS requests routed to backend-a"
+
+# grpc-b.example.test must always route to backend-b
+misrouted=0
+for i in $(seq 1 $ITERATIONS); do
+  server_id=$(grpcurl -insecure \
+    -authority grpc-b.example.test \
+    -proto "$GRPC_PROTO" \
+    -d "$GRPC_REQ" \
+    localhost:50051 \
+    "$GRPC_METHOD" | jq -r '.serverId')
+  if [ "$server_id" != "backend-b" ]; then
+    echo "  iteration $i: grpc-b.example.test routed to '$server_id' (expected backend-b)" >&2
+    misrouted=$((misrouted + 1))
+  fi
+done
+if [ "$misrouted" -gt 0 ]; then
+  echo "FAIL: grpc-b.example.test mis-routed $misrouted/$ITERATIONS requests" >&2
+  exit 1
+fi
+echo "PASS: grpc-b.example.test — all $ITERATIONS requests routed to backend-b"
 """
 
 [tasks."scenario:23:start"]
@@ -693,21 +831,52 @@ if [ "$route_fail" -eq 1 ]; then
   exit 1
 fi
 
-echo "--- gRPC checks (shared port 443) ---"
-grpcurl -insecure \
-  -authority backend-grpc.example.test \
-  -proto apps/backend-grpc/proto/grpc/testing/testservice.proto \
-  -d '{"response_size":32,"fill_server_id":true}' \
-  localhost:443 \
-  grpc.testing.TestService/UnaryCall >/dev/null
-echo "PASS: gRPC backend-a on port 443"
-grpcurl -insecure \
-  -authority backend-grpc-b.example.test \
-  -proto apps/backend-grpc/proto/grpc/testing/testservice.proto \
-  -d '{"response_size":32,"fill_server_id":true}' \
-  localhost:443 \
-  grpc.testing.TestService/UnaryCall >/dev/null
-echo "PASS: gRPC backend-b on port 443"
+GRPC_PROTO=apps/backend-grpc/proto/grpc/testing/testservice.proto
+GRPC_REQ='{"response_size":32,"fill_server_id":true}'
+GRPC_METHOD=grpc.testing.TestService/UnaryCall
+ITERATIONS=10
+
+echo "--- gRPC affinity checks (shared port 443) ---"
+
+# backend-grpc.example.test must always route to backend-a
+misrouted=0
+for i in $(seq 1 $ITERATIONS); do
+  server_id=$(grpcurl -insecure \
+    -authority backend-grpc.example.test \
+    -proto "$GRPC_PROTO" \
+    -d "$GRPC_REQ" \
+    localhost:443 \
+    "$GRPC_METHOD" | jq -r '.serverId')
+  if [ "$server_id" != "backend-a" ]; then
+    echo "  iteration $i: backend-grpc.example.test routed to '$server_id' (expected backend-a)" >&2
+    misrouted=$((misrouted + 1))
+  fi
+done
+if [ "$misrouted" -gt 0 ]; then
+  echo "FAIL: backend-grpc.example.test mis-routed $misrouted/$ITERATIONS requests" >&2
+  exit 1
+fi
+echo "PASS: backend-grpc.example.test — all $ITERATIONS requests routed to backend-a"
+
+# backend-grpc-b.example.test must always route to backend-b
+misrouted=0
+for i in $(seq 1 $ITERATIONS); do
+  server_id=$(grpcurl -insecure \
+    -authority backend-grpc-b.example.test \
+    -proto "$GRPC_PROTO" \
+    -d "$GRPC_REQ" \
+    localhost:443 \
+    "$GRPC_METHOD" | jq -r '.serverId')
+  if [ "$server_id" != "backend-b" ]; then
+    echo "  iteration $i: backend-grpc-b.example.test routed to '$server_id' (expected backend-b)" >&2
+    misrouted=$((misrouted + 1))
+  fi
+done
+if [ "$misrouted" -gt 0 ]; then
+  echo "FAIL: backend-grpc-b.example.test mis-routed $misrouted/$ITERATIONS requests" >&2
+  exit 1
+fi
+echo "PASS: backend-grpc-b.example.test — all $ITERATIONS requests routed to backend-b"
 
 echo "--- HTTPS checks (shared port 443) ---"
 curl -kfsS --resolve "backend.example.test:443:127.0.0.1" https://backend.example.test/headers >/dev/null
