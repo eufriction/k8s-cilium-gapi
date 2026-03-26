@@ -1,5 +1,9 @@
 # Same-Hostname HTTPS + gRPC on Split Ports (443 / 50051)
 
+> **Cilium bug:** [cilium/cilium#44877](https://github.com/cilium/cilium/issues/44877) — HTTPRoute and GRPCRoute with same hostname on different ports fails with `SSL_ERROR_SYSCALL`
+>
+> **Fix PR:** [cilium/cilium#44889](https://github.com/cilium/cilium/pull/44889) — emit per-port listeners for multi-port HTTPS
+
 This scenario tests that a single Gateway can serve both `HTTPRoute`s and `GRPCRoute`s
 when they share **the same hostname** (`api.example.test`) but use **different listeners on
 different ports** — HTTPS on `443` and gRPCS on `50051`.
@@ -22,13 +26,16 @@ protocol discriminator.
 
 ## Gateway listeners
 
-| Listener | Protocol | Port    | Hostname           |
-| -------- | -------- | ------- | ------------------ |
-| `https`  | HTTPS    | `443`   | `api.example.test` |
-| `grpcs`  | HTTPS    | `50051` | `api.example.test` |
+| Listener | Protocol | Port    | Hostname         |
+| -------- | -------- | ------- | ---------------- |
+| `https`  | HTTPS    | `443`   | `*.example.test` |
+| `grpcs`  | HTTPS    | `50051` | `*.example.test` |
 
-Both listeners share the same TLS secret and the same hostname. The port
-alone distinguishes HTTP traffic from gRPC traffic.
+Both listeners use a wildcard hostname. The routes narrow this to
+`api.example.test` via their own `hostnames` field.
+
+Both listeners share the same TLS secret and the same wildcard hostname.
+The port alone distinguishes HTTP traffic from gRPC traffic.
 
 ## Routes
 
@@ -47,7 +54,26 @@ Validates that Cilium correctly handles the combination of:
 2. `HTTPRoute`s attached to the HTTPS listener on port `443`.
 3. `GRPCRoute`s attached to the HTTPS listener on port `50051`.
 
-## ⚠️ Known Issue — Cilium Bug
+## ⚠️ Known Issue — Cilium Bug ([#44877](https://github.com/cilium/cilium/issues/44877))
+
+All HTTPS routes are bucketed under a single "secure" key, so listeners on
+different ports (e.g. 443 and 50051) share one Envoy `RouteConfiguration`.
+This causes Envoy to NACK the listener update and drop all HTTPS connections
+with `SSL_ERROR_SYSCALL` / `wrong version number`.
+
+The fix in [cilium/cilium#44889](https://github.com/cilium/cilium/pull/44889)
+splits the key by numeric port (gated on `NeedsPerPortHTTPSListeners()`) so
+single-port Gateways and Ingress are unchanged.
+
+### Envoy config snapshots
+
+Two full Envoy config dumps are checked in as point-in-time snapshots for
+reference when debugging [#44877](https://github.com/cilium/cilium/issues/44877):
+
+| File                                                                           | State                                                       | Description                                                                     |
+| ------------------------------------------------------------------------------ | ----------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| [`cilium-envoy-config-dump.broken.yaml`](cilium-envoy-config-dump.broken.yaml) | Before fix                                                  | Single shared `RouteConfiguration` for all HTTPS ports — Envoy NACKs the update |
+| [`cilium-envoy-config-dump.fixed.yaml`](cilium-envoy-config-dump.fixed.yaml)   | After [#44889](https://github.com/cilium/cilium/pull/44889) | Per-port `RouteConfiguration` — Envoy accepts and routes correctly              |
 
 ### Why scenario 20 is unaffected
 

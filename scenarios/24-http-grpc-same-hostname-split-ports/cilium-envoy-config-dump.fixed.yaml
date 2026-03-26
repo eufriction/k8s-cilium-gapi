@@ -1,0 +1,302 @@
+apiVersion: cilium.io/v2
+kind: CiliumEnvoyConfig
+metadata:
+  annotations:
+    cec.cilium.io/use-original-source-address: "false"
+  creationTimestamp: "2026-03-18T23:37:34Z"
+  generation: 1
+  labels:
+    gateway.networking.k8s.io/gateway-name: same-hostname-split-ports-gateway
+  name: cilium-gateway-same-hostname-split-ports-gateway
+  namespace: gateway-system
+  ownerReferences:
+    - apiVersion: gateway.networking.k8s.io/v1
+      controller: true
+      kind: Gateway
+      name: same-hostname-split-ports-gateway
+      uid: e9b68dea-f621-4e1c-9584-9a7b6e61bb23
+  resourceVersion: "22097"
+  uid: 50034761-b9a9-4518-bcb7-914bb3ae01dc
+spec:
+  backendServices:
+    - name: api
+      namespace: backend-a
+      number:
+        - "80"
+    - name: grpc-api
+      namespace: backend-a
+      number:
+        - "9000"
+    - name: api
+      namespace: backend-b
+      number:
+        - "80"
+    - name: grpc-api
+      namespace: backend-b
+      number:
+        - "9000"
+  resources:
+    - "@type": type.googleapis.com/envoy.config.listener.v3.Listener
+      address:
+        socketAddress:
+          address: 0.0.0.0
+          portValue: 443
+      filterChains:
+        - filterChainMatch:
+            serverNames:
+              - api.example.test
+            transportProtocol: tls
+          filters:
+            - name: envoy.filters.network.http_connection_manager
+              typedConfig:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                commonHttpProtocolOptions:
+                  maxStreamDuration: 0s
+                httpFilters:
+                  - name: envoy.filters.http.grpc_web
+                    typedConfig:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.grpc_web.v3.GrpcWeb
+                  - name: envoy.filters.http.grpc_stats
+                    typedConfig:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.grpc_stats.v3.FilterConfig
+                      emitFilterState: true
+                      enableUpstreamStats: true
+                  - name: envoy.filters.http.router
+                    typedConfig:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+                internalAddressConfig:
+                  cidrRanges:
+                    - addressPrefix: 10.0.0.0
+                      prefixLen: 8
+                    - addressPrefix: 172.16.0.0
+                      prefixLen: 12
+                    - addressPrefix: 192.168.0.0
+                      prefixLen: 16
+                    - addressPrefix: 127.0.0.1
+                      prefixLen: 32
+                rds:
+                  routeConfigName: listener-443
+                statPrefix: listener-443
+                streamIdleTimeout: 300s
+                upgradeConfigs:
+                  - upgradeType: websocket
+                useRemoteAddress: true
+          transportSocket:
+            name: envoy.transport_sockets.tls
+            typedConfig:
+              "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
+              commonTlsContext:
+                alpnProtocols:
+                  - h2,http/1.1
+                tlsCertificateSdsSecretConfigs:
+                  - name: cilium-secrets/gateway-system-same-hostname-split-ports-gateway-tls
+      listenerFilters:
+        - name: envoy.filters.listener.tls_inspector
+          typedConfig:
+            "@type": type.googleapis.com/envoy.extensions.filters.listener.tls_inspector.v3.TlsInspector
+      name: listener-443
+      socketOptions:
+        - description: Enable TCP keep-alive (default to enabled)
+          intValue: "1"
+          level: "1"
+          name: "9"
+        - description: TCP keep-alive idle time (in seconds) (defaults to 10s)
+          intValue: "10"
+          level: "6"
+          name: "4"
+        - description: TCP keep-alive probe intervals (in seconds) (defaults to 5s)
+          intValue: "5"
+          level: "6"
+          name: "5"
+        - description: TCP keep-alive probe max failures.
+          intValue: "10"
+          level: "6"
+          name: "6"
+    - "@type": type.googleapis.com/envoy.config.listener.v3.Listener
+      address:
+        socketAddress:
+          address: 0.0.0.0
+          portValue: 50051
+      filterChains:
+        - filterChainMatch:
+            serverNames:
+              - api.example.test
+            transportProtocol: tls
+          filters:
+            - name: envoy.filters.network.http_connection_manager
+              typedConfig:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                commonHttpProtocolOptions:
+                  maxStreamDuration: 0s
+                httpFilters:
+                  - name: envoy.filters.http.grpc_web
+                    typedConfig:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.grpc_web.v3.GrpcWeb
+                  - name: envoy.filters.http.grpc_stats
+                    typedConfig:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.grpc_stats.v3.FilterConfig
+                      emitFilterState: true
+                      enableUpstreamStats: true
+                  - name: envoy.filters.http.router
+                    typedConfig:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+                internalAddressConfig:
+                  cidrRanges:
+                    - addressPrefix: 10.0.0.0
+                      prefixLen: 8
+                    - addressPrefix: 172.16.0.0
+                      prefixLen: 12
+                    - addressPrefix: 192.168.0.0
+                      prefixLen: 16
+                    - addressPrefix: 127.0.0.1
+                      prefixLen: 32
+                rds:
+                  routeConfigName: listener-50051
+                statPrefix: listener-50051
+                streamIdleTimeout: 300s
+                upgradeConfigs:
+                  - upgradeType: websocket
+                useRemoteAddress: true
+          transportSocket:
+            name: envoy.transport_sockets.tls
+            typedConfig:
+              "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
+              commonTlsContext:
+                alpnProtocols:
+                  - h2,http/1.1
+                tlsCertificateSdsSecretConfigs:
+                  - name: cilium-secrets/gateway-system-same-hostname-split-ports-gateway-tls
+      listenerFilters:
+        - name: envoy.filters.listener.tls_inspector
+          typedConfig:
+            "@type": type.googleapis.com/envoy.extensions.filters.listener.tls_inspector.v3.TlsInspector
+      name: listener-50051
+      socketOptions:
+        - description: Enable TCP keep-alive (default to enabled)
+          intValue: "1"
+          level: "1"
+          name: "9"
+        - description: TCP keep-alive idle time (in seconds) (defaults to 10s)
+          intValue: "10"
+          level: "6"
+          name: "4"
+        - description: TCP keep-alive probe intervals (in seconds) (defaults to 5s)
+          intValue: "5"
+          level: "6"
+          name: "5"
+        - description: TCP keep-alive probe max failures.
+          intValue: "10"
+          level: "6"
+          name: "6"
+    - "@type": type.googleapis.com/envoy.config.route.v3.RouteConfiguration
+      name: listener-insecure
+    - "@type": type.googleapis.com/envoy.config.route.v3.RouteConfiguration
+      name: listener-443
+      virtualHosts:
+        - domains:
+            - api.example.test
+            - api.example.test:*
+          name: api.example.test
+          routes:
+            - match:
+                pathSeparatedPrefix: /b
+              route:
+                cluster: backend-b:api:80
+                maxStreamDuration:
+                  maxStreamDuration: 0s
+                regexRewrite:
+                  pattern:
+                    regex: ^/b(/?)(.*)
+                  substitution: /\2
+            - match:
+                prefix: /
+              route:
+                cluster: backend-a:api:80
+                maxStreamDuration:
+                  maxStreamDuration: 0s
+    - "@type": type.googleapis.com/envoy.config.route.v3.RouteConfiguration
+      name: listener-50051
+      virtualHosts:
+        - domains:
+            - api.example.test
+            - api.example.test:*
+          name: api.example.test
+          routes:
+            - match:
+                prefix: /
+              route:
+                maxStreamDuration:
+                  maxStreamDuration: 0s
+                weightedClusters:
+                  clusters:
+                    - name: backend-a:grpc-api:9000
+                      weight: 1
+                    - name: backend-b:grpc-api:9000
+                      weight: 1
+    - "@type": type.googleapis.com/envoy.config.cluster.v3.Cluster
+      edsClusterConfig:
+        serviceName: backend-a/api:80
+      name: backend-a:api:80
+      outlierDetection:
+        splitExternalLocalOriginErrors: true
+      type: EDS
+      typedExtensionProtocolOptions:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          commonHttpProtocolOptions:
+            idleTimeout: 60s
+          explicitHttpConfig:
+            httpProtocolOptions: {}
+    - "@type": type.googleapis.com/envoy.config.cluster.v3.Cluster
+      edsClusterConfig:
+        serviceName: backend-a/grpc-api:9000
+      name: backend-a:grpc-api:9000
+      outlierDetection:
+        splitExternalLocalOriginErrors: true
+      type: EDS
+      typedExtensionProtocolOptions:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          commonHttpProtocolOptions:
+            idleTimeout: 60s
+          explicitHttpConfig:
+            http2ProtocolOptions: {}
+    - "@type": type.googleapis.com/envoy.config.cluster.v3.Cluster
+      edsClusterConfig:
+        serviceName: backend-b/api:80
+      name: backend-b:api:80
+      outlierDetection:
+        splitExternalLocalOriginErrors: true
+      type: EDS
+      typedExtensionProtocolOptions:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          commonHttpProtocolOptions:
+            idleTimeout: 60s
+          explicitHttpConfig:
+            httpProtocolOptions: {}
+    - "@type": type.googleapis.com/envoy.config.cluster.v3.Cluster
+      edsClusterConfig:
+        serviceName: backend-b/grpc-api:9000
+      name: backend-b:grpc-api:9000
+      outlierDetection:
+        splitExternalLocalOriginErrors: true
+      type: EDS
+      typedExtensionProtocolOptions:
+        envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+          "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+          commonHttpProtocolOptions:
+            idleTimeout: 60s
+          explicitHttpConfig:
+            http2ProtocolOptions: {}
+  services:
+    - listener: listener-443
+      name: cilium-gateway-same-hostname-split-ports-gateway
+      namespace: gateway-system
+      ports:
+        - 443
+    - listener: listener-50051
+      name: cilium-gateway-same-hostname-split-ports-gateway
+      namespace: gateway-system
+      ports:
+        - 50051

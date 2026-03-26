@@ -13,7 +13,7 @@ spec:
     - name: https
       protocol: HTTPS
       port: 443
-      hostname: "api.example.test"
+      hostname: "*.example.test"
       tls:
         mode: Terminate
         certificateRefs:
@@ -25,7 +25,7 @@ spec:
     - name: grpcs
       protocol: HTTPS
       port: 50051
-      hostname: "api.example.test"
+      hostname: "*.example.test"
       tls:
         mode: Terminate
         certificateRefs:
