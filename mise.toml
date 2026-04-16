@@ -74,6 +74,7 @@ run = "mise run kind:start"
 
 [tasks."helm:repo:add"]
 description = "Add the Cilium and Kyverno Helm repos"
+hide = true
 run = [
   "helm repo add cilium https://helm.cilium.io/",
   "helm repo add kyverno https://kyverno.github.io/kyverno/",
@@ -83,6 +84,7 @@ run = [
 [tasks."kind:load:cilium"]
 description = "Discover, pull, and load Cilium images into the kind cluster"
 depends = ["helm:repo:add"]
+hide = true
 run = """
 set -euo pipefail
 
@@ -110,6 +112,7 @@ kind load docker-image "${images[@]}" --name "${KIND_CLUSTER_NAME}"
 [tasks."kind:load:kyverno"]
 description = "Discover, pull, and load Kyverno images into the kind cluster"
 depends = ["helm:repo:add"]
+hide = true
 run = """
 set -euo pipefail
 
@@ -135,6 +138,7 @@ kind load docker-image "${images[@]}" --name "${KIND_CLUSTER_NAME}"
 
 [tasks."kind:load:apps"]
 description = "Build, pull, and load demo app images into the kind cluster"
+hide = true
 run = """
 set -euo pipefail
 
@@ -166,6 +170,7 @@ run = "helm uninstall cilium --namespace kube-system"
 
 [tasks."gateway-api:install"]
 description = "Install Gateway API experimental CRDs before enabling Cilium Gateway API support"
+hide = true
 run = """
 kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v$GATEWAY_API_VERSION/experimental-install.yaml
 """
@@ -173,6 +178,7 @@ kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/re
 
 [tasks."cloud-provider-kind:install"]
 description = "Install cloud-provider-kind into .bin for load-balancer scenarios"
+hide = true
 run = """
 mkdir -p .bin
 GOBIN=$PWD/.bin go install sigs.k8s.io/cloud-provider-kind@v$CLOUD_PROVIDER_KIND_VERSION
@@ -201,6 +207,7 @@ helm upgrade --install cert-manager oci://quay.io/jetstack/charts/cert-manager \
 
 [tasks."cert-manager:verify"]
 description = "Verify the cert-manager control plane and CRDs are ready"
+hide = true
 run = """
 kubectl wait deployment/cert-manager -n cert-manager --for=condition=Available --timeout=180s
 kubectl wait deployment/cert-manager-cainjector -n cert-manager --for=condition=Available --timeout=180s
@@ -233,6 +240,7 @@ helm upgrade --install kyverno kyverno/kyverno \
 
 [tasks."kyverno:verify"]
 description = "Verify the Kyverno control plane is ready"
+hide = true
 run = """
 kubectl wait deployment/kyverno-admission-controller -n kyverno --for=condition=Available --timeout=180s
 kubectl wait deployment/kyverno-background-controller -n kyverno --for=condition=Available --timeout=180s
