@@ -38,6 +38,7 @@ if ! helm plugin list | grep -q '^images'; then
 fi
 """
 
+
 [tasks.lint]
 description = "Run all pre-commit checks against all files"
 run = "hk run pre-commit --all"
@@ -105,6 +106,7 @@ done
 kind load docker-image "${images[@]}" --name "${KIND_CLUSTER_NAME}"
 """
 
+
 [tasks."kind:load:kyverno"]
 description = "Discover, pull, and load Kyverno images into the kind cluster"
 depends = ["helm:repo:add"]
@@ -130,29 +132,33 @@ done
 kind load docker-image "${images[@]}" --name "${KIND_CLUSTER_NAME}"
 """
 
-[tasks."apps:pull"]
-description = "Pull remote demo app images from the registry to the local Docker daemon"
-run = [
-  "docker pull nicolaka/netshoot:$NETSHOOT_VERSION",
-  "docker pull mccutchen/go-httpbin:$HTTPBIN_VERSION",
-  "docker pull envoyproxy/envoy:v$ENVOY_VERSION",
-]
 
-[tasks."apps:build"]
-description = "Build local demo app images"
-run = [
-  "docker build -t backend-grpc:$BACKEND_GRPC_VERSION apps/backend-grpc/image",
-]
+[tasks."kind:load:apps"]
+description = "Build, pull, and load demo app images into the kind cluster"
+run = """
+set -euo pipefail
 
-[tasks."apps:load"]
-description = "Load demo app images from the local Docker daemon into the kind cluster nodes"
-depends = ["apps:pull", "apps:build"]
-run = [
-  "kind load docker-image nicolaka/netshoot:$NETSHOOT_VERSION --name $KIND_CLUSTER_NAME",
-  "kind load docker-image mccutchen/go-httpbin:$HTTPBIN_VERSION --name $KIND_CLUSTER_NAME",
-  "kind load docker-image backend-grpc:$BACKEND_GRPC_VERSION --name $KIND_CLUSTER_NAME",
-  "kind load docker-image envoyproxy/envoy:v$ENVOY_VERSION --name $KIND_CLUSTER_NAME",
-]
+err() { echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2; }
+
+docker build -t backend-grpc:${BACKEND_GRPC_VERSION} apps/backend-grpc/image
+
+remote_images=(
+  "nicolaka/netshoot:${NETSHOOT_VERSION}"
+  "mccutchen/go-httpbin:${HTTPBIN_VERSION}"
+  "envoyproxy/envoy:v${ENVOY_VERSION}"
+)
+
+for img in "${remote_images[@]}"; do
+  if ! docker pull "${img}" 2>&1; then
+    err "WARN: pull failed for ${img}, using local image"
+  fi
+done
+
+kind load docker-image \\
+  "backend-grpc:${BACKEND_GRPC_VERSION}" \\
+  "${remote_images[@]}" \\
+  --name "${KIND_CLUSTER_NAME}"
+"""
 
 [tasks."cilium:uninstall"]
 description = "Uninstall Cilium from the cluster using Helm"
@@ -164,12 +170,14 @@ run = """
 kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v$GATEWAY_API_VERSION/experimental-install.yaml
 """
 
+
 [tasks."cloud-provider-kind:install"]
 description = "Install cloud-provider-kind into .bin for load-balancer scenarios"
 run = """
 mkdir -p .bin
 GOBIN=$PWD/.bin go install sigs.k8s.io/cloud-provider-kind@v$CLOUD_PROVIDER_KIND_VERSION
 """
+
 
 [tasks."cloud-provider-kind:start"]
 description = "Start cloud-provider-kind in a dedicated terminal for load-balancer scenarios"
@@ -190,6 +198,7 @@ helm upgrade --install cert-manager oci://quay.io/jetstack/charts/cert-manager \
   --timeout 5m
 """
 
+
 [tasks."cert-manager:verify"]
 description = "Verify the cert-manager control plane and CRDs are ready"
 run = """
@@ -198,6 +207,7 @@ kubectl wait deployment/cert-manager-cainjector -n cert-manager --for=condition=
 kubectl wait deployment/cert-manager-webhook -n cert-manager --for=condition=Available --timeout=180s
 kubectl get crd certificates.cert-manager.io issuers.cert-manager.io clusterissuers.cert-manager.io >/dev/null
 """
+
 
 [tasks."cert-manager:delete"]
 description = "Remove cert-manager when TLS scenarios are no longer needed"
@@ -220,6 +230,7 @@ helm upgrade --install kyverno kyverno/kyverno \
   --timeout 5m
 """
 
+
 [tasks."kyverno:verify"]
 description = "Verify the Kyverno control plane is ready"
 run = """
@@ -228,6 +239,7 @@ kubectl wait deployment/kyverno-background-controller -n kyverno --for=condition
 kubectl wait deployment/kyverno-cleanup-controller -n kyverno --for=condition=Available --timeout=180s
 kubectl wait deployment/kyverno-reports-controller -n kyverno --for=condition=Available --timeout=180s
 """
+
 
 [tasks."kyverno:delete"]
 description = "Remove Kyverno when policy-focused scenarios are no longer needed"
@@ -254,6 +266,7 @@ helm install cilium cilium/cilium \
   --set securityContext.privileged=true
 """
 
+
 [tasks."cilium:install:lb"]
 description = "Install Cilium in load-balancer mode for Gateway API comparison scenarios"
 depends = ["kind:load:cilium", "gateway-api:install"]
@@ -272,9 +285,10 @@ helm install cilium cilium/cilium \
   --set securityContext.privileged=true
 """
 
+
 [tasks."scenario:01:start"]
 description = "Deploy the multi-namespace HTTP Gateway API scenario"
-depends = ["apps:load"]
+depends = ["kind:load:apps"]
 depends_post = ["scenario:01:verify"]
 run = "kubectl apply -k scenarios/01-http/"
 
@@ -310,9 +324,10 @@ msg=$(kubectl get httproute/backend-b-route -n backend-b -o jsonpath='{.status.p
 echo "PASS: backend-b-route Accepted message = '$msg'"
 """
 
+
 [tasks."scenario:02:start"]
 description = "Deploy the host-network multi-namespace TLS gRPC Gateway API scenario"
-depends = ["apps:load", "cert-manager:install"]
+depends = ["kind:load:apps", "cert-manager:install"]
 depends_post = ["scenario:02:verify"]
 run = "kubectl apply -k scenarios/02-grpc/"
 
@@ -393,9 +408,10 @@ msg=$(kubectl get grpcroute/grpc-backend-b-route -n grpc-backend-b -o jsonpath='
 echo "PASS: grpc-backend-b-route Accepted message = '$msg'"
 """
 
+
 [tasks."scenario:03:start"]
 description = "Deploy the HTTPS termination baseline scenario"
-depends = ["apps:load", "cert-manager:install"]
+depends = ["kind:load:apps", "cert-manager:install"]
 depends_post = ["scenario:03:verify"]
 run = "kubectl apply -k scenarios/03-https/"
 
@@ -432,9 +448,10 @@ msg=$(kubectl get httproute/backend-b-https-route -n backend-b -o jsonpath='{.st
 echo "PASS: backend-b-https-route Accepted message = '$msg'"
 """
 
+
 [tasks."scenario:04:start"]
 description = "Deploy the multi-namespace mTLS Gateway API scenario"
-depends = ["apps:load", "cert-manager:install"]
+depends = ["kind:load:apps", "cert-manager:install"]
 depends_post = ["scenario:04:verify"]
 run = "kubectl apply -k scenarios/04-mtls/"
 
@@ -522,9 +539,10 @@ msg=$(kubectl get tlsroute/backend-b-mtls-route -n backend-b -o jsonpath='{.stat
 echo "PASS: backend-b-mtls-route Accepted message = '$msg'"
 """
 
+
 [tasks."scenario:20:start"]
 description = "Deploy the host-network multi-namespace HTTPS + gRPC Gateway API scenario"
-depends = ["apps:load", "cert-manager:install"]
+depends = ["kind:load:apps", "cert-manager:install"]
 depends_post = ["scenario:20:verify"]
 run = "kubectl apply -k scenarios/20-http-grpc/"
 
@@ -606,9 +624,10 @@ fi
 echo "PASS: grpc-b.example.test — all $ITERATIONS requests routed to backend-b"
 """
 
+
 [tasks."scenario:21:start"]
 description = "Deploy the shared-port HTTP + gRPC Gateway API scenario"
-depends = ["apps:load", "cert-manager:install"]
+depends = ["kind:load:apps", "cert-manager:install"]
 depends_post = ["scenario:21:verify"]
 run = "kubectl apply -k scenarios/21-http-grpc-shared-port/"
 
@@ -691,9 +710,10 @@ curl -kfsS --resolve "backend-b.example.test:443:127.0.0.1" https://backend-b.ex
 echo "PASS: HTTPS backend-b on port 443"
 """
 
+
 [tasks."scenario:22:start"]
 description = "Deploy the allowed-routes kind-restricted HTTPS + gRPC Gateway API scenario"
-depends = ["apps:load", "cert-manager:install"]
+depends = ["kind:load:apps", "cert-manager:install"]
 depends_post = ["scenario:22:verify"]
 run = "kubectl apply -k scenarios/22-http-grpc-allowed-routes/"
 
@@ -776,9 +796,10 @@ fi
 echo "PASS: grpc-b.example.test — all $ITERATIONS requests routed to backend-b"
 """
 
+
 [tasks."scenario:23:start"]
 description = "Deploy the shared-port HTTP + gRPC Gateway API scenario with allowedRoutes.kinds"
-depends = ["apps:load", "cert-manager:install"]
+depends = ["kind:load:apps", "cert-manager:install"]
 depends_post = ["scenario:23:verify"]
 run = "kubectl apply -k scenarios/23-http-grpc-shared-port-allowed-routes/"
 
@@ -915,9 +936,10 @@ curl -kfsS --resolve "backend-b.example.test:443:127.0.0.1" https://backend-b.ex
 echo "PASS: HTTPS backend-b on port 443"
 """
 
+
 [tasks."scenario:24:start"]
 description = "Deploy the same-hostname HTTPS + gRPC on split ports (443 / 50051) scenario"
-depends = ["apps:load", "cert-manager:install"]
+depends = ["kind:load:apps", "cert-manager:install"]
 depends_post = ["scenario:24:verify"]
 run = "kubectl apply -k scenarios/24-http-grpc-same-hostname-split-ports/"
 
@@ -984,6 +1006,7 @@ if [ "$seen_a" -eq 0 ] || [ "$seen_b" -eq 0 ]; then
 fi
 echo "PASS: gRPC traffic distributed across both backends ($seen_a/$seen_b split)"
 """
+
 
 [tasks."cluster:start"]
 description = "Bootstrap the full cluster: kind + Cilium in order"
