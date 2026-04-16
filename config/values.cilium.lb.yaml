@@ -20,7 +20,29 @@ hubble:
   enabled: true
   relay:
     enabled: true
+    image:
+      useDigest: false
   ui:
     enabled: true
+    backend:
+      image:
+        useDigest: false
+    frontend:
+      image:
+        useDigest: false
 
 policyAuditMode: false
+
+# Disable digest-pinned image references so that kind load docker-image
+# (which registers images by tag only) actually satisfies the kubelet's
+# image lookup.  Without this, containerd sees @sha256:... in the pod
+# spec, fails the local digest lookup, and pulls from the registry
+# anyway — making the entire preload pipeline a no-op.
+image:
+  useDigest: false
+operator:
+  image:
+    useDigest: false
+envoy:
+  image:
+    useDigest: false
