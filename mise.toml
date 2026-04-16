@@ -1,3 +1,6 @@
+[settings]
+unix_default_inline_shell_args = "bash -c"
+
 [tools]
 hk = "latest"
 pkl = "latest"
