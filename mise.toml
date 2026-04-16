@@ -18,7 +18,25 @@ prettier = "latest"
 vale = "latest"
 
 [hooks]
-enter = "hk install"
+enter = """
+hk install
+if ! helm plugin list | grep -q '^images'; then
+  echo ""
+  echo "helm-images plugin is required but not installed."
+  echo ""
+  echo "It is used to discover container images from Helm charts so they"
+  echo "can be pre-loaded into the kind cluster. Without it, the"
+  echo "kind:load:cilium and kind:load:kyverno tasks will fail, which"
+  echo "means cluster:start and all scenarios will not work."
+  echo ""
+  read -rp "Install it now? [Y/n] " answer
+  if [[ "${answer}" =~ ^[Nn] ]]; then
+    echo "Skipping. Run 'helm plugin install https://github.com/nikhilsbhat/helm-images' manually when ready." >&2
+  else
+    helm plugin install https://github.com/nikhilsbhat/helm-images
+  fi
+fi
+"""
 
 [tasks.lint]
 description = "Run all pre-commit checks against all files"
@@ -30,8 +48,6 @@ HTTPBIN_VERSION = "2.22.1"
 ENVOY_VERSION = "1.33.2"
 BACKEND_GRPC_VERSION = "0.1.1"
 CILIUM_VERSION = "1.19.3"
-HUBBLE_UI_VERSION = "0.13.3"
-CILIUM_ENVOY_VERSION = "v1.36.6-1776000132-2437d2edeaf4d9b56ef279bd0d71127440c067aa"
 CLOUD_PROVIDER_KIND_VERSION = "0.10.0"
 CERT_MANAGER_VERSION = "1.20.2"
 GATEWAY_API_VERSION = "1.4.1"
@@ -64,28 +80,31 @@ run = [
   "helm repo update"
 ]
 
-[tasks."cilium:pull"]
-description = "Pull Cilium images from the registry to the local Docker daemon"
-run = [
-  "docker pull quay.io/cilium/cilium:v$CILIUM_VERSION",
-  "docker pull quay.io/cilium/operator-generic:v$CILIUM_VERSION",
-  "docker pull quay.io/cilium/hubble-relay:v$CILIUM_VERSION",
-  "docker pull quay.io/cilium/hubble-ui:v$HUBBLE_UI_VERSION",
-  "docker pull quay.io/cilium/hubble-ui-backend:v$HUBBLE_UI_VERSION",
-  "docker pull quay.io/cilium/cilium-envoy:v$CILIUM_ENVOY_VERSION",
-]
+[tasks."kind:load:cilium"]
+description = "Discover, pull, and load Cilium images into the kind cluster"
+depends = ["helm:repo:add"]
+run = """
+set -euo pipefail
 
-[tasks."cilium:load"]
-description = "Load Cilium images from the local Docker daemon into the kind cluster nodes"
-depends = ["cilium:pull"]
-run = [
-  "kind load docker-image quay.io/cilium/cilium:v$CILIUM_VERSION --name $KIND_CLUSTER_NAME",
-  "kind load docker-image quay.io/cilium/operator-generic:v$CILIUM_VERSION --name $KIND_CLUSTER_NAME",
-  "kind load docker-image quay.io/cilium/hubble-relay:v$CILIUM_VERSION --name $KIND_CLUSTER_NAME",
-  "kind load docker-image quay.io/cilium/hubble-ui:v$HUBBLE_UI_VERSION --name $KIND_CLUSTER_NAME",
-  "kind load docker-image quay.io/cilium/hubble-ui-backend:v$HUBBLE_UI_VERSION --name $KIND_CLUSTER_NAME",
-  "kind load docker-image quay.io/cilium/cilium-envoy:v$CILIUM_ENVOY_VERSION --name $KIND_CLUSTER_NAME",
-]
+err() { echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2; }
+
+chart_ref="cilium/cilium --version ${CILIUM_VERSION}"
+
+images=()
+while IFS= read -r img; do
+  images+=("${img}")
+done < <(helm images get ${chart_ref} --values config/values.cilium.yaml 2>/dev/null \\
+  | sed 's/@sha256:.*//' \\
+  | sort -u)
+
+for img in "${images[@]}"; do
+  if ! docker pull "${img}" 2>&1; then
+    err "WARN: pull failed for ${img}, using local image"
+  fi
+done
+
+kind load docker-image "${images[@]}" --name "${KIND_CLUSTER_NAME}"
+"""
 
 [tasks."kyverno:pull"]
 description = "Pull Kyverno images from the registry to the local Docker daemon"
@@ -214,7 +233,7 @@ run = [
 
 [tasks."cilium:install"]
 description = "Install Cilium in kube-proxy-free mode using Helm"
-depends = ["helm:repo:add", "cilium:load", "gateway-api:install"]
+depends = ["kind:load:cilium", "gateway-api:install"]
 run = """
 APISERVER_IP=$(docker inspect -f '{% raw %}{{.NetworkSettings.Networks.kind.IPAddress}}{% endraw %}' ${KIND_CLUSTER_NAME}-control-plane)
 if [ -z "$APISERVER_IP" ]; then
@@ -232,7 +251,7 @@ helm install cilium cilium/cilium \
 
 [tasks."cilium:install:lb"]
 description = "Install Cilium in load-balancer mode for Gateway API comparison scenarios"
-depends = ["helm:repo:add", "cilium:load", "gateway-api:install"]
+depends = ["kind:load:cilium", "gateway-api:install"]
 run = """
 APISERVER_IP=$(docker inspect -f '{% raw %}{{.NetworkSettings.Networks.kind.IPAddress}}{% endraw %}' ${KIND_CLUSTER_NAME}-control-plane)
 if [ -z "$APISERVER_IP" ]; then
