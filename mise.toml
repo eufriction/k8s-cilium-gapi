@@ -192,15 +192,6 @@ helm upgrade --install kyverno kyverno/kyverno \
   --wait \
   --timeout 5m
 """
-run_windows = """
-helm upgrade --install kyverno kyverno/kyverno `
-  --namespace kyverno `
-  --create-namespace `
-  --version $env:KYVERNO_CHART_VERSION `
-  --values config/values.kyverno.yaml `
-  --wait `
-  --timeout 5m
-"""
 
 [tasks."kyverno:verify"]
 description = "Verify the Kyverno control plane is ready"
@@ -235,19 +226,6 @@ helm install cilium cilium/cilium \
   --set k8sServicePort=6443 \
   --set securityContext.privileged=true
 """
-run_windows = """
-$APISERVER_IP = docker inspect -f '{% raw %}{{.NetworkSettings.Networks.kind.IPAddress}}{% endraw %}' "${env:KIND_CLUSTER_NAME}-control-plane"
-if (-not $APISERVER_IP) {
-  Write-Error "ERROR: could not resolve control-plane IP from Docker - is the kind cluster running?"
-  exit 1
-}
-helm install cilium cilium/cilium `
-  --namespace kube-system `
-  --version $env:CILIUM_VERSION `
-  --values config/values.cilium.yaml `
-  --set k8sServiceHost=$APISERVER_IP `
-  --set k8sServicePort=6443
-"""
 
 [tasks."cilium:install:lb"]
 description = "Install Cilium in load-balancer mode for Gateway API comparison scenarios"
@@ -265,19 +243,6 @@ helm install cilium cilium/cilium \
   --set k8sServiceHost=$APISERVER_IP \
   --set k8sServicePort=6443 \
   --set securityContext.privileged=true
-"""
-run_windows = """
-$APISERVER_IP = docker inspect -f '{% raw %}{{.NetworkSettings.Networks.kind.IPAddress}}{% endraw %}' "${env:KIND_CLUSTER_NAME}-control-plane"
-if (-not $APISERVER_IP) {
-  Write-Error "ERROR: could not resolve control-plane IP from Docker - is the kind cluster running?"
-  exit 1
-}
-helm install cilium cilium/cilium `
-  --namespace kube-system `
-  --version $env:CILIUM_VERSION `
-  --values config/values.cilium.lb.yaml `
-  --set k8sServiceHost=$APISERVER_IP `
-  --set k8sServicePort=6443
 """
 
 [tasks."scenario:01:start"]
@@ -998,14 +963,12 @@ description = "Bootstrap the full cluster: kind + Cilium in order"
 depends = ["kind:start"]
 depends_post = ["cluster:verify"]
 run = "mise run cilium:install && cilium status --wait"
-run_windows = "mise run cilium:install && cilium status --wait"
 
 [tasks."cluster:start:lb"]
 description = "Bootstrap the load-balancer comparison cluster: kind + Cilium load-balancer mode"
 depends = ["kind:start:lb"]
 depends_post = ["cluster:verify"]
 run = "mise run cilium:install:lb && cilium status --wait"
-run_windows = "mise run cilium:install:lb && cilium status --wait"
 
 [tasks."cluster:verify"]
 description = "Verify the cluster is healthy: Cilium status ready"
