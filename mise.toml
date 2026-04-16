@@ -52,7 +52,6 @@ CLOUD_PROVIDER_KIND_VERSION = "0.10.0"
 CERT_MANAGER_VERSION = "1.20.2"
 GATEWAY_API_VERSION = "1.4.1"
 KYVERNO_CHART_VERSION = "3.7.1"
-KYVERNO_APP_VERSION = "1.17.1"
 KIND_CLUSTER_NAME = "k8s-cilium-gapi"
 
 [tasks."kind:start"]
@@ -106,24 +105,30 @@ done
 kind load docker-image "${images[@]}" --name "${KIND_CLUSTER_NAME}"
 """
 
-[tasks."kyverno:pull"]
-description = "Pull Kyverno images from the registry to the local Docker daemon"
-run = [
-  "docker pull ghcr.io/kyverno/kyverno:v$KYVERNO_APP_VERSION",
-  "docker pull ghcr.io/kyverno/background-controller:v$KYVERNO_APP_VERSION",
-  "docker pull ghcr.io/kyverno/cleanup-controller:v$KYVERNO_APP_VERSION",
-  "docker pull ghcr.io/kyverno/reports-controller:v$KYVERNO_APP_VERSION",
-]
+[tasks."kind:load:kyverno"]
+description = "Discover, pull, and load Kyverno images into the kind cluster"
+depends = ["helm:repo:add"]
+run = """
+set -euo pipefail
 
-[tasks."kyverno:load"]
-description = "Load Kyverno images from the local Docker daemon into the kind cluster nodes"
-depends = ["kyverno:pull"]
-run = [
-  "kind load docker-image ghcr.io/kyverno/kyverno:v$KYVERNO_APP_VERSION --name $KIND_CLUSTER_NAME",
-  "kind load docker-image ghcr.io/kyverno/background-controller:v$KYVERNO_APP_VERSION --name $KIND_CLUSTER_NAME",
-  "kind load docker-image ghcr.io/kyverno/cleanup-controller:v$KYVERNO_APP_VERSION --name $KIND_CLUSTER_NAME",
-  "kind load docker-image ghcr.io/kyverno/reports-controller:v$KYVERNO_APP_VERSION --name $KIND_CLUSTER_NAME",
-]
+err() { echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2; }
+
+images=()
+while IFS= read -r img; do
+  images+=("${img}")
+done < <(helm images get kyverno/kyverno --version ${KYVERNO_CHART_VERSION} \\
+  --values config/values.kyverno.yaml 2>/dev/null \\
+  | sed 's/@sha256:.*//' \\
+  | sort -u)
+
+for img in "${images[@]}"; do
+  if ! docker pull "${img}" 2>&1; then
+    err "WARN: pull failed for ${img}, using local image"
+  fi
+done
+
+kind load docker-image "${images[@]}" --name "${KIND_CLUSTER_NAME}"
+"""
 
 [tasks."apps:pull"]
 description = "Pull remote demo app images from the registry to the local Docker daemon"
@@ -203,7 +208,7 @@ run = [
 
 [tasks."kyverno:install"]
 description = "Install Kyverno for future policy-focused scenarios"
-depends = ["helm:repo:add", "kyverno:load"]
+depends = ["kind:load:kyverno"]
 depends_post = ["kyverno:verify"]
 run = """
 helm upgrade --install kyverno kyverno/kyverno \
