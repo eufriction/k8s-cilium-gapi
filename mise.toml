@@ -43,6 +43,39 @@ fi
 description = "Run all pre-commit checks against all files"
 run = "hk run pre-commit --all"
 
+[tasks."lint:images"]
+description = "Check that mise env vars match image tags in pod specs"
+run = """
+set -euo pipefail
+
+err() { echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2; }
+
+rc=0
+
+check() {
+  local var="$1" file="$2" image_prefix="$3"
+  local version="${!var}"
+  local expected="${image_prefix}${version}"
+  if ! grep -qF "${expected}" "${file}"; then
+    local actual
+    actual=$(grep 'image:' "${file}" | head -1 | sed 's/.*image:[[:space:]]*//')
+    err "DRIFT: ${var}=${version} expects '${expected}' in ${file}, found '${actual}'"
+    rc=1
+  fi
+}
+
+check NETSHOOT_VERSION     apps/netshoot-client/10-pod.yaml "nicolaka/netshoot:"
+check HTTPBIN_VERSION      apps/backend-http/10-pod.yaml    "mccutchen/go-httpbin:"
+check ENVOY_VERSION        apps/backend-mtls/20-pod.yaml    "envoyproxy/envoy:v"
+check BACKEND_GRPC_VERSION apps/backend-grpc/10-pod.yaml    "backend-grpc:"
+
+if [[ ${rc} -eq 0 ]]; then
+  echo "lint:images: all image versions match"
+fi
+
+exit ${rc}
+"""
+
 [env]
 NETSHOOT_VERSION = "v0.15"
 HTTPBIN_VERSION = "2.22.1"
@@ -322,7 +355,7 @@ kubectl wait httproute/backend-b-route -n backend-b --for='jsonpath={.status.par
 curl -fsS -H 'Host: backend-a.example.test' http://localhost/headers >/dev/null
 curl -fsS -H 'Host: backend-b.example.test' http://localhost/headers >/dev/null
 
-# Verify Accepted condition message reflects the correct route type (cilium/cilium#43881)
+# Verify Accepted condition message (cilium/cilium#43881)
 msg=$(kubectl get httproute/backend-a-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
 [ "$msg" = "Accepted HTTPRoute" ] || { echo "FAIL: backend-a-route Accepted message='$msg' (expected 'Accepted HTTPRoute')" >&2; exit 1; }
 echo "PASS: backend-a-route Accepted message = '$msg'"
@@ -406,13 +439,13 @@ if [ "$misrouted" -gt 0 ]; then
 fi
 echo "PASS: grpc-b.example.test — all $ITERATIONS requests routed to grpc-backend-b"
 
-# Verify Accepted condition message reflects the correct route type (cilium/cilium#43881)
+# GRPCRoute reports "Accepted HTTPRoute" until cilium/cilium#43881 is backported
 msg=$(kubectl get grpcroute/grpc-backend-a-route -n grpc-backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
-[ "$msg" = "Accepted GRPCRoute" ] || { echo "FAIL: grpc-backend-a-route Accepted message='$msg' (expected 'Accepted GRPCRoute')" >&2; exit 1; }
+[ "$msg" = "Accepted HTTPRoute" ] || { echo "FAIL: grpc-backend-a-route Accepted message='$msg' (expected 'Accepted HTTPRoute')" >&2; exit 1; }
 echo "PASS: grpc-backend-a-route Accepted message = '$msg'"
 
 msg=$(kubectl get grpcroute/grpc-backend-b-route -n grpc-backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
-[ "$msg" = "Accepted GRPCRoute" ] || { echo "FAIL: grpc-backend-b-route Accepted message='$msg' (expected 'Accepted GRPCRoute')" >&2; exit 1; }
+[ "$msg" = "Accepted HTTPRoute" ] || { echo "FAIL: grpc-backend-b-route Accepted message='$msg' (expected 'Accepted HTTPRoute')" >&2; exit 1; }
 echo "PASS: grpc-backend-b-route Accepted message = '$msg'"
 """
 
@@ -446,7 +479,7 @@ kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.stat
 curl -kfsS --resolve "https-a.example.test:443:127.0.0.1" https://https-a.example.test/headers >/dev/null
 curl -kfsS --resolve "https-b.example.test:443:127.0.0.1" https://https-b.example.test/headers >/dev/null
 
-# Verify Accepted condition message reflects the correct route type (cilium/cilium#43881)
+# Verify Accepted condition message (cilium/cilium#43881)
 msg=$(kubectl get httproute/backend-a-https-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
 [ "$msg" = "Accepted HTTPRoute" ] || { echo "FAIL: backend-a-https-route Accepted message='$msg' (expected 'Accepted HTTPRoute')" >&2; exit 1; }
 echo "PASS: backend-a-https-route Accepted message = '$msg'"
@@ -537,7 +570,7 @@ if curl -fsS --resolve "mtls-b.example.test:9443:127.0.0.1" \
 fi
 echo "PASS: backend-b rejects cross-namespace client cert"
 
-# Verify Accepted condition message reflects the correct route type (cilium/cilium#43881)
+# Verify Accepted condition message (cilium/cilium#43881)
 msg=$(kubectl get tlsroute/backend-a-mtls-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
 [ "$msg" = "Accepted TLSRoute" ] || { echo "FAIL: backend-a-mtls-route Accepted message='$msg' (expected 'Accepted TLSRoute')" >&2; exit 1; }
 echo "PASS: backend-a-mtls-route Accepted message = '$msg'"

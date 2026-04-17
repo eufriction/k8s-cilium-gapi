@@ -10,6 +10,9 @@ hooks {
       ["vale"] = (Builtins.vale) {
         glob = List("**/*.md")
       }
+      ["lint-images"] = new Step {
+        check = "mise run lint:images"
+      }
     }
   }
 }
