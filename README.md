@@ -19,7 +19,7 @@ This repository demonstrates how **Cilium Service Mesh** implements the **Gatewa
 
 #### Activate mise in your shell
 
-Make sure to activate `mise` in your shell so the `mise run ...` tasks can load the right tools. Don’t skip this. Follow the official `mise activate` instructions for your shell:
+Make sure to activate `mise` in your shell so the `mise run ...` tasks can load the right tools. Don't skip this. Follow the official `mise activate` instructions for your shell:
 
 - [mise activate documentation](https://mise.jdx.dev/cli/activate.html)
 
@@ -62,7 +62,6 @@ mise run cluster:verify
 
 ```sh
 mise run scenario:01:start
-mise run scenario:01:verify
 ```
 
 This deploys one `gateway-system` namespace with the Gateway, one `client` namespace with a `netshoot-client` pod, and two backend namespaces that both reuse the same `backend-http` app base:
@@ -78,6 +77,97 @@ Test the two HTTPRoutes from your machine:
 ```sh
 curl -i -H 'Host: backend-a.example.test' http://localhost/headers
 curl -i -H 'Host: backend-b.example.test' http://localhost/headers
+```
+
+---
+
+## Running scenarios
+
+### Task naming
+
+This repo uses mise [monorepo mode](https://mise.jdx.dev/tasks/monorepo.html).
+Scenario tasks live in each scenario directory's own `mise.toml` and are
+addressed with the `//scenarios/<name>:<action>` path syntax:
+
+```sh
+mise run //scenarios/20-http-grpc:start
+mise run //scenarios/20-http-grpc:verify
+mise run //scenarios/20-http-grpc:delete
+```
+
+Scenarios that have not yet been migrated to monorepo mode (01–04) keep
+the inline task names and can be run with bare names:
+
+```sh
+mise run scenario:01:start
+mise run scenario:01:verify
+mise run scenario:01:delete
+```
+
+List all available tasks:
+
+```sh
+mise tasks --all          # full monorepo listing
+mise tasks --all | grep scenarios  # only monorepo scenarios
+```
+
+### Running with a specific Cilium version
+
+The default Cilium version is set in `mise.toml` under `[env]`. Override
+it for a single cluster lifecycle with the `CILIUM_VERSION` env var:
+
+```sh
+# Test with Cilium 1.19.1
+CILIUM_VERSION=1.19.1 mise run cluster:start
+mise run //scenarios/20-http-grpc:start
+mise run cluster:delete
+
+# Test with Cilium 1.19.3
+CILIUM_VERSION=1.19.3 mise run cluster:start
+mise run //scenarios/20-http-grpc:start
+mise run cluster:delete
+
+# Test with a local Cilium chart build
+CILIUM_VERSION=0.0.0 CILIUM_CHART_DIR=../cilium/install/kubernetes/cilium \
+  mise run cluster:start
+mise run //scenarios/20-http-grpc:start
+mise run cluster:delete
+```
+
+### Running all monorepo scenarios
+
+Each monorepo scenario's `start` task runs `kubectl apply`, then
+`verify`, and keeps the scenario deployed by default. Pass `--delete`
+to clean up after verification so the next scenario starts clean:
+
+```sh
+# Single scenario — deploy + verify, leave running for debugging
+mise run //scenarios/20-http-grpc:start
+
+# Single scenario — full cycle: deploy + verify + delete
+mise run //scenarios/20-http-grpc:start --delete
+```
+
+Run all scenarios sequentially with `--jobs 1` and `DELETE=1`:
+
+```sh
+mise run cluster:start
+DELETE=1 mise --jobs 1 '//scenarios/...:start'
+mise run cluster:delete
+```
+
+Compare two Cilium versions:
+
+```sh
+# 1.19.1
+CILIUM_VERSION=1.19.1 mise run cluster:start
+DELETE=1 mise --jobs 1 '//scenarios/...:start'
+mise run cluster:delete
+
+# 1.19.3
+CILIUM_VERSION=1.19.3 mise run cluster:start
+DELETE=1 mise --jobs 1 '//scenarios/...:start'
+mise run cluster:delete
 ```
 
 ---
@@ -141,6 +231,8 @@ The verify task deploys conforming routes (pass), then attempts non-conforming r
 
 - `apps/` contains reusable, namespace-agnostic app bases.
 - `scenarios/` contains namespaces, app instances, and Gateway API resources.
+  Scenarios 20+ are [mise monorepo config roots](https://mise.jdx.dev/tasks/monorepo.html)
+  with their own `mise.toml` and `verify.sh`.
 - App-base conventions live in [`apps/README.md`](apps/README.md).
 
 ## TLS Foundation
@@ -217,6 +309,10 @@ Basic navigation:
 ## Clean up
 
 ```sh
+# Delete a single scenario
 mise run scenario:01:delete
+mise run //scenarios/20-http-grpc:delete
+
+# Delete the cluster (removes all scenarios with it)
 mise run cluster:delete
 ```

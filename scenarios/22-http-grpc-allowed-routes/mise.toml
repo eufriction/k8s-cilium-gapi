@@ -1,0 +1,10 @@
+[tasks.start]
+extends = "scenario:start"
+depends = ["//:kind:load:apps", "//:cert-manager:install"]
+
+[tasks.delete]
+extends = "scenario:delete"
+
+[tasks.verify]
+description = "Verify the allowed-routes kind-restricted scenario"
+run = "./verify.sh \"{{config_root}}\""
