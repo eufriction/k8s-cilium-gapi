@@ -1,10 +1,11 @@
 [tasks.start]
 extends = "scenario:start"
+description = "Deploy the shared-port HTTP + gRPC scenario"
 depends = ["//:kind:load:apps", "//:cert-manager:install"]
+
+[tasks.verify]
+extends = "scenario:verify"
+description = "Verify the shared-port HTTP + gRPC scenario"
 
 [tasks.delete]
 extends = "scenario:delete"
-
-[tasks.verify]
-description = "Verify the shared-port HTTP + gRPC scenario"
-run = "./verify.sh \"{{config_root}}\""

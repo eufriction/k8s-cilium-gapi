@@ -3,9 +3,9 @@ extends = "scenario:start"
 description = "Deploy the TLS gRPC Gateway API scenario"
 depends = ["//:kind:load:apps", "//:cert-manager:install"]
 
+[tasks.verify]
+extends = "scenario:verify"
+description = "Verify the TLS gRPC Gateway API scenario"
+
 [tasks.delete]
 extends = "scenario:delete"
-
-[tasks.verify]
-description = "Verify the TLS gRPC Gateway API scenario"
-run = "./verify.sh \"{{config_root}}\""

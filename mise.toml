@@ -1,23 +1,23 @@
 experimental_monorepo_root = true
 
+[monorepo]
+config_roots = ["scenarios/*"]
+
 [settings]
 experimental = true
 unix_default_inline_shell_args = "bash -c"
 
-[monorepo]
-config_roots = ["scenarios/*"]
-[task_templates."scenario:start"]
-usage = 'flag "-d --delete" env="DELETE" help="Delete scenario resources after verification"'
-run = """
-kubectl apply -k .
-mise run :verify
-if [ "${usage_delete:-false}" = "true" ]; then
-  mise run :delete
-fi
-"""
-
-[task_templates."scenario:delete"]
-run = "kubectl delete -k . --ignore-not-found"
+[env]
+NETSHOOT_VERSION = "v0.15"
+HTTPBIN_VERSION = "2.22.1"
+ENVOY_VERSION = "1.33.2"
+BACKEND_GRPC_VERSION = "0.1.1"
+CILIUM_VERSION = "1.19.3"
+CLOUD_PROVIDER_KIND_VERSION = "0.10.0"
+CERT_MANAGER_VERSION = "1.20.2"
+GATEWAY_API_VERSION = "1.4.1"
+KYVERNO_CHART_VERSION = "3.7.1"
+KIND_CLUSTER_NAME = "k8s-cilium-gapi"
 
 [tools]
 hk = "latest"
@@ -53,6 +53,28 @@ if ! helm plugin list | grep -q '^images'; then
   else
     helm plugin install https://github.com/nikhilsbhat/helm-images
   fi
+fi
+"""
+
+[task_templates."scenario:start"]
+run = """
+kubectl apply -k .
+rc=0
+mise run :verify || rc=$?
+exit $rc
+"""
+
+[task_templates."scenario:verify"]
+depends_post = [":delete"]
+run = "./verify.sh \"{{config_root}}\""
+
+[task_templates."scenario:delete"]
+run = """
+if [ "${DELETE:-0}" = "1" ]; then
+  echo "--- Deleting scenario resources ---"
+  kubectl delete -k . --ignore-not-found
+else
+  echo "--- SKIPPED Deleting scenario resources ---"
 fi
 """
 
@@ -92,18 +114,6 @@ fi
 
 exit ${rc}
 """
-
-[env]
-NETSHOOT_VERSION = "v0.15"
-HTTPBIN_VERSION = "2.22.1"
-ENVOY_VERSION = "1.33.2"
-BACKEND_GRPC_VERSION = "0.1.1"
-CILIUM_VERSION = "1.19.3"
-CLOUD_PROVIDER_KIND_VERSION = "0.10.0"
-CERT_MANAGER_VERSION = "1.20.2"
-GATEWAY_API_VERSION = "1.4.1"
-KYVERNO_CHART_VERSION = "3.7.1"
-KIND_CLUSTER_NAME = "k8s-cilium-gapi"
 
 [tasks."kind:start"]
 description = "Create the k8s-cilium-gapi kind cluster using config/kind.config"
@@ -315,7 +325,6 @@ helm install cilium cilium/cilium \
   --set k8sServicePort=6443 \
   --set securityContext.privileged=true
 """
-
 
 [tasks."cilium:install:lb"]
 description = "Install Cilium in load-balancer mode for Gateway API comparison scenarios"
