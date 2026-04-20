@@ -1,0 +1,11 @@
+[tasks.start]
+extends = "scenario:start"
+description = "Deploy the mTLS passthrough scenario"
+depends = ["//:kind:load:apps", "//:cert-manager:install"]
+
+[tasks.delete]
+extends = "scenario:delete"
+
+[tasks.verify]
+description = "Verify the mTLS passthrough scenario"
+run = "./verify.sh \"{{config_root}}\""

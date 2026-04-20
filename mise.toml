@@ -12,14 +12,12 @@ run = """
 kubectl apply -k .
 mise run :verify
 if [ "${usage_delete:-false}" = "true" ]; then
-  echo "--- Deleting scenario resources ---"
-  kubectl delete -k . --ignore-not-found
+  mise run :delete
 fi
 """
 
 [task_templates."scenario:delete"]
 run = "kubectl delete -k . --ignore-not-found"
-
 
 [tools]
 hk = "latest"
@@ -57,7 +55,6 @@ if ! helm plugin list | grep -q '^images'; then
   fi
 fi
 """
-
 
 [tasks.lint]
 description = "Run all pre-commit checks against all files"
@@ -161,7 +158,6 @@ done
 kind load docker-image "${images[@]}" --name "${KIND_CLUSTER_NAME}"
 """
 
-
 [tasks."kind:load:kyverno"]
 description = "Discover, pull, and load Kyverno images into the kind cluster"
 depends = ["helm:repo:add"]
@@ -187,7 +183,6 @@ done
 
 kind load docker-image "${images[@]}" --name "${KIND_CLUSTER_NAME}"
 """
-
 
 [tasks."kind:load:apps"]
 description = "Build, pull, and load demo app images into the kind cluster"
@@ -228,7 +223,6 @@ run = """
 kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v$GATEWAY_API_VERSION/experimental-install.yaml
 """
 
-
 [tasks."cloud-provider-kind:install"]
 description = "Install cloud-provider-kind into .bin for load-balancer scenarios"
 hide = true
@@ -236,7 +230,6 @@ run = """
 mkdir -p .bin
 GOBIN=$PWD/.bin go install sigs.k8s.io/cloud-provider-kind@v$CLOUD_PROVIDER_KIND_VERSION
 """
-
 
 [tasks."cloud-provider-kind:start"]
 description = "Start cloud-provider-kind in a dedicated terminal for load-balancer scenarios"
@@ -257,7 +250,6 @@ helm upgrade --install cert-manager oci://quay.io/jetstack/charts/cert-manager \
   --timeout 5m
 """
 
-
 [tasks."cert-manager:verify"]
 description = "Verify the cert-manager control plane and CRDs are ready"
 hide = true
@@ -267,7 +259,6 @@ kubectl wait deployment/cert-manager-cainjector -n cert-manager --for=condition=
 kubectl wait deployment/cert-manager-webhook -n cert-manager --for=condition=Available --timeout=180s
 kubectl get crd certificates.cert-manager.io issuers.cert-manager.io clusterissuers.cert-manager.io >/dev/null
 """
-
 
 [tasks."cert-manager:delete"]
 description = "Remove cert-manager when TLS scenarios are no longer needed"
@@ -290,7 +281,6 @@ helm upgrade --install kyverno kyverno/kyverno \
   --timeout 5m
 """
 
-
 [tasks."kyverno:verify"]
 description = "Verify the Kyverno control plane is ready"
 hide = true
@@ -300,7 +290,6 @@ kubectl wait deployment/kyverno-background-controller -n kyverno --for=condition
 kubectl wait deployment/kyverno-cleanup-controller -n kyverno --for=condition=Available --timeout=180s
 kubectl wait deployment/kyverno-reports-controller -n kyverno --for=condition=Available --timeout=180s
 """
-
 
 [tasks."kyverno:delete"]
 description = "Remove Kyverno when policy-focused scenarios are no longer needed"
@@ -346,259 +335,6 @@ helm install cilium cilium/cilium \
   --set securityContext.privileged=true
 """
 
-
-[tasks."scenario:01:start"]
-description = "Deploy the multi-namespace HTTP Gateway API scenario"
-depends = ["kind:load:apps"]
-depends_post = ["scenario:01:verify"]
-run = "kubectl apply -k scenarios/01-http/"
-
-[tasks."scenario:01:delete"]
-description = "Delete the multi-namespace HTTP Gateway API scenario"
-run = "kubectl delete -k scenarios/01-http/ --ignore-not-found"
-
-[tasks."scenario:01:restart"]
-description = "Tear down and recreate the multi-namespace HTTP Gateway API scenario"
-depends = ["scenario:01:delete"]
-run = "mise run scenario:01:start"
-
-[tasks."scenario:01:verify"]
-description = "Verify the multi-namespace HTTP Gateway API scenario is healthy"
-run = """
-set -euo pipefail
-kubectl wait pod/netshoot-client -n client --for=condition=Ready --timeout=60s
-kubectl wait pod/api -n backend-a --for=condition=Ready --timeout=60s
-kubectl wait pod/api -n backend-b --for=condition=Ready --timeout=60s
-kubectl wait gateway/multi-namespace-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-kubectl wait httproute/backend-a-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-kubectl wait httproute/backend-b-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-curl -fsS -H 'Host: backend-a.example.test' http://localhost/headers >/dev/null
-curl -fsS -H 'Host: backend-b.example.test' http://localhost/headers >/dev/null
-
-# Verify Accepted condition message (cilium/cilium#43881)
-msg=$(kubectl get httproute/backend-a-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
-[ "$msg" = "Accepted HTTPRoute" ] || { echo "FAIL: backend-a-route Accepted message='$msg' (expected 'Accepted HTTPRoute')" >&2; exit 1; }
-echo "PASS: backend-a-route Accepted message = '$msg'"
-
-msg=$(kubectl get httproute/backend-b-route -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
-[ "$msg" = "Accepted HTTPRoute" ] || { echo "FAIL: backend-b-route Accepted message='$msg' (expected 'Accepted HTTPRoute')" >&2; exit 1; }
-echo "PASS: backend-b-route Accepted message = '$msg'"
-"""
-
-
-[tasks."scenario:02:start"]
-description = "Deploy the host-network multi-namespace TLS gRPC Gateway API scenario"
-depends = ["kind:load:apps", "cert-manager:install"]
-depends_post = ["scenario:02:verify"]
-run = "kubectl apply -k scenarios/02-grpc/"
-
-[tasks."scenario:02:delete"]
-description = "Delete the host-network multi-namespace TLS gRPC Gateway API scenario"
-run = "kubectl delete -k scenarios/02-grpc/ --ignore-not-found"
-
-[tasks."scenario:02:restart"]
-description = "Tear down and recreate the host-network multi-namespace TLS gRPC Gateway API scenario"
-depends = ["scenario:02:delete"]
-run = "mise run scenario:02:start"
-
-[tasks."scenario:02:verify"]
-description = "Verify the host-network multi-namespace TLS gRPC Gateway API scenario is healthy"
-run = """
-set -euo pipefail
-kubectl wait pod/grpc-api -n grpc-backend-a --for=condition=Ready --timeout=60s
-kubectl wait pod/grpc-api -n grpc-backend-b --for=condition=Ready --timeout=60s
-kubectl wait certificate/grpc-multi-namespace-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s
-kubectl wait gateway/grpc-multi-namespace-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-kubectl wait grpcroute/grpc-backend-a-route -n grpc-backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-kubectl wait grpcroute/grpc-backend-b-route -n grpc-backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-
-GRPC_PROTO=apps/backend-grpc/proto/grpc/testing/testservice.proto
-GRPC_REQ='{"response_size":32,"fill_server_id":true}'
-GRPC_METHOD=grpc.testing.TestService/UnaryCall
-ITERATIONS=10
-
-echo "--- gRPC affinity checks (port 443) ---"
-
-# grpc-a.example.test must always route to grpc-backend-a
-misrouted=0
-for i in $(seq 1 $ITERATIONS); do
-  server_id=$(grpcurl -insecure \
-    -authority grpc-a.example.test \
-    -proto "$GRPC_PROTO" \
-    -d "$GRPC_REQ" \
-    localhost:443 \
-    "$GRPC_METHOD" | jq -r '.serverId')
-  if [ "$server_id" != "grpc-backend-a" ]; then
-    echo "  iteration $i: grpc-a.example.test routed to '$server_id' (expected grpc-backend-a)" >&2
-    misrouted=$((misrouted + 1))
-  fi
-done
-if [ "$misrouted" -gt 0 ]; then
-  echo "FAIL: grpc-a.example.test mis-routed $misrouted/$ITERATIONS requests" >&2
-  exit 1
-fi
-echo "PASS: grpc-a.example.test — all $ITERATIONS requests routed to grpc-backend-a"
-
-# grpc-b.example.test must always route to grpc-backend-b
-misrouted=0
-for i in $(seq 1 $ITERATIONS); do
-  server_id=$(grpcurl -insecure \
-    -authority grpc-b.example.test \
-    -proto "$GRPC_PROTO" \
-    -d "$GRPC_REQ" \
-    localhost:443 \
-    "$GRPC_METHOD" | jq -r '.serverId')
-  if [ "$server_id" != "grpc-backend-b" ]; then
-    echo "  iteration $i: grpc-b.example.test routed to '$server_id' (expected grpc-backend-b)" >&2
-    misrouted=$((misrouted + 1))
-  fi
-done
-if [ "$misrouted" -gt 0 ]; then
-  echo "FAIL: grpc-b.example.test mis-routed $misrouted/$ITERATIONS requests" >&2
-  exit 1
-fi
-echo "PASS: grpc-b.example.test — all $ITERATIONS requests routed to grpc-backend-b"
-
-# GRPCRoute reports "Accepted HTTPRoute" until cilium/cilium#43881 is backported
-msg=$(kubectl get grpcroute/grpc-backend-a-route -n grpc-backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
-[ "$msg" = "Accepted HTTPRoute" ] || { echo "FAIL: grpc-backend-a-route Accepted message='$msg' (expected 'Accepted HTTPRoute')" >&2; exit 1; }
-echo "PASS: grpc-backend-a-route Accepted message = '$msg'"
-
-msg=$(kubectl get grpcroute/grpc-backend-b-route -n grpc-backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
-[ "$msg" = "Accepted HTTPRoute" ] || { echo "FAIL: grpc-backend-b-route Accepted message='$msg' (expected 'Accepted HTTPRoute')" >&2; exit 1; }
-echo "PASS: grpc-backend-b-route Accepted message = '$msg'"
-"""
-
-
-[tasks."scenario:03:start"]
-description = "Deploy the HTTPS termination baseline scenario"
-depends = ["kind:load:apps", "cert-manager:install"]
-depends_post = ["scenario:03:verify"]
-run = "kubectl apply -k scenarios/03-https/"
-
-[tasks."scenario:03:delete"]
-description = "Delete the HTTPS termination baseline scenario"
-run = "kubectl delete -k scenarios/03-https/ --ignore-not-found"
-
-[tasks."scenario:03:restart"]
-description = "Tear down and recreate the HTTPS termination baseline scenario"
-depends = ["scenario:03:delete"]
-run = "mise run scenario:03:start"
-
-[tasks."scenario:03:verify"]
-description = "Verify the HTTPS termination baseline scenario is healthy"
-run = """
-set -euo pipefail
-kubectl wait pod/netshoot-client -n client --for=condition=Ready --timeout=60s
-kubectl wait pod/api -n backend-a --for=condition=Ready --timeout=60s
-kubectl wait pod/api -n backend-b --for=condition=Ready --timeout=60s
-kubectl wait certificate/https-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s
-kubectl wait gateway/https-multi-namespace-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-curl -kfsS --resolve "https-a.example.test:443:127.0.0.1" https://https-a.example.test/headers >/dev/null
-curl -kfsS --resolve "https-b.example.test:443:127.0.0.1" https://https-b.example.test/headers >/dev/null
-
-# Verify Accepted condition message (cilium/cilium#43881)
-msg=$(kubectl get httproute/backend-a-https-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
-[ "$msg" = "Accepted HTTPRoute" ] || { echo "FAIL: backend-a-https-route Accepted message='$msg' (expected 'Accepted HTTPRoute')" >&2; exit 1; }
-echo "PASS: backend-a-https-route Accepted message = '$msg'"
-
-msg=$(kubectl get httproute/backend-b-https-route -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
-[ "$msg" = "Accepted HTTPRoute" ] || { echo "FAIL: backend-b-https-route Accepted message='$msg' (expected 'Accepted HTTPRoute')" >&2; exit 1; }
-echo "PASS: backend-b-https-route Accepted message = '$msg'"
-"""
-
-
-[tasks."scenario:04:start"]
-description = "Deploy the multi-namespace mTLS Gateway API scenario"
-depends = ["kind:load:apps", "cert-manager:install"]
-depends_post = ["scenario:04:verify"]
-run = "kubectl apply -k scenarios/04-mtls/"
-
-[tasks."scenario:04:delete"]
-description = "Delete the multi-namespace mTLS Gateway API scenario"
-run = "kubectl delete -k scenarios/04-mtls/ --ignore-not-found"
-
-[tasks."scenario:04:restart"]
-description = "Tear down and recreate the multi-namespace mTLS Gateway API scenario"
-depends = ["scenario:04:delete"]
-run = "mise run scenario:04:start"
-
-[tasks."scenario:04:verify"]
-description = "Verify the multi-namespace mTLS Gateway API scenario is healthy"
-run = """
-set -euo pipefail
-kubectl wait pod/backend-mtls -n backend-a --for=condition=Ready --timeout=60s
-kubectl wait pod/backend-mtls -n backend-b --for=condition=Ready --timeout=60s
-kubectl wait certificate/backend-a-mtls-ca -n backend-a --for=condition=Ready --timeout=180s
-kubectl wait certificate/backend-a-mtls-server -n backend-a --for=condition=Ready --timeout=180s
-kubectl wait certificate/backend-a-mtls-client -n backend-a --for=condition=Ready --timeout=180s
-kubectl wait certificate/backend-b-mtls-ca -n backend-b --for=condition=Ready --timeout=180s
-kubectl wait certificate/backend-b-mtls-server -n backend-b --for=condition=Ready --timeout=180s
-kubectl wait certificate/backend-b-mtls-client -n backend-b --for=condition=Ready --timeout=180s
-kubectl wait gateway/mtls-multi-namespace-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-kubectl wait tlsroute/backend-a-mtls-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-kubectl wait tlsroute/backend-b-mtls-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-
-TMPDIR=$(mktemp -d)
-trap 'rm -rf "$TMPDIR"' EXIT
-
-# Extract backend-a certs
-kubectl get secret backend-a-mtls-server -n backend-a -o jsonpath='{.data.ca\\.crt}' | base64 -d > "$TMPDIR/a-ca.crt"
-kubectl get secret backend-a-mtls-client -n backend-a -o jsonpath='{.data.tls\\.crt}' | base64 -d > "$TMPDIR/a-client.crt"
-kubectl get secret backend-a-mtls-client -n backend-a -o jsonpath='{.data.tls\\.key}' | base64 -d > "$TMPDIR/a-client.key"
-
-# Extract backend-b certs
-kubectl get secret backend-b-mtls-server -n backend-b -o jsonpath='{.data.ca\\.crt}' | base64 -d > "$TMPDIR/b-ca.crt"
-kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\\.crt}' | base64 -d > "$TMPDIR/b-client.crt"
-kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\\.key}' | base64 -d > "$TMPDIR/b-client.key"
-
-# Positive: backend-a with correct client cert
-curl -fsS --resolve "mtls-a.example.test:9443:127.0.0.1" \
-  --cacert "$TMPDIR/a-ca.crt" \
-  --cert "$TMPDIR/a-client.crt" \
-  --key "$TMPDIR/a-client.key" \
-  https://mtls-a.example.test:9443/ >/dev/null
-echo "PASS: backend-a accepts correct client cert"
-
-# Positive: backend-b with correct client cert
-curl -fsS --resolve "mtls-b.example.test:9443:127.0.0.1" \
-  --cacert "$TMPDIR/b-ca.crt" \
-  --cert "$TMPDIR/b-client.crt" \
-  --key "$TMPDIR/b-client.key" \
-  https://mtls-b.example.test:9443/ >/dev/null
-echo "PASS: backend-b accepts correct client cert"
-
-# Negative: backend-a without client cert (must fail)
-if curl -fsS --resolve "mtls-a.example.test:9443:127.0.0.1" \
-  --cacert "$TMPDIR/a-ca.crt" \
-  https://mtls-a.example.test:9443/ >/dev/null 2>&1; then
-  echo "FAIL: backend-a should reject requests without client cert" >&2
-  exit 1
-fi
-echo "PASS: backend-a rejects missing client cert"
-
-# Negative: backend-b with backend-a's client cert (must fail — CA isolation)
-if curl -fsS --resolve "mtls-b.example.test:9443:127.0.0.1" \
-  --cacert "$TMPDIR/b-ca.crt" \
-  --cert "$TMPDIR/a-client.crt" \
-  --key "$TMPDIR/a-client.key" \
-  https://mtls-b.example.test:9443/ >/dev/null 2>&1; then
-  echo "FAIL: backend-b should reject backend-a client cert (CA isolation)" >&2
-  exit 1
-fi
-echo "PASS: backend-b rejects cross-namespace client cert"
-
-# Verify Accepted condition message (cilium/cilium#43881)
-msg=$(kubectl get tlsroute/backend-a-mtls-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
-[ "$msg" = "Accepted TLSRoute" ] || { echo "FAIL: backend-a-mtls-route Accepted message='$msg' (expected 'Accepted TLSRoute')" >&2; exit 1; }
-echo "PASS: backend-a-mtls-route Accepted message = '$msg'"
-
-msg=$(kubectl get tlsroute/backend-b-mtls-route -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
-[ "$msg" = "Accepted TLSRoute" ] || { echo "FAIL: backend-b-mtls-route Accepted message='$msg' (expected 'Accepted TLSRoute')" >&2; exit 1; }
-echo "PASS: backend-b-mtls-route Accepted message = '$msg'"
-"""
 [tasks."cluster:start"]
 description = "Bootstrap the full cluster: kind + Cilium in order"
 depends = ["kind:start"]

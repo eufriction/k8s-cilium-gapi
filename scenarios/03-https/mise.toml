@@ -1,0 +1,11 @@
+[tasks.start]
+extends = "scenario:start"
+description = "Deploy the HTTPS termination scenario"
+depends = ["//:kind:load:apps", "//:cert-manager:install"]
+
+[tasks.delete]
+extends = "scenario:delete"
+
+[tasks.verify]
+description = "Verify the HTTPS termination scenario"
+run = "./verify.sh \"{{config_root}}\""

@@ -1,0 +1,11 @@
+[tasks.start]
+extends = "scenario:start"
+description = "Deploy the multi-namespace HTTP Gateway API scenario"
+depends = ["//:kind:load:apps"]
+
+[tasks.delete]
+extends = "scenario:delete"
+
+[tasks.verify]
+description = "Verify the multi-namespace HTTP Gateway API scenario"
+run = "./verify.sh \"{{config_root}}\""
