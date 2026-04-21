@@ -142,7 +142,7 @@ Read each scenario README for the scenario-specific test flow.
 
 ### Known Cilium bugs
 
-Scenarios that fail do so because of upstream Cilium bugs, not missing test logic. The verify scripts use version-conditional `X_*` env vars to skip or adjust assertions for known issues.
+The verify scripts use version-conditional `X_*` env vars to skip or adjust assertions for known issues.
 
 | Bug                                                                       | Scenarios | Cilium issue                                            | Fix                                                   | Availability                       |
 | ------------------------------------------------------------------------- | --------- | ------------------------------------------------------- | ----------------------------------------------------- | ---------------------------------- |
@@ -159,14 +159,16 @@ Scenarios that fail do so because of upstream Cilium bugs, not missing test logi
 | 02-grpc                                 |  ✅¹   |  ✅¹   |      ✅      |
 | 03-https                                |   ✅   |   ✅   |      ✅      |
 | 04-mtls                                 |  ✅¹   |  ✅¹   |      ✅      |
-| 20-http-grpc                            |   ✅   |   ✅   |      ✅      |
+| 20-http-grpc                            |   ✅   |  ✅²   |      ✅      |
 | 21-http-grpc-shared-port                |   ✅   |   ✅   |      ✅      |
-| 22-http-grpc-allowed-routes             |   ❌   |   —    |      ❌      |
-| 23-http-grpc-shared-port-allowed-routes |   ❌   |   —    |      ✅      |
-| 24-http-grpc-same-hostname-split-ports  |   ❌   |   —    |      ⏭️      |
+| 22-http-grpc-allowed-routes             |  ⏭️³   |  ⏭️³   |     ⏭️³      |
+| 23-http-grpc-shared-port-allowed-routes |  ⏭️³   |   ✅   |      ✅      |
+| 24-http-grpc-same-hostname-split-ports  |  ⏭️³   |  ⏭️³   |     ⏭️³      |
 
+✅ = pass. ❌ = fail. ⏭️ = skipped by `skip_if`.
 ¹ Data plane passes; status message says "Accepted HTTPRoute" instead of correct route type.
-— = not yet tested. ⏭️ = skipped (known broken).
+² Transient `SSL_ERROR_SYSCALL` — Envoy listener timing; passes on retry.
+³ Skipped; confirmed broken when run without skip — see [Known Cilium bugs](#known-cilium-bugs).
 
 ---
 

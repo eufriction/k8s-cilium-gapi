@@ -22,7 +22,8 @@ KIND_CLUSTER_NAME = "k8s-cilium-gapi"
 # Override by copying a versions/*.toml to mise.local.toml.
 X_GRPCROUTE_ACCEPTED_MSG = "Accepted HTTPRoute"
 X_TLSROUTE_ACCEPTED_MSG = "Accepted HTTPRoute"
-X_ALLOWED_ROUTES_KINDS_BROKEN = "false"
+X_ALLOWED_ROUTES_SEPARATE_PORT_BROKEN = "true"
+X_ALLOWED_ROUTES_SHARED_PORT_BROKEN = "false"
 X_SPLIT_PORT_GRPC_BROKEN = "true"
 X_TLSROUTE_API_VERSION = "v1alpha2"
 

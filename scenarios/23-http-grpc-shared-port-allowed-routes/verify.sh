@@ -2,7 +2,7 @@
 set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
-skip_if X_ALLOWED_ROUTES_KINDS_BROKEN "allowedRoutes.kinds bug — only first kind honoured (fixed in 1.19.3)"
+skip_if X_ALLOWED_ROUTES_SHARED_PORT_BROKEN "shared-port allowedRoutes.kinds bug — GRPCRoute excluded from Envoy config (fixed in 1.19.3)"
 kubectl wait pod/api -n backend-a --for=condition=Ready --timeout=60s
 kubectl wait pod/api -n backend-b --for=condition=Ready --timeout=60s
 kubectl wait pod/grpc-api -n backend-a --for=condition=Ready --timeout=60s
