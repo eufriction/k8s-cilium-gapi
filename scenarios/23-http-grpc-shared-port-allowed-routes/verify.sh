@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
+REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../.." && pwd)"
+source "${REPO_ROOT}/lib/verify-helpers.sh"
+skip_if X_ALLOWED_ROUTES_KINDS_BROKEN "allowedRoutes.kinds bug — only first kind honoured (fixed in 1.19.3)"
 kubectl wait pod/api -n backend-a --for=condition=Ready --timeout=60s
 kubectl wait pod/api -n backend-b --for=condition=Ready --timeout=60s
 kubectl wait pod/grpc-api -n backend-a --for=condition=Ready --timeout=60s
@@ -66,7 +69,6 @@ if [ "$route_fail" -eq 1 ]; then
   exit 1
 fi
 
-REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../.." && pwd)"
 GRPC_IMPORT_PATH="${REPO_ROOT}/apps/backend-grpc/proto"
 GRPC_PROTO=grpc/testing/testservice.proto
 GRPC_REQ='{"response_size":32,"fill_server_id":true}'

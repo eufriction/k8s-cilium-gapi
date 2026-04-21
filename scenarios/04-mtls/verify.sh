@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../.." && pwd)"
+source "${REPO_ROOT}/lib/verify-helpers.sh"
 kubectl wait pod/backend-mtls -n backend-a --for=condition=Ready --timeout=60s
 kubectl wait pod/backend-mtls -n backend-b --for=condition=Ready --timeout=60s
 kubectl wait certificate/backend-a-mtls-ca -n backend-a --for=condition=Ready --timeout=180s
@@ -47,11 +48,9 @@ if curl -fsS --resolve "mtls-b.example.test:9443:127.0.0.1" \
 fi
 echo "PASS: backend-b rejects cross-namespace client cert"
 
-# cilium/cilium#43881
+# cilium/cilium#43881 — TLSRoute reports "Accepted HTTPRoute" on <= 1.19.x
 msg=$(kubectl get tlsroute/backend-a-mtls-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
-[ "$msg" = "Accepted TLSRoute" ] || { echo "FAIL: backend-a-mtls-route message='$msg'" >&2; exit 1; }
-echo "PASS: backend-a-mtls-route Accepted message = '$msg'"
+assert_msg "$msg" "X_TLSROUTE_ACCEPTED_MSG" "backend-a-mtls-route"
 
 msg=$(kubectl get tlsroute/backend-b-mtls-route -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
-[ "$msg" = "Accepted TLSRoute" ] || { echo "FAIL: backend-b-mtls-route message='$msg'" >&2; exit 1; }
-echo "PASS: backend-b-mtls-route Accepted message = '$msg'"
+assert_msg "$msg" "X_TLSROUTE_ACCEPTED_MSG" "backend-b-mtls-route"

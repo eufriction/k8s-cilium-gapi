@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
+REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../.." && pwd)"
+source "${REPO_ROOT}/lib/verify-helpers.sh"
+skip_if X_SPLIT_PORT_GRPC_BROKEN "same-hostname split-port gRPC bug — not yet fixed upstream"
 kubectl wait pod/api -n backend-a --for=condition=Ready --timeout=60s
 kubectl wait pod/api -n backend-b --for=condition=Ready --timeout=60s
 kubectl wait pod/grpc-api -n backend-a --for=condition=Ready --timeout=60s
@@ -18,7 +21,6 @@ echo "PASS: HTTPS backend-a on port 443"
 curl -kfsS --resolve "api.example.test:443:127.0.0.1" https://api.example.test/b/headers >/dev/null
 echo "PASS: HTTPS backend-b on port 443 (path /b)"
 
-REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../.." && pwd)"
 GRPC_IMPORT_PATH="${REPO_ROOT}/apps/backend-grpc/proto"
 GRPC_PROTO=grpc/testing/testservice.proto
 GRPC_REQ='{"response_size":32,"fill_server_id":true}'

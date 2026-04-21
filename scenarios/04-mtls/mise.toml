@@ -2,6 +2,17 @@
 extends = "scenario:start"
 description = "Deploy the mTLS passthrough scenario"
 depends = ["//:kind:load:apps", "//:cert-manager:install"]
+run = """
+if [ "${X_TLSROUTE_API_VERSION:-v1alpha2}" = "v1" ]; then
+  echo "--- TLSRoute apiVersion override: v1alpha2 -> v1 ---"
+  kubectl kustomize . | sed 's|gateway.networking.k8s.io/v1alpha2|gateway.networking.k8s.io/v1|g' | kubectl apply -f -
+else
+  kubectl apply -k .
+fi
+rc=0
+mise run :verify || rc=$?
+exit $rc
+"""
 
 [tasks.verify]
 extends = "scenario:verify"

@@ -8,6 +8,7 @@ kubectl wait grpcroute/grpc-backend-a-route -n grpc-backend-a --for='jsonpath={.
 kubectl wait grpcroute/grpc-backend-b-route -n grpc-backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
 
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../.." && pwd)"
+source "${REPO_ROOT}/lib/verify-helpers.sh"
 GRPC_IMPORT_PATH="${REPO_ROOT}/apps/backend-grpc/proto"
 GRPC_PROTO=grpc/testing/testservice.proto
 GRPC_REQ='{"response_size":32,"fill_server_id":true}'
@@ -52,9 +53,7 @@ echo "PASS: grpc-b.example.test — all $ITERATIONS requests routed to grpc-back
 
 # cilium/cilium#43881 — GRPCRoute reports "Accepted HTTPRoute" on <= 1.19.x
 msg=$(kubectl get grpcroute/grpc-backend-a-route -n grpc-backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
-[ "$msg" = "Accepted HTTPRoute" ] || { echo "FAIL: grpc-backend-a-route message='$msg'" >&2; exit 1; }
-echo "PASS: grpc-backend-a-route Accepted message = '$msg'"
+assert_msg "$msg" "X_GRPCROUTE_ACCEPTED_MSG" "grpc-backend-a-route"
 
 msg=$(kubectl get grpcroute/grpc-backend-b-route -n grpc-backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
-[ "$msg" = "Accepted HTTPRoute" ] || { echo "FAIL: grpc-backend-b-route message='$msg'" >&2; exit 1; }
-echo "PASS: grpc-backend-b-route Accepted message = '$msg'"
+assert_msg "$msg" "X_GRPCROUTE_ACCEPTED_MSG" "grpc-backend-b-route"
