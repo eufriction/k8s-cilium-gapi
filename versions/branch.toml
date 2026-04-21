@@ -1,0 +1,11 @@
+# Cilium branch build — local chart directory
+# Set CILIUM_CHART_DIR to the path of your local cilium/install/kubernetes/cilium
+[env]
+CILIUM_VERSION = "branch"
+CILIUM_CHART_DIR = ""
+GATEWAY_API_VERSION = "1.5.1"
+X_GRPCROUTE_ACCEPTED_MSG = "Accepted GRPCRoute"
+X_TLSROUTE_ACCEPTED_MSG = "Accepted TLSRoute"
+X_TLSROUTE_API_VERSION = "v1"
+X_ALLOWED_ROUTES_KINDS_BROKEN = "true"
+X_SPLIT_PORT_GRPC_BROKEN = "true"

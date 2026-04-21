@@ -1,0 +1,9 @@
+# Cilium 1.19.1 — oldest patch, regression baseline
+[env]
+CILIUM_VERSION = "1.19.1"
+GATEWAY_API_VERSION = "1.4.1"
+X_GRPCROUTE_ACCEPTED_MSG = "Accepted HTTPRoute"
+X_TLSROUTE_ACCEPTED_MSG = "Accepted HTTPRoute"
+X_TLSROUTE_API_VERSION = "v1alpha2"
+X_ALLOWED_ROUTES_KINDS_BROKEN = "true"
+X_SPLIT_PORT_GRPC_BROKEN = "true"
