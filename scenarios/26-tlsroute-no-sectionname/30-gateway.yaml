@@ -1,0 +1,39 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/gateway.networking.k8s.io/gateway_v1.json
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: mixed-listener-gateway
+  namespace: gateway-system
+  labels:
+    app.kubernetes.io/part-of: demo
+spec:
+  gatewayClassName: cilium
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: "web.example.test"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: scenario-26-gateway-tls
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: tls
+      protocol: TLS
+      port: 443
+      hostname: "mtls.example.test"
+      tls:
+        mode: Passthrough
+      allowedRoutes:
+        namespaces:
+          from: All
