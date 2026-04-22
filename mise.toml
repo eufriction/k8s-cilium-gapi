@@ -13,6 +13,9 @@ HTTPBIN_VERSION = "2.22.1"
 ENVOY_VERSION = "1.33.2"
 BACKEND_GRPC_VERSION = "0.1.1"
 CILIUM_VERSION = "1.19.3"
+CILIUM_CHART_DIR = ""
+CILIUM_AGENT_IMAGE = ""
+CILIUM_OPERATOR_IMAGE = ""
 CLOUD_PROVIDER_KIND_VERSION = "0.10.0"
 CERT_MANAGER_VERSION = "1.20.2"
 GATEWAY_API_VERSION = "1.4.1"
@@ -159,7 +162,11 @@ set -euo pipefail
 
 err() { echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2; }
 
-chart_ref="cilium/cilium --version ${CILIUM_VERSION}"
+if [ -n "${CILIUM_CHART_DIR}" ]; then
+  chart_ref="${CILIUM_CHART_DIR}"
+else
+  chart_ref="cilium/cilium --version ${CILIUM_VERSION}"
+fi
 
 images=()
 while IFS= read -r img; do
@@ -173,6 +180,14 @@ for img in "${images[@]}"; do
     err "WARN: pull failed for ${img}, using local image"
   fi
 done
+
+# Add locally-built images to the load list (already in Docker daemon)
+if [ -n "${CILIUM_AGENT_IMAGE}" ]; then
+  images+=("${CILIUM_AGENT_IMAGE}")
+fi
+if [ -n "${CILIUM_OPERATOR_IMAGE}" ]; then
+  images+=("${CILIUM_OPERATOR_IMAGE}")
+fi
 
 kind load docker-image "${images[@]}" --name "${KIND_CLUSTER_NAME}"
 """
@@ -326,13 +341,34 @@ if [ -z "$APISERVER_IP" ]; then
   echo "ERROR: could not resolve control-plane IP from Docker – is the kind cluster running?" >&2
   exit 1
 fi
-helm install cilium cilium/cilium \
-  --namespace kube-system \
-  --version $CILIUM_VERSION \
-  --values config/values.cilium.yaml \
-  --set k8sServiceHost=$APISERVER_IP \
-  --set k8sServicePort=6443 \
+helm_args=(install cilium)
+if [ -n "${CILIUM_CHART_DIR}" ]; then
+  helm_args+=("${CILIUM_CHART_DIR}")
+else
+  helm_args+=(cilium/cilium --version "${CILIUM_VERSION}")
+fi
+helm_args+=(
+  --namespace kube-system
+  --values config/values.cilium.yaml
+  --set "k8sServiceHost=${APISERVER_IP}"
+  --set k8sServicePort=6443
   --set securityContext.privileged=true
+)
+if [ -n "${CILIUM_AGENT_IMAGE}" ]; then
+  helm_args+=(--set "image.override=${CILIUM_AGENT_IMAGE}")
+fi
+if [ -n "${CILIUM_OPERATOR_IMAGE}" ]; then
+  helm_args+=(--set "operator.image.override=${CILIUM_OPERATOR_IMAGE}")
+fi
+if [ -n "${CILIUM_CHART_DIR}" ]; then
+  helm_args+=(
+    --set image.pullPolicy=IfNotPresent
+    --set operator.image.pullPolicy=IfNotPresent
+    --set hubble.relay.image.pullPolicy=IfNotPresent
+    --set envoy.image.pullPolicy=IfNotPresent
+  )
+fi
+helm "${helm_args[@]}"
 """
 
 [tasks."cilium:install:lb"]
@@ -344,13 +380,34 @@ if [ -z "$APISERVER_IP" ]; then
   echo "ERROR: could not resolve control-plane IP from Docker – is the kind cluster running?" >&2
   exit 1
 fi
-helm install cilium cilium/cilium \
-  --namespace kube-system \
-  --version $CILIUM_VERSION \
-  --values config/values.cilium.lb.yaml \
-  --set k8sServiceHost=$APISERVER_IP \
-  --set k8sServicePort=6443 \
+helm_args=(install cilium)
+if [ -n "${CILIUM_CHART_DIR}" ]; then
+  helm_args+=("${CILIUM_CHART_DIR}")
+else
+  helm_args+=(cilium/cilium --version "${CILIUM_VERSION}")
+fi
+helm_args+=(
+  --namespace kube-system
+  --values config/values.cilium.lb.yaml
+  --set "k8sServiceHost=${APISERVER_IP}"
+  --set k8sServicePort=6443
   --set securityContext.privileged=true
+)
+if [ -n "${CILIUM_AGENT_IMAGE}" ]; then
+  helm_args+=(--set "image.override=${CILIUM_AGENT_IMAGE}")
+fi
+if [ -n "${CILIUM_OPERATOR_IMAGE}" ]; then
+  helm_args+=(--set "operator.image.override=${CILIUM_OPERATOR_IMAGE}")
+fi
+if [ -n "${CILIUM_CHART_DIR}" ]; then
+  helm_args+=(
+    --set image.pullPolicy=IfNotPresent
+    --set operator.image.pullPolicy=IfNotPresent
+    --set hubble.relay.image.pullPolicy=IfNotPresent
+    --set envoy.image.pullPolicy=IfNotPresent
+  )
+fi
+helm "${helm_args[@]}"
 """
 
 [tasks."cluster:start"]

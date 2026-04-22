@@ -92,14 +92,41 @@ rm mise.local.toml
 
 Available profiles in `versions/`:
 
-| File                | Cilium       | Gateway API | Notes                             |
-| ------------------- | ------------ | ----------- | --------------------------------- |
-| `1.19.1.toml`       | 1.19.1       | 1.4.1       | Oldest patch, regression baseline |
-| `1.19.3.toml`       | 1.19.3       | 1.4.1       | Matches `mise.toml` defaults      |
-| `1.20.0-pre.1.toml` | 1.20.0-pre.1 | 1.5.1       | Pre-release                       |
-| `branch.toml`       | local build  | 1.5.1       | Set `CILIUM_CHART_DIR` in file    |
+| File                | Cilium       | Gateway API | Notes                                 |
+| ------------------- | ------------ | ----------- | ------------------------------------- |
+| `1.19.1.toml`       | 1.19.1       | 1.4.1       | Oldest patch, regression baseline     |
+| `1.19.3.toml`       | 1.19.3       | 1.4.1       | Matches `mise.toml` defaults          |
+| `1.20.0-pre.1.toml` | 1.20.0-pre.1 | 1.5.1       | Pre-release                           |
+| `branch.toml`       | local build  | 1.5.1       | Set `CILIUM_CHART_DIR` and image vars |
 
 Each profile sets `CILIUM_VERSION`, `GATEWAY_API_VERSION`, and `X_*` env vars that control version-conditional verify behavior (expected status messages, known-bug skips).
+
+### Branch builds
+
+To test a locally-built Cilium branch, copy `branch.toml` and fill in the three path/image vars:
+
+```sh
+cp versions/branch.toml mise.local.toml
+```
+
+Edit `mise.local.toml` and set:
+
+| Variable                | Description                                 | Example                                      |
+| ----------------------- | ------------------------------------------- | -------------------------------------------- |
+| `CILIUM_CHART_DIR`      | Path to the local Helm chart directory      | `/home/you/cilium/install/kubernetes/cilium` |
+| `CILIUM_AGENT_IMAGE`    | Locally-built agent image ref (optional)    | `quay.io/cilium/cilium-dev:local`            |
+| `CILIUM_OPERATOR_IMAGE` | Locally-built operator image ref (optional) | `quay.io/cilium/operator-generic:local`      |
+
+Then run the standard workflow — `cluster:start` handles image loading and Helm install automatically:
+
+```sh
+mise run cluster:start
+DELETE=1 mise run --continue-on-error --jobs 1 '//scenarios/...:start' 2>&1 | tee run-branch.log
+mise run cluster:delete
+rm mise.local.toml
+```
+
+When `CILIUM_CHART_DIR` is set, the install tasks use the local chart path instead of `cilium/cilium --version`. When the image vars are set, they are passed as `--set image.override=…` / `--set operator.image.override=…` to Helm and pre-loaded into kind.
 
 ---
 

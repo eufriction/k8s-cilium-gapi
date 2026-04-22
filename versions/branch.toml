@@ -1,8 +1,11 @@
-# Cilium branch build — local chart directory
-# Set CILIUM_CHART_DIR to the path of your local cilium/install/kubernetes/cilium
+# Cilium branch build — local chart + images
+# Set CILIUM_CHART_DIR to your local cilium/install/kubernetes/cilium
+# Set CILIUM_AGENT_IMAGE / CILIUM_OPERATOR_IMAGE to locally-built image refs
 [env]
 CILIUM_VERSION = "branch"
 CILIUM_CHART_DIR = ""
+CILIUM_AGENT_IMAGE = ""
+CILIUM_OPERATOR_IMAGE = "localhost:5000/cilium/operator-generic:local"
 GATEWAY_API_VERSION = "1.5.1"
 X_GRPCROUTE_ACCEPTED_MSG = "Accepted GRPCRoute"
 X_TLSROUTE_ACCEPTED_MSG = "Accepted TLSRoute"
