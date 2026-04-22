@@ -127,6 +127,19 @@ fi
 exit ${rc}
 """
 
+[tasks."cilium:dump-cec"]
+description = "Dump all CiliumEnvoyConfigs to cec-dump.yaml"
+run = """
+set -euo pipefail
+(kubectl get cec -A --no-headers -o custom-columns='NS:.metadata.namespace,NAME:.metadata.name' \
+  | while read -r ns name; do
+      echo "---"
+      kubectl get cec -n "$ns" "$name" -o yaml
+    done
+) | prettier --parser yaml > cec-dump.yaml
+echo "Wrote cec-dump.yaml"
+"""
+
 [tasks."kind:start"]
 description = "Create the k8s-cilium-gapi kind cluster using config/kind.config"
 run = "kind create cluster --config config/kind.config"

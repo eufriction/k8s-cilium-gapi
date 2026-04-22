@@ -58,6 +58,9 @@ charts/*.tgz
 # Kustomize
 kustomization.yaml.bak
 
+# CEC dump
+cec-dump.yaml
+
 # Generated Kubernetes manifests
 /manifests/generated/
 
