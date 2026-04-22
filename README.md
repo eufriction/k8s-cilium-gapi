@@ -173,35 +173,37 @@ Read each scenario README for the scenario-specific test flow.
 
 The verify scripts use version-conditional `X_*` env vars to skip or adjust assertions for known issues.
 
-| Bug                                                                                   | Scenarios | Cilium issue                                            | Fix                                                   | Availability                                 |
-| ------------------------------------------------------------------------------------- | --------- | ------------------------------------------------------- | ----------------------------------------------------- | -------------------------------------------- |
-| `allowedRoutes.kinds` silently excludes GRPCRoute from Envoy config                   | 22, 23    | [#44824](https://github.com/cilium/cilium/issues/44824) | [#44826](https://github.com/cilium/cilium/pull/44826) | ≥1.19.3, ≥1.20.0                             |
-| GRPCRoute/TLSRoute status reports "Accepted HTTPRoute"                                | 02, 04    | [#43881](https://github.com/cilium/cilium/issues/43881) | [#44962](https://github.com/cilium/cilium/pull/44962) | ≥1.20.0 (not backported to 1.19.x)           |
-| `allowedRoutes.kinds` on separate-port listeners — HTTPRoute not accepted             | 22        | Not yet filed                                           | —                                                     | Broken on all tested versions                |
-| Same-hostname GRPCRoutes on split ports return 404                                    | 24        | Not yet filed                                           | —                                                     | Broken on all tested versions                |
-| TLSRoute without sectionName creates duplicate FilterChains on mixed-listener Gateway | 26        | [#45050](https://github.com/cilium/cilium/issues/45050) | [#45371](https://github.com/cilium/cilium/pull/45371) | Broken on ≤1.19.3; not yet tested on ≥1.20.0 |
+| Bug                                                                                   | Scenarios | Cilium issue                                            | Fix                                                   | Availability                                                    |
+| ------------------------------------------------------------------------------------- | --------- | ------------------------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------- |
+| `allowedRoutes.kinds` silently excludes GRPCRoute from Envoy config                   | 22, 23    | [#44824](https://github.com/cilium/cilium/issues/44824) | [#44826](https://github.com/cilium/cilium/pull/44826) | ≥1.19.3, ≥1.20.0                                                |
+| GRPCRoute/TLSRoute status reports "Accepted HTTPRoute"                                | 02, 04    | [#43881](https://github.com/cilium/cilium/issues/43881) | [#44962](https://github.com/cilium/cilium/pull/44962) | ≥1.20.0 (not backported to 1.19.x)                              |
+| `allowedRoutes.kinds` on separate-port listeners — HTTPRoute not accepted             | 22        | Not yet filed, needs verification                       | —                                                     | Broken on all tested versions                                   |
+| Same-hostname GRPCRoutes on split ports return 404                                    | 24        | [#44877](https://github.com/cilium/cilium/issues/44877) | [#44889](https://github.com/cilium/cilium/pull/44889) | Broken on ≤1.20.0-pre.1; verified fixed on #44889 branch build  |
+| TLSRoute without sectionName creates duplicate FilterChains on mixed-listener Gateway | 26        | [#45050](https://github.com/cilium/cilium/issues/45050) | [#45371](https://github.com/cilium/cilium/pull/45371) | Broken on ≤1.19.3 and #44889 branch build (#45371 not included) |
 
 ### Test results by version
 
-| Scenario                                | 1.19.1 | 1.19.3 | 1.20.0-pre.1 |
-| --------------------------------------- | :----: | :----: | :----------: |
-| 01-http                                 |   ✅   |   ✅   |      ✅      |
-| 02-grpc                                 |  ✅¹   |  ✅¹   |      ✅      |
-| 03-https                                |   ✅   |   ✅   |      ✅      |
-| 04-mtls                                 |  ✅¹   |  ✅¹   |      ✅      |
-| 20-http-grpc                            |   ✅   |  ✅²   |      ✅      |
-| 21-http-grpc-shared-port                |   ✅   |   ✅   |      ✅      |
-| 22-http-grpc-allowed-routes             |  ⏭️³   |  ⏭️³   |     ⏭️³      |
-| 23-http-grpc-shared-port-allowed-routes |  ⏭️³   |   ✅   |      ✅      |
-| 24-http-grpc-same-hostname-split-ports  |  ⏭️³   |  ⏭️³   |     ⏭️³      |
-| 25-https-tls-passthrough-same-port      |   —    |   ✅   |      —       |
-| 26-tlsroute-no-sectionname              |   —    |  ⏭️⁴   |      —       |
+| Scenario                                | 1.19.1 | 1.19.3 | 1.20.0-pre.1 | #44889 branch |
+| --------------------------------------- | :----: | :----: | :----------: | :-----------: |
+| 01-http                                 |   ✅   |   ✅   |      ✅      |      ✅       |
+| 02-grpc                                 |  ✅¹   |  ✅¹   |      ✅      |      ✅       |
+| 03-https                                |   ✅   |   ✅   |      ✅      |      ✅       |
+| 04-mtls                                 |  ✅¹   |  ✅¹   |      ✅      |      ✅       |
+| 20-http-grpc                            |   ✅   |  ✅²   |      ✅      |      ✅       |
+| 21-http-grpc-shared-port                |   ✅   |   ✅   |      ✅      |      ✅       |
+| 22-http-grpc-allowed-routes             |  ⏭️³   |  ⏭️³   |     ⏭️³      |      ⏭️³      |
+| 23-http-grpc-shared-port-allowed-routes |  ⏭️³   |   ✅   |      ✅      |      ✅       |
+| 24-http-grpc-same-hostname-split-ports  |  ⏭️³   |  ⏭️³   |     ⏭️³      |      ✅⁵      |
+| 25-https-tls-passthrough-same-port      |   —    |   ✅   |      —       |      ✅       |
+| 26-tlsroute-no-sectionname              |   —    |  ⏭️⁴   |      —       |      ❌⁶      |
 
 ✅ = pass. ❌ = fail. ⏭️ = skipped by `skip_if`. — = not yet tested.
 ¹ Data plane passes; status message says "Accepted HTTPRoute" instead of correct route type.
 ² Transient `SSL_ERROR_SYSCALL` — Envoy listener timing; passes on retry.
 ³ Skipped; confirmed broken when run without skip — see [Known Cilium bugs](#known-cilium-bugs).
 ⁴ Skipped; confirmed broken (404 on HTTPS termination when TLSRoute omits sectionName) — see [#45050](https://github.com/cilium/cilium/issues/45050).
+⁵ **Fixed by [#44889](https://github.com/cilium/cilium/pull/44889)** — gRPC traffic distributed 9/11 across both backends.
+⁶ `SSL_ERROR_SYSCALL` — branch does not include [#45371](https://github.com/cilium/cilium/pull/45371) fix.
 
 ---
 
