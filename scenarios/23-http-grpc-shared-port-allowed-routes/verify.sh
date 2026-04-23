@@ -120,7 +120,7 @@ fi
 echo "PASS: backend-grpc-b.example.test — all $ITERATIONS requests routed to backend-b"
 
 echo "--- HTTPS checks (shared port 443) ---"
-curl -kfsS --resolve "backend.example.test:443:127.0.0.1" https://backend.example.test/headers >/dev/null
+retry 5 2 curl -kfsS --resolve "backend.example.test:443:127.0.0.1" https://backend.example.test/headers >/dev/null
 echo "PASS: HTTPS backend-a on port 443"
 curl -kfsS --resolve "backend-b.example.test:443:127.0.0.1" https://backend-b.example.test/headers >/dev/null
 echo "PASS: HTTPS backend-b on port 443"

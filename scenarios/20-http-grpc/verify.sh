@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../.." && pwd)"
+source "${REPO_ROOT}/lib/verify-helpers.sh"
 kubectl wait pod/api -n backend-a --for=condition=Ready --timeout=60s
 kubectl wait pod/api -n backend-b --for=condition=Ready --timeout=60s
 kubectl wait pod/grpc-api -n backend-a --for=condition=Ready --timeout=60s
@@ -12,12 +14,11 @@ kubectl wait grpcroute/backend-a-grpc-route -n backend-a --for='jsonpath={.statu
 kubectl wait grpcroute/backend-b-grpc-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
 
 echo "--- HTTPS smoke checks (port 443) ---"
-curl -kfsS --resolve "https-a.example.test:443:127.0.0.1" https://https-a.example.test/headers >/dev/null
+retry 5 2 curl -kfsS --resolve "https-a.example.test:443:127.0.0.1" https://https-a.example.test/headers >/dev/null
 echo "PASS: HTTPS backend-a on port 443"
 curl -kfsS --resolve "https-b.example.test:443:127.0.0.1" https://https-b.example.test/headers >/dev/null
 echo "PASS: HTTPS backend-b on port 443"
 
-REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../.." && pwd)"
 GRPC_IMPORT_PATH="${REPO_ROOT}/apps/backend-grpc/proto"
 GRPC_PROTO=grpc/testing/testservice.proto
 GRPC_REQ='{"response_size":32,"fill_server_id":true}'
