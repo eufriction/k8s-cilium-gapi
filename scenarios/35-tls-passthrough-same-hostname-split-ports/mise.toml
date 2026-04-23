@@ -1,0 +1,20 @@
+[tasks.start]
+extends = "scenario:start"
+description = "Deploy the TLS passthrough same-hostname split-ports scenario"
+depends = ["//:kind:load:apps", "//:cert-manager:install"]
+run = """
+if [ "${X_TLSROUTE_API_VERSION:-v1alpha2}" = "v1" ]; then
+  echo "--- TLSRoute apiVersion override: v1alpha2 -> v1 ---"
+  kubectl kustomize . | sed 's|gateway.networking.k8s.io/v1alpha2|gateway.networking.k8s.io/v1|g' | kubectl apply -f -
+else
+  kubectl apply -k .
+fi
+mise run :verify
+"""
+
+[tasks.verify]
+extends = "scenario:verify"
+description = "Verify TLS passthrough on both ports with same hostname"
+
+[tasks.delete]
+extends = "scenario:delete"

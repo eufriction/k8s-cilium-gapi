@@ -1,0 +1,59 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: backend-b-selfsigned
+  namespace: backend-b
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: backend-b-mtls-ca
+  namespace: backend-b
+spec:
+  isCA: true
+  secretName: backend-b-mtls-ca
+  commonName: backend-b-mtls-ca
+  issuerRef:
+    kind: Issuer
+    name: backend-b-selfsigned
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: backend-b-mtls-ca-issuer
+  namespace: backend-b
+spec:
+  ca:
+    secretName: backend-b-mtls-ca
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: backend-b-mtls-server
+  namespace: backend-b
+spec:
+  secretName: backend-b-mtls-server
+  commonName: tls.example.test
+  dnsNames:
+    - tls.example.test
+  usages:
+    - server auth
+  issuerRef:
+    kind: Issuer
+    name: backend-b-mtls-ca-issuer
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: backend-b-mtls-client
+  namespace: backend-b
+spec:
+  secretName: backend-b-mtls-client
+  commonName: backend-b-client
+  usages:
+    - client auth
+  issuerRef:
+    kind: Issuer
+    name: backend-b-mtls-ca-issuer

@@ -1,0 +1,11 @@
+[tasks.start]
+extends = "scenario:start"
+description = "Deploy the allowedRoutes.namespaces cross-namespace scenario"
+depends = ["//:kind:load:apps"]
+
+[tasks.verify]
+extends = "scenario:verify"
+description = "Verify allowedRoutes.namespaces is enforced per-listener"
+
+[tasks.delete]
+extends = "scenario:delete"
