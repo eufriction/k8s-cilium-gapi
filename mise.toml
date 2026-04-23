@@ -71,9 +71,7 @@ fi
 [task_templates."scenario:start"]
 run = """
 kubectl apply -k .
-rc=0
-mise run :verify || rc=$?
-exit $rc
+mise run :verify
 """
 
 [task_templates."scenario:verify"]

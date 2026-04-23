@@ -9,9 +9,7 @@ if [ "${X_TLSROUTE_API_VERSION:-v1alpha2}" = "v1" ]; then
 else
   kubectl apply -k .
 fi
-rc=0
-mise run :verify || rc=$?
-exit $rc
+mise run :verify
 """
 
 [tasks.verify]
