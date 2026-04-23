@@ -1,86 +1,46 @@
-# Allowed-Routes Kind-Restricted HTTPS + gRPC
+# Scenario 22 — HTTPS + gRPC with per-listener `allowedRoutes.kinds`
 
-This scenario mirrors the split-port layout of [`20-http-grpc`](../20-http-grpc/README.md) but adds **explicit `allowedRoutes.kinds`** restrictions on each Gateway listener:
+Same split-port layout as [scenario 20](../20-http-grpc/README.md) but each
+Gateway listener restricts to a **single** route kind:
 
 | Listener | Port  | Allowed Kind |
 | -------- | ----- | ------------ |
 | `https`  | 443   | `HTTPRoute`  |
 | `grpcs`  | 50051 | `GRPCRoute`  |
 
-By restricting each listener to a single route kind the Gateway becomes more explicit about what it accepts. This is the recommended practice when a Gateway serves multiple protocols, because it prevents accidental cross-attachment (e.g. a GRPCRoute attaching to the HTTPS listener or vice-versa).
+This prevents cross-attachment (e.g. a GRPCRoute on the HTTPS listener).
 
-It deploys:
+## Resources
 
-- `backend-http` and `backend-grpc` into `backend-a`
-- `backend-http` and `backend-grpc` into `backend-b`
-- one `netshoot-client` pod in `client`
-- one shared Gateway in `gateway-system`
-
-The Gateway exposes:
-
-- `HTTPS` on `443` for two `HTTPRoute`s (kind-restricted)
-- `gRPC` with TLS termination on `50051` for two `GRPCRoute`s (kind-restricted)
-
-## Purpose
-
-Validate that Cilium's Gateway API implementation honours `allowedRoutes.kinds` correctly when each listener restricts to a **single** route kind. When a listener specifies `kinds: [{kind: HTTPRoute}]`, only HTTPRoutes should be accepted; likewise `kinds: [{kind: GRPCRoute}]` should accept only GRPCRoutes.
+| Resource                         | Namespace      | Purpose                             |
+| -------------------------------- | -------------- | ----------------------------------- |
+| Gateway `allowed-routes-gateway` | gateway-system | Two listeners, one kind each        |
+| HTTPRoute (×2)                   | backend-a / -b | HTTPS termination → go-httpbin      |
+| GRPCRoute (×2)                   | backend-a / -b | gRPC TLS termination → backend-grpc |
+| Certificate (self-signed)        | gateway-system | Shared TLS cert for both listeners  |
+| Pod `api` (×2)                   | backend-a / -b | go-httpbin (HTTP backend)           |
+| Pod `backend-grpc` (×2)          | backend-a / -b | gRPC test service                   |
 
 ## Status
 
-Verified working on **Cilium 1.19.1**. Each listener correctly accepts only the declared route kind, and both HTTPS and gRPC traffic are routed as expected.
+⚠️ **Broken on all tested versions** — [cilium#45559](https://github.com/cilium/cilium/issues/45559)
 
-## Difference from Scenario 20
+Gateway status looks correct (each listener reports the right `supportedKinds`),
+but the CiliumEnvoyConfig collapses both ports into one Envoy listener via
+`additionalAddresses` and drops all HTTPRoute backends. HTTPS returns 404 even
+though HTTPRoutes show `Accepted: True`.
 
-Scenario 20 uses the same two-port split but relies only on `allowedRoutes.namespaces.from: All` without any kind restriction. This scenario adds the `kinds` field to exercise that part of the Gateway API spec.
+Distinct from [#44824](https://github.com/cilium/cilium/issues/44824)
+(shared-port `allowedRoutes.kinds`, fixed ≥1.19.3) — the separate-port variant
+fails at the listener-merging level. See `cec-dump.broken.yaml` for evidence.
 
-## Historical Context
-
-This scenario was originally expected to fail due to bugs in `allowedRoutes.kinds` handling:
-
-| Issue                                                         | Title                                         | Affected Versions | Status                                                                    |
-| ------------------------------------------------------------- | --------------------------------------------- | ----------------- | ------------------------------------------------------------------------- |
-| [cilium#42013](https://github.com/cilium/cilium/issues/42013) | `allowedRoutes.kinds` not scoped per-listener | ≤ 1.18.x          | Fixed in 1.19.0 via [#43802](https://github.com/cilium/cilium/pull/43802) |
-| [cilium#39021](https://github.com/cilium/cilium/issues/39021) | GRPCRoute not in listener Supported Kinds     | ≤ 1.17.x          | Fixed in 1.19.0 via [#41232](https://github.com/cilium/cilium/pull/41232) |
-| [cilium#40922](https://github.com/cilium/cilium/issues/40922) | GRPCRoute unable to attach                    | ≤ 1.16.x          | Same root cause as #39021                                                 |
-| [cilium#34288](https://github.com/cilium/cilium/issues/34288) | Multiple `allowedRoutes` selectors broken     | ≤ 1.16.0          | Fixed                                                                     |
-
-The root cause was that Cilium evaluated kind restrictions **globally** across all listeners instead of per-listener. The fix ([#43802](https://github.com/cilium/cilium/pull/43802)) shipped in **v1.19.0** and this scenario now passes cleanly.
-
-## Apply
+## Run
 
 ```sh
-mise run scenario:22:start
-mise run scenario:22:verify
+mise run //scenarios/22-http-grpc-allowed-routes:start
 ```
 
-`scenario:22:start` installs `cert-manager` first if it is not already present, then issues a self-signed certificate in `gateway-system`.
+## See also
 
-## Manual Check
-
-HTTPS:
-
-```sh
-curl -k --resolve "https-a.example.test:443:127.0.0.1" https://https-a.example.test/headers
-curl -k --resolve "https-b.example.test:443:127.0.0.1" https://https-b.example.test/headers
-```
-
-gRPC:
-
-```sh
-grpcurl -insecure \
-  -authority grpc-a.example.test \
-  -proto apps/backend-grpc/proto/grpc/testing/testservice.proto \
-  -d '{"response_size":32,"fill_server_id":true}' \
-  localhost:50051 \
-  grpc.testing.TestService/UnaryCall
-
-grpcurl -insecure \
-  -authority grpc-b.example.test \
-  -proto apps/backend-grpc/proto/grpc/testing/testservice.proto \
-  -d '{"response_size":32,"fill_server_id":true}' \
-  localhost:50051 \
-  grpc.testing.TestService/UnaryCall
-```
-
-For the variant without kind restrictions, see [`scenarios/20-http-grpc`](../20-http-grpc/README.md).
-For the shared-port variant with multiple kinds on one listener, see [`scenarios/23-http-grpc-shared-port-allowed-routes`](../23-http-grpc-shared-port-allowed-routes/README.md).
+- [Scenario 20](../20-http-grpc/README.md) — same layout, no kind restrictions (passes)
+- [Scenario 23](../23-http-grpc-shared-port-allowed-routes/README.md) — shared port, both kinds on one listener

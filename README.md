@@ -120,7 +120,7 @@ Edit `mise.local.toml` and set:
 Then run the standard workflow — `cluster:start` handles image loading and Helm install automatically:
 
 ```sh
-mise run cluster:start
+mise run cluster:restart
 DELETE=1 mise run --continue-on-error --jobs 1 '//scenarios/...:start' 2>&1 | tee run-branch.log
 mise run cluster:delete
 rm mise.local.toml
@@ -173,13 +173,13 @@ Read each scenario README for the scenario-specific test flow.
 
 The verify scripts use version-conditional `X_*` env vars to skip or adjust assertions for known issues.
 
-| Bug                                                                                   | Scenarios | Cilium issue                                            | Fix                                                   | Availability                                                    |
-| ------------------------------------------------------------------------------------- | --------- | ------------------------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------- |
-| `allowedRoutes.kinds` silently excludes GRPCRoute from Envoy config                   | 22, 23    | [#44824](https://github.com/cilium/cilium/issues/44824) | [#44826](https://github.com/cilium/cilium/pull/44826) | ≥1.19.3, ≥1.20.0                                                |
-| GRPCRoute/TLSRoute status reports "Accepted HTTPRoute"                                | 02, 04    | [#43881](https://github.com/cilium/cilium/issues/43881) | [#44962](https://github.com/cilium/cilium/pull/44962) | ≥1.20.0 (not backported to 1.19.x)                              |
-| `allowedRoutes.kinds` on separate-port listeners — HTTPRoute not accepted             | 22        | Not yet filed, needs verification                       | —                                                     | Broken on all tested versions                                   |
-| Same-hostname GRPCRoutes on split ports return 404                                    | 24        | [#44877](https://github.com/cilium/cilium/issues/44877) | [#44889](https://github.com/cilium/cilium/pull/44889) | Broken on ≤1.20.0-pre.1; verified fixed on #44889 branch build  |
-| TLSRoute without sectionName creates duplicate FilterChains on mixed-listener Gateway | 26        | [#45050](https://github.com/cilium/cilium/issues/45050) | [#45371](https://github.com/cilium/cilium/pull/45371) | Broken on ≤1.19.3 and #44889 branch build (#45371 not included) |
+| Bug                                                                                    | Scenarios | Cilium issue                                            | Fix                                                   | Availability                                                    |
+| -------------------------------------------------------------------------------------- | --------- | ------------------------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------- |
+| `allowedRoutes.kinds` silently excludes GRPCRoute from Envoy config                    | 22, 23    | [#44824](https://github.com/cilium/cilium/issues/44824) | [#44826](https://github.com/cilium/cilium/pull/44826) | ≥1.19.3, ≥1.20.0                                                |
+| GRPCRoute/TLSRoute status reports "Accepted HTTPRoute"                                 | 02, 04    | [#43881](https://github.com/cilium/cilium/issues/43881) | [#44962](https://github.com/cilium/cilium/pull/44962) | ≥1.20.0 (not backported to 1.19.x)                              |
+| `allowedRoutes.kinds` on separate-port listeners — HTTPRoute dropped from Envoy config | 22        | [#45559](https://github.com/cilium/cilium/issues/45559) | —                                                     | Broken on all tested versions                                   |
+| Same-hostname GRPCRoutes on split ports return 404                                     | 24        | [#44877](https://github.com/cilium/cilium/issues/44877) | [#44889](https://github.com/cilium/cilium/pull/44889) | Broken on ≤1.20.0-pre.1; verified fixed on #44889 branch build  |
+| TLSRoute without sectionName creates duplicate FilterChains on mixed-listener Gateway  | 26        | [#45050](https://github.com/cilium/cilium/issues/45050) | [#45371](https://github.com/cilium/cilium/pull/45371) | Broken on ≤1.19.3 and #44889 branch build (#45371 not included) |
 
 ### Test results by version
 
