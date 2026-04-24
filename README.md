@@ -174,13 +174,14 @@ Read each scenario README for the scenario-specific test flow.
 
 The verify scripts use version-conditional `X_*` env vars to skip or adjust assertions for known issues.
 
-| Bug                                                                                   | Scenarios | Cilium issue                                            | Fix                                                   | Availability                                                    |
-| ------------------------------------------------------------------------------------- | --------- | ------------------------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------- |
-| `allowedRoutes.kinds` silently excludes GRPCRoute from Envoy config                   | 22, 23    | [#44824](https://github.com/cilium/cilium/issues/44824) | [#44826](https://github.com/cilium/cilium/pull/44826) | ≥1.19.3, ≥1.20.0                                                |
-| GRPCRoute/TLSRoute status reports "Accepted HTTPRoute"                                | 02, 04    | [#43881](https://github.com/cilium/cilium/issues/43881) | [#44962](https://github.com/cilium/cilium/pull/44962) | ≥1.20.0 (not backported to 1.19.x)                              |
-| `CheckGatewayRouteKindAllowed` overwrites Accepted condition across listeners         | 22, 27    | [#45559](https://github.com/cilium/cilium/issues/45559) | —                                                     | Broken on ≤1.19.3; verified fixed on fix/allowed-routes branch  |
-| Same-hostname GRPCRoutes on split ports return 404                                    | 24        | [#44877](https://github.com/cilium/cilium/issues/44877) | [#44889](https://github.com/cilium/cilium/pull/44889) | Broken on ≤1.20.0-pre.1; verified fixed on #44889 branch build  |
-| TLSRoute without sectionName creates duplicate FilterChains on mixed-listener Gateway | 26        | [#45050](https://github.com/cilium/cilium/issues/45050) | [#45371](https://github.com/cilium/cilium/pull/45371) | Broken on ≤1.19.3 and #44889 branch build (#45371 not included) |
+| Bug                                                                                   | Scenarios  | Cilium issue                                            | Fix                                                   | Availability                                                                                                                                                   |
+| ------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `allowedRoutes.kinds` silently excludes GRPCRoute from Envoy config                   | 22, 23     | [#44824](https://github.com/cilium/cilium/issues/44824) | [#44826](https://github.com/cilium/cilium/pull/44826) | ≥1.19.3, ≥1.20.0                                                                                                                                               |
+| GRPCRoute/TLSRoute status reports "Accepted HTTPRoute"                                | 02, 04     | [#43881](https://github.com/cilium/cilium/issues/43881) | [#44962](https://github.com/cilium/cilium/pull/44962) | ≥1.20.0 (not backported to 1.19.x)                                                                                                                             |
+| `CheckGatewayRouteKindAllowed` overwrites Accepted condition across listeners         | 22, 27     | [#45559](https://github.com/cilium/cilium/issues/45559) | —                                                     | Broken on ≤1.19.3; verified fixed on fix/allowed-routes branch                                                                                                 |
+| Same-hostname GRPCRoutes on split ports return 404                                    | 24         | [#44877](https://github.com/cilium/cilium/issues/44877) | [#44889](https://github.com/cilium/cilium/pull/44889) | Broken on ≤1.20.0-pre.1; verified fixed on #44889 branch build                                                                                                 |
+| TLSRoute without sectionName creates duplicate FilterChains on mixed-listener Gateway | 26         | [#45050](https://github.com/cilium/cilium/issues/45050) | [#45371](https://github.com/cilium/cilium/pull/45371) | Broken on ≤1.19.3 and #44889 branch build (#45371 not included)                                                                                                |
+| `toFilterChainMatch` duplicate `serverNames` after `SortedUnique` removal             | 20, 22, 24 | [#31122](https://github.com/cilium/cilium/issues/31122) | —                                                     | Broken on ≥1.19.2 (regression in `9ee2db2b32`); works on 1.19.1; verified fixed on fix/allowed-routes branch (restores `SortedUnique` in `toFilterChainMatch`) |
 
 ### Test results by version
 
@@ -190,11 +191,11 @@ The verify scripts use version-conditional `X_*` env vars to skip or adjust asse
 | 02-grpc                                 |  ✅¹   |  ✅¹   |      ✅      |      ✅       |         ✅         |
 | 03-https                                |   ✅   |   ✅   |      ✅      |      ✅       |         ✅         |
 | 04-mtls                                 |  ✅¹   |  ✅¹   |      ✅      |      ✅       |         ✅         |
-| 20-http-grpc                            |   ✅   |  ✅²   |      ✅      |      ✅       |        ❌²         |
+| 20-http-grpc                            |   ✅   |  ❌¹⁰  |     ❌¹⁰     |     ❌¹⁰      |        ✅¹¹        |
 | 21-http-grpc-shared-port                |   ✅   |   ✅   |      ✅      |      ✅       |         ✅         |
-| 22-http-grpc-allowed-routes             |  ⏭️³   |  ⏭️³   |     ⏭️³      |      ⏭️³      |        ❌²         |
+| 22-http-grpc-allowed-routes             |  ⏭️³   |  ⏭️³   |     ⏭️³      |      ⏭️³      |        ❌¹⁰        |
 | 23-http-grpc-shared-port-allowed-routes |  ⏭️³   |   ✅   |      ✅      |      ✅       |         ✅         |
-| 24-http-grpc-same-hostname-split-ports  |  ⏭️³   |  ⏭️³   |     ⏭️³      |      ✅⁵      |        ❌²         |
+| 24-http-grpc-same-hostname-split-ports  |  ⏭️³   |  ⏭️³   |     ⏭️³      |      ✅⁵      |        ❌¹⁰        |
 | 25-https-tls-passthrough-same-port      |   —    |   ✅   |      —       |      ✅       |         ✅         |
 | 26-tlsroute-no-sectionname              |   —    |  ⏭️⁴   |      —       |      ❌⁶      |        ⏭️⁴         |
 | 27-allowed-routes-kinds-same-port       |   —    |  ❌⁷   |      —       |       —       |        ✅⁸         |
@@ -203,14 +204,16 @@ The verify scripts use version-conditional `X_*` env vars to skip or adjust asse
 
 ✅ = pass. ❌ = fail. ⏭️ = skipped by `skip_if`. — = not yet tested.
 ¹ Data plane passes; status message says "Accepted HTTPRoute" instead of correct route type.
-² Transient `SSL_ERROR_SYSCALL` — Envoy listener timing; passes on retry.
+² _(removed — was "transient SSL_ERROR_SYSCALL"; actually permanent NACK, see ¹⁰)_
 ³ Skipped; confirmed broken when run without skip — see [Known Cilium bugs](#known-cilium-bugs).
 ⁴ Skipped; confirmed broken (404 on HTTPS termination when TLSRoute omits sectionName) — see [#45050](https://github.com/cilium/cilium/issues/45050).
 ⁵ **Fixed by [#44889](https://github.com/cilium/cilium/pull/44889)** — gRPC traffic distributed 9/11 across both backends.
 ⁶ `SSL_ERROR_SYSCALL` — branch does not include [#45371](https://github.com/cilium/cilium/pull/45371) fix.
 ⁷ 5/6 routes rejected with `NotAllowedByListeners` — only the TLSRoute (targeting the last listener `tls-passthrough`, `kinds: [TLSRoute]`) is accepted. All 3 HTTPRoutes and 2 GRPCRoutes are rejected because `CheckGatewayRouteKindAllowed` evaluates all listeners globally and the last listener's `SetParentCondition` call overwrites the result. See [#45559](https://github.com/cilium/cilium/issues/45559).
 ⁸ **Fixed by `fix/allowed-routes` branch** — all 6 routes accepted (3 HTTPRoutes, 2 GRPCRoutes, 1 TLSRoute), HTTPS + gRPC + HTTP redirect + TLS passthrough data plane verified. Covers [community-reported variant](https://github.com/cilium/cilium/issues/45559#issuecomment-4302047885) (HTTP/HTTPS/TLS mixed listeners with implicit kinds).
-⁹ Skipped; `SSL_ERROR_SYSCALL` on branch builds — likely same Envoy listener timing issue as ². See [#42898](https://github.com/cilium/cilium/issues/42898).
+⁹ Skipped; `SSL_ERROR_SYSCALL` on branch builds — likely same Envoy listener timing issue. See [#42898](https://github.com/cilium/cilium/issues/42898).
+¹⁰ **Permanent Envoy NACK — duplicate `serverNames` in filter chain ([#31122](https://github.com/cilium/cilium/issues/31122))** — the operator merges multi-port listeners (443 + 50051) into a single Envoy listener via `additionalAddresses`. When both ports share the same hostname pattern (`*.example.test`) and the same TLS secret, `TLSSecretsToHostnames()` appends the hostname once per listener, producing `['*.example.test', '*.example.test']` in the TLS filter chain's `serverNames`. Envoy rejects this as overlapping matching rules. **Root cause**: commit [`9ee2db2b32`](https://github.com/cilium/cilium/commit/9ee2db2b32) (backported to v1.19.2, upstream `6292f7d7195355dbbd017d8814d79a227ea2898f`) removed `slices.SortedUnique()` from `toFilterChainMatch()` with the incorrect comment "The hostNames slice cannot have duplicates". That assumption holds for the TLS _passthrough_ path (refactored in the same commit) but NOT for the TLS _termination_ path which still calls `toFilterChainMatch` with raw output from `TLSSecretsToHostnames()`. On **1.19.1** the dedup kept `serverNames` to a single entry → Envoy accepts. On **≥1.19.2** duplicates pass through → permanent NACK. The fix is to restore deduplication in `toFilterChainMatch()`, or deduplicate in `TLSSecretsToHostnames()` itself.
+¹¹ **Fixed by restoring `SortedUnique` in `toFilterChainMatch()`** — the `fix/allowed-routes` branch operator includes the one-line fix that restores `slices.SortedUnique()` in `toFilterChainMatch()`, eliminating the duplicate `serverNames` regression from `9ee2db2b32`. Scenario 20 now passes: HTTPS + gRPC data plane verified on both ports (443, 50051) with 10/10 gRPC affinity.
 
 ---
 

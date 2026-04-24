@@ -26,6 +26,14 @@ GRPC_METHOD=grpc.testing.TestService/UnaryCall
 ITERATIONS=10
 
 echo "--- gRPC affinity checks (port 50051) ---"
+retry 5 2 grpcurl -insecure \
+  -authority grpc-a.example.test \
+  -import-path "$GRPC_IMPORT_PATH" \
+  -proto "$GRPC_PROTO" \
+  -d "$GRPC_REQ" \
+  localhost:50051 \
+  "$GRPC_METHOD" >/dev/null
+echo "gRPC listener warm-up complete"
 
 # grpc-a.example.test must always route to backend-a
 misrouted=0
