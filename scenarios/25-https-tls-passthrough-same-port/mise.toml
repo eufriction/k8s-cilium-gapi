@@ -1,7 +1,7 @@
 [tasks.start]
 extends = "scenario:start"
 description = "Deploy the HTTPS + TLS passthrough same-port scenario"
-depends = ["//:kind:load:apps", "//:cert-manager:install"]
+depends = ["//:kind:load:apps{% if usage.verbose %} --verbose{% endif %}", "//:cert-manager:install"]
 run = """
 if [ "${X_TLSROUTE_API_VERSION:-v1alpha2}" = "v1" ]; then
   echo "--- TLSRoute apiVersion override: v1alpha2 -> v1 ---"
@@ -9,7 +9,7 @@ if [ "${X_TLSROUTE_API_VERSION:-v1alpha2}" = "v1" ]; then
 else
   kubectl apply -k .
 fi
-mise run :verify
+mise run :verify{% if usage.delete %} --delete{% endif %}
 """
 
 [tasks.verify]

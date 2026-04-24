@@ -1,7 +1,7 @@
 [tasks.start]
 extends = "scenario:start"
 description = "Deploy the allowedRoutes.namespaces cross-namespace scenario"
-depends = ["//:kind:load:apps"]
+depends = ["//:kind:load:apps{% if usage.verbose %} --verbose{% endif %}"]
 
 [tasks.verify]
 extends = "scenario:verify"

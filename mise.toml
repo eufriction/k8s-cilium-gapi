@@ -71,18 +71,24 @@ fi
 """
 
 [task_templates."scenario:start"]
+usage = '''
+flag "-v --verbose" env="VERBOSE" help="Enable verbose output for image pulls and builds"
+flag "-d --delete" env="DELETE" help="Delete scenario resources after verify"
+'''
 run = """
 kubectl apply -k .
-mise run :verify
+mise run :verify{% if usage.delete %} --delete{% endif %}
 """
 
 [task_templates."scenario:verify"]
-depends_post = [":delete"]
+usage = 'flag "-d --delete"'
+depends_post = [":delete{% if usage.delete %} --delete{% endif %}"]
 run = "./verify.sh \"{{config_root}}\""
 
 [task_templates."scenario:delete"]
+usage = 'flag "-d --delete"'
 run = """
-if [ "${DELETE:-0}" = "1" ]; then
+if [ "${usage_delete:-false}" = "true" ]; then
   echo "--- Deleting scenario resources ---"
   kubectl delete -k . --ignore-not-found
 else
@@ -160,6 +166,7 @@ run = "mise run kind:start"
 [tasks."helm:repo:add"]
 description = "Add the Cilium and Kyverno Helm repos"
 hide = true
+silent = "stdout"
 run = [
   "helm repo add cilium https://helm.cilium.io/",
   "helm repo add kyverno https://kyverno.github.io/kyverno/",
@@ -170,6 +177,7 @@ run = [
 description = "Discover, pull, and load Cilium images into the kind cluster"
 depends = ["helm:repo:add"]
 hide = true
+usage = 'flag "-v --verbose"'
 run = """
 set -euo pipefail
 
@@ -189,9 +197,7 @@ done < <(helm images get ${chart_ref} --values config/values.cilium.yaml 2>/dev/
   | sort -u)
 
 for img in "${images[@]}"; do
-  if ! docker pull "${img}" 2>&1; then
-    err "WARN: pull failed for ${img}, using local image"
-  fi
+  docker pull{% if not usage.verbose %} --quiet{% endif %} "${img}" || err "WARN: pull failed for ${img}, using local image"
 done
 
 # Add locally-built images to the load list (already in Docker daemon)
@@ -202,13 +208,14 @@ if [ -n "${CILIUM_OPERATOR_IMAGE}" ]; then
   images+=("${CILIUM_OPERATOR_IMAGE}")
 fi
 
-kind load docker-image "${images[@]}" --name "${KIND_CLUSTER_NAME}"
+kind load{% if not usage.verbose %} --quiet{% endif %} docker-image "${images[@]}" --name "${KIND_CLUSTER_NAME}"
 """
 
 [tasks."kind:load:kyverno"]
 description = "Discover, pull, and load Kyverno images into the kind cluster"
 depends = ["helm:repo:add"]
 hide = true
+usage = 'flag "-v --verbose"'
 run = """
 set -euo pipefail
 
@@ -223,23 +230,22 @@ done < <(helm images get kyverno/kyverno --version ${KYVERNO_CHART_VERSION} \\
   | sort -u)
 
 for img in "${images[@]}"; do
-  if ! docker pull "${img}" 2>&1; then
-    err "WARN: pull failed for ${img}, using local image"
-  fi
+  docker pull{% if not usage.verbose %} --quiet{% endif %} "${img}" || err "WARN: pull failed for ${img}, using local image"
 done
 
-kind load docker-image "${images[@]}" --name "${KIND_CLUSTER_NAME}"
+kind load{% if not usage.verbose %} --quiet{% endif %} docker-image "${images[@]}" --name "${KIND_CLUSTER_NAME}"
 """
 
 [tasks."kind:load:apps"]
 description = "Build, pull, and load demo app images into the kind cluster"
 hide = true
+usage = 'flag "-v --verbose"'
 run = """
 set -euo pipefail
 
 err() { echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2; }
 
-docker build -t backend-grpc:${BACKEND_GRPC_VERSION} apps/backend-grpc/image
+docker build{% if not usage.verbose %} --quiet{% endif %} -t backend-grpc:${BACKEND_GRPC_VERSION} apps/backend-grpc/image
 
 remote_images=(
   "nicolaka/netshoot:${NETSHOOT_VERSION}"
@@ -248,12 +254,10 @@ remote_images=(
 )
 
 for img in "${remote_images[@]}"; do
-  if ! docker pull "${img}" 2>&1; then
-    err "WARN: pull failed for ${img}, using local image"
-  fi
+  docker pull{% if not usage.verbose %} --quiet{% endif %} "${img}" || err "WARN: pull failed for ${img}, using local image"
 done
 
-kind load docker-image \\
+kind load docker-image {% if not usage.verbose %}--quiet {% endif %}\\
   "backend-grpc:${BACKEND_GRPC_VERSION}" \\
   "${remote_images[@]}" \\
   --name "${KIND_CLUSTER_NAME}"
@@ -266,6 +270,7 @@ run = "helm uninstall cilium --namespace kube-system"
 [tasks."gateway-api:install"]
 description = "Install Gateway API experimental CRDs before enabling Cilium Gateway API support"
 hide = true
+silent = "stdout"
 run = """
 kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v$GATEWAY_API_VERSION/experimental-install.yaml
 """
@@ -273,6 +278,7 @@ kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/re
 [tasks."cloud-provider-kind:install"]
 description = "Install cloud-provider-kind into .bin for load-balancer scenarios"
 hide = true
+silent = "stdout"
 run = """
 mkdir -p .bin
 GOBIN=$PWD/.bin go install sigs.k8s.io/cloud-provider-kind@v$CLOUD_PROVIDER_KIND_VERSION
@@ -285,6 +291,7 @@ run = "sudo --preserve-env=KUBECONFIG ./.bin/cloud-provider-kind -enable-lb-port
 
 [tasks."cert-manager:install"]
 description = "Install cert-manager for TLS-focused scenarios"
+silent = "stdout"
 depends_post = ["cert-manager:verify"]
 run = """
 helm upgrade --install cert-manager oci://quay.io/jetstack/charts/cert-manager \
@@ -300,11 +307,12 @@ helm upgrade --install cert-manager oci://quay.io/jetstack/charts/cert-manager \
 [tasks."cert-manager:verify"]
 description = "Verify the cert-manager control plane and CRDs are ready"
 hide = true
+silent = "stdout"
 run = """
 kubectl wait deployment/cert-manager -n cert-manager --for=condition=Available --timeout=180s
 kubectl wait deployment/cert-manager-cainjector -n cert-manager --for=condition=Available --timeout=180s
 kubectl wait deployment/cert-manager-webhook -n cert-manager --for=condition=Available --timeout=180s
-kubectl get crd certificates.cert-manager.io issuers.cert-manager.io clusterissuers.cert-manager.io >/dev/null
+kubectl get crd certificates.cert-manager.io issuers.cert-manager.io clusterissuers.cert-manager.io
 """
 
 [tasks."cert-manager:delete"]
@@ -316,7 +324,9 @@ run = [
 
 [tasks."kyverno:install"]
 description = "Install Kyverno for future policy-focused scenarios"
-depends = ["kind:load:kyverno"]
+silent = "stdout"
+usage = 'flag "-v --verbose" env="VERBOSE"'
+depends = ["kind:load:kyverno{% if usage.verbose %} --verbose{% endif %}"]
 depends_post = ["kyverno:verify"]
 run = """
 helm upgrade --install kyverno kyverno/kyverno \
@@ -331,6 +341,7 @@ helm upgrade --install kyverno kyverno/kyverno \
 [tasks."kyverno:verify"]
 description = "Verify the Kyverno control plane is ready"
 hide = true
+silent = "stdout"
 run = """
 kubectl wait deployment/kyverno-admission-controller -n kyverno --for=condition=Available --timeout=180s
 kubectl wait deployment/kyverno-background-controller -n kyverno --for=condition=Available --timeout=180s
@@ -347,7 +358,11 @@ run = [
 
 [tasks."cilium:install"]
 description = "Install Cilium in kube-proxy-free mode using Helm"
-depends = ["kind:load:cilium", "gateway-api:install"]
+usage = 'flag "-v --verbose" env="VERBOSE"'
+depends = [
+  "kind:load:cilium{% if usage.verbose %} --verbose{% endif %}",
+  "gateway-api:install",
+]
 run = """
 APISERVER_IP=$(docker inspect -f '{% raw %}{{.NetworkSettings.Networks.kind.IPAddress}}{% endraw %}' ${KIND_CLUSTER_NAME}-control-plane)
 if [ -z "$APISERVER_IP" ]; then
@@ -386,7 +401,11 @@ helm "${helm_args[@]}"
 
 [tasks."cilium:install:lb"]
 description = "Install Cilium in load-balancer mode for Gateway API comparison scenarios"
-depends = ["kind:load:cilium", "gateway-api:install"]
+usage = 'flag "-v --verbose" env="VERBOSE"'
+depends = [
+  "kind:load:cilium{% if usage.verbose %} --verbose{% endif %}",
+  "gateway-api:install",
+]
 run = """
 APISERVER_IP=$(docker inspect -f '{% raw %}{{.NetworkSettings.Networks.kind.IPAddress}}{% endraw %}' ${KIND_CLUSTER_NAME}-control-plane)
 if [ -z "$APISERVER_IP" ]; then
@@ -425,19 +444,21 @@ helm "${helm_args[@]}"
 
 [tasks."cluster:start"]
 description = "Bootstrap the full cluster: kind + Cilium in order"
+usage = 'flag "-v --verbose" env="VERBOSE" help="Enable verbose output for image pulls and builds"'
 depends = ["kind:start"]
 depends_post = ["cluster:verify"]
-run = "mise run cilium:install && cilium status --wait"
+run = "mise run cilium:install{% if usage.verbose %} --verbose{% endif %}"
 
 [tasks."cluster:start:lb"]
 description = "Bootstrap the load-balancer comparison cluster: kind + Cilium load-balancer mode"
+usage = 'flag "-v --verbose" env="VERBOSE" help="Enable verbose output for image pulls and builds"'
 depends = ["kind:start:lb"]
 depends_post = ["cluster:verify"]
-run = "mise run cilium:install:lb && cilium status --wait"
+run = "mise run cilium:install:lb{% if usage.verbose %} --verbose{% endif %}"
 
 [tasks."cluster:verify"]
 description = "Verify the cluster is healthy: Cilium status ready"
-run = ["cilium status --wait"]
+run = ["cilium status --wait --interactive=false --wait-duration 5m"]
 
 [tasks."cluster:delete"]
 description = "Delete the full cluster"
@@ -445,10 +466,12 @@ run = "mise run kind:delete"
 
 [tasks."cluster:restart"]
 description = "Delete and fully rebuild the cluster"
+usage = 'flag "-v --verbose" env="VERBOSE" help="Enable verbose output for image pulls and builds"'
 depends = ["cluster:delete"]
-run = "mise run cluster:start"
+run = "mise run cluster:start{% if usage.verbose %} --verbose{% endif %}"
 
 [tasks."cluster:restart:lb"]
 description = "Delete and fully rebuild the load-balancer comparison cluster"
+usage = 'flag "-v --verbose" env="VERBOSE" help="Enable verbose output for image pulls and builds"'
 depends = ["cluster:delete"]
-run = "mise run cluster:start:lb"
+run = "mise run cluster:start:lb{% if usage.verbose %} --verbose{% endif %}"
