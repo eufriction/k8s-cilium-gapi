@@ -1,0 +1,60 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/gateway.networking.k8s.io/gateway_v1.json
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: kind-restricted-gateway
+  namespace: gateway-system
+  labels:
+    app.kubernetes.io/part-of: demo
+spec:
+  gatewayClassName: cilium
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: "*.http.example.test"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: kind-restricted-gateway-tls
+      allowedRoutes:
+        namespaces:
+          from: All
+        kinds:
+          - group: gateway.networking.k8s.io
+            kind: HTTPRoute
+    - name: grpcs
+      protocol: HTTPS
+      port: 443
+      hostname: "*.grpc.example.test"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: kind-restricted-gateway-tls
+      allowedRoutes:
+        namespaces:
+          from: All
+        kinds:
+          - group: gateway.networking.k8s.io
+            kind: GRPCRoute
+    - name: tls-passthrough
+      protocol: TLS
+      port: 443
+      hostname: "*.tls.example.test"
+      tls:
+        mode: Passthrough
+      allowedRoutes:
+        namespaces:
+          from: All
+        kinds:
+          - group: gateway.networking.k8s.io
+            kind: TLSRoute

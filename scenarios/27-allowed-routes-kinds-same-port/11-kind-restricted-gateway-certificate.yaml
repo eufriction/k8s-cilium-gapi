@@ -1,0 +1,22 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kind-restricted-gateway-certificate
+  namespace: gateway-system
+spec:
+  secretName: kind-restricted-gateway-tls
+  commonName: http-a.http.example.test
+  dnsNames:
+    - "*.http.example.test"
+    - "*.grpc.example.test"
+    - http-a.http.example.test
+    - http-b.http.example.test
+    - grpc-a.grpc.example.test
+    - grpc-b.grpc.example.test
+    - localhost
+  ipAddresses:
+    - 127.0.0.1
+  issuerRef:
+    kind: Issuer
+    name: kind-restricted-selfsigned

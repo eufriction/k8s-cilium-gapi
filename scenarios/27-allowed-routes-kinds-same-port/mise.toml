@@ -1,0 +1,11 @@
+[tasks.start]
+extends = "scenario:start"
+description = "Deploy the allowed-routes kind-restricted same-port scenario"
+depends = ["//:kind:load:apps", "//:cert-manager:install"]
+
+[tasks.verify]
+extends = "scenario:verify"
+description = "Verify the allowed-routes kind-restricted same-port scenario"
+
+[tasks.delete]
+extends = "scenario:delete"
