@@ -1,3 +1,5 @@
+[settings]
+env_shell_expand = true
 # Cilium branch build — local chart + images
 # Set CILIUM_CHART_DIR to your local cilium/install/kubernetes/cilium
 # Set CILIUM_AGENT_IMAGE / CILIUM_OPERATOR_IMAGE to locally-built image refs
