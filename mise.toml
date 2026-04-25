@@ -1,7 +1,7 @@
 experimental_monorepo_root = true
 
 [monorepo]
-config_roots = ["scenarios/*"]
+config_roots = ["scenarios/*", "scenarios/*/*"]
 
 [settings]
 experimental = true

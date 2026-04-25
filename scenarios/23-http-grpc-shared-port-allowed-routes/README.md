@@ -115,4 +115,4 @@ grpcurl -insecure \
 ```
 
 For the split-port variant with per-listener kind restrictions (works), see [`scenarios/22-http-grpc-allowed-routes`](../22-http-grpc-allowed-routes/README.md).
-For the shared-port variant without kind restrictions (works), see [`scenarios/21-http-grpc-shared-port`](../21-http-grpc-shared-port/README.md).
+For the shared-port variant without kind restrictions (works), see [`scenarios/01-simple/http-grpc-shared-port`](../01-simple/http-grpc-shared-port/README.md).
