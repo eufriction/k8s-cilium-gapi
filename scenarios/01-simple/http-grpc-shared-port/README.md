@@ -63,4 +63,4 @@ grpcurl -insecure \
 ```
 
 For the split-port variant, see [`scenarios/01-simple/http-grpc-split-port`](../http-grpc-split-port/README.md).
-For the shared-port variant with explicit `allowedRoutes.kinds`, see [`scenarios/23-http-grpc-shared-port-allowed-routes`](../../23-http-grpc-shared-port-allowed-routes/README.md).
+For the shared-port variant with explicit `allowedRoutes.kinds`, see [`scenarios/02-listener-policy/kinds-shared-port`](../../02-listener-policy/kinds-shared-port/README.md).

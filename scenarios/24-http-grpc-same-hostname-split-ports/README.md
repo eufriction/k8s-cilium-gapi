@@ -132,9 +132,9 @@ grpcurl -insecure \
 
 ## Related scenarios
 
-| Scenario                                                                                        | Description                                                      |
-| ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| [20-http-grpc](../20-http-grpc/README.md)                                                       | HTTP + gRPC, same Gateway, **different** hostnames               |
-| [21-http-grpc-shared-port](../21-http-grpc-shared-port/README.md)                               | HTTP + gRPC on the **same** port 443, no `allowedRoutes.kinds`   |
-| [22-http-grpc-allowed-routes](../22-http-grpc-allowed-routes/README.md)                         | HTTP + gRPC with explicit `allowedRoutes.kinds`, separate ports  |
-| [23-http-grpc-shared-port-allowed-routes](../23-http-grpc-shared-port-allowed-routes/README.md) | HTTP + gRPC, same port, `allowedRoutes.kinds` — known Cilium bug |
+| Scenario                                                               | Description                                                      |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| [http-grpc-split-port](../01-simple/http-grpc-split-port/README.md)    | HTTP + gRPC, same Gateway, **different** hostnames               |
+| [http-grpc-shared-port](../01-simple/http-grpc-shared-port/README.md)  | HTTP + gRPC on the **same** port 443, no `allowedRoutes.kinds`   |
+| [kinds-split-port](../02-listener-policy/kinds-split-port/README.md)   | HTTP + gRPC with explicit `allowedRoutes.kinds`, separate ports  |
+| [kinds-shared-port](../02-listener-policy/kinds-shared-port/README.md) | HTTP + gRPC, same port, `allowedRoutes.kinds` — known Cilium bug |

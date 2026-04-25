@@ -29,7 +29,7 @@ multiple filter chains with overlapping matching rules are defined
 
 Works on **1.19.1** (dedup still present). Fixed on `fix/allowed-routes` branch (restores `SortedUnique`).
 
-**Refs:** [#31122](https://github.com/cilium/cilium/issues/31122), [#37609](https://github.com/cilium/cilium/issues/37609). Also affects scenarios [22](../22-http-grpc-allowed-routes/README.md) and [24](../24-http-grpc-same-hostname-split-ports/README.md).
+**Refs:** [#31122](https://github.com/cilium/cilium/issues/31122), [#37609](https://github.com/cilium/cilium/issues/37609). Also affects scenarios [22](../../02-listener-policy/kinds-split-port/README.md) and [24](../../24-http-grpc-same-hostname-split-ports/README.md).
 
 ## Manual check
 
