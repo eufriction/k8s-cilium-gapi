@@ -24,5 +24,5 @@ Each namespace has its own PKI (self-signed CA). mTLS with the correct CA proves
 ## Run
 
 ```sh
-mise run //scenarios/35-tls-passthrough-same-hostname-split-ports:start
+mise run //scenarios/03-multi-port/tls-passthrough-same-hostname:start
 ```

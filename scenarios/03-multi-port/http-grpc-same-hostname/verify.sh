@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../.." && pwd)"
+REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
 skip_if X_SPLIT_PORT_GRPC_BROKEN "same-hostname split-port gRPC bug — not yet fixed upstream"
 kubectl wait pod/api -n backend-a --for=condition=Ready --timeout=60s

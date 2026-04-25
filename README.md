@@ -146,29 +146,29 @@ Read each scenario README for the scenario-specific test flow.
 
 ### Scenario table
 
-| Scenario                                                                                               | Scope                                                                                                       | Status                                                        |
-| ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| [`http`](scenarios/01-simple/http/README.md)                                                           | HTTPRoute, plaintext, one gateway, two backend namespaces                                                   | ✅ Pass                                                       |
-| [`grpc`](scenarios/01-simple/grpc/README.md)                                                           | GRPCRoute, TLS termination at gateway, two backend namespaces                                               | ✅ Pass (status message [bug](#known-cilium-bugs) on ≤1.19.x) |
-| [`https`](scenarios/01-simple/https/README.md)                                                         | HTTPRoute over HTTPS, TLS termination at gateway, two backend namespaces                                    | ✅ Pass                                                       |
-| [`tls-passthrough`](scenarios/01-simple/tls-passthrough/README.md)                                     | TLSRoute passthrough, mTLS at backend, per-namespace PKI                                                    | ✅ Pass (status message [bug](#known-cilium-bugs) on ≤1.19.x) |
-| `05-tcp`                                                                                               | TCPRoute, no TLS                                                                                            | Planned                                                       |
-| `06-http-header-routing`                                                                               | HTTPRoute with header-based match rules                                                                     | Planned                                                       |
-| `07-http-canary`                                                                                       | HTTPRoute with weighted backendRefs for traffic splitting                                                   | Planned                                                       |
-| [`http-grpc-split-port`](scenarios/01-simple/http-grpc-split-port/README.md)                           | HTTPS + gRPC on one gateway, separate ports, two namespaces                                                 | ✅ Pass                                                       |
-| [`http-grpc-shared-port`](scenarios/01-simple/http-grpc-shared-port/README.md)                         | HTTPRoute + GRPCRoute on one HTTPS listener (same port, different hostnames)                                | ✅ Pass                                                       |
-| [`kinds-split-port`](scenarios/02-listener-policy/kinds-split-port/README.md)                          | HTTPS + gRPC on separate ports with per-listener `allowedRoutes.kinds`                                      | ⚠️ [Cilium bug](#known-cilium-bugs)                           |
-| [`kinds-shared-port`](scenarios/02-listener-policy/kinds-shared-port/README.md)                        | HTTPRoute + GRPCRoute on one HTTPS listener with `allowedRoutes.kinds`                                      | ✅ Pass on ≥1.19.3 — [bug](#known-cilium-bugs) on ≤1.19.1     |
-| [`24-http-grpc-same-hostname-split-ports`](scenarios/24-http-grpc-same-hostname-split-ports/README.md) | HTTPRoute + GRPCRoute on same hostname, different ports (443 / 50051)                                       | ⚠️ [Cilium bug](#known-cilium-bugs)                           |
-| [`https-tls-shared-port`](scenarios/01-simple/https-tls-shared-port/README.md)                         | HTTPS termination + TLS passthrough on same port 443, disjoint hostnames                                    | ✅ Pass                                                       |
-| [`no-sectionname`](scenarios/02-listener-policy/no-sectionname/README.md)                              | TLSRoute without sectionName on mixed-listener Gateway (HTTP/HTTPS/TLS)                                     | ⚠️ [Cilium bug](#known-cilium-bugs)                           |
-| [`kinds-multi-listener`](scenarios/02-listener-policy/kinds-multi-listener/README.md)                  | 4 listeners (HTTP/HTTPS/gRPC/TLS), per-listener `allowedRoutes.kinds`, HTTP→HTTPS redirect, TLS passthrough | ⚠️ [Cilium bug](#known-cilium-bugs)                           |
-| `30-multi-gateway-grpc`                                                                                | Two gateways, each serving gRPC                                                                             | Planned                                                       |
-| `31-multi-gateway-multi-protocol`                                                                      | Two gateways, mixed protocols                                                                               | Planned                                                       |
-| `40-kyverno-route-governance`                                                                          | Mutating + validating policies for Gateway API route hygiene                                                | Planned                                                       |
-| `41-http-rate-limit`                                                                                   | HTTPRoute with Envoy rate-limit filter                                                                      | Planned                                                       |
-| `42-http-ext-auth`                                                                                     | HTTPRoute with OIDC / external authorization                                                                | Planned                                                       |
-| `50-clustermesh-grpc`                                                                                  | Cross-cluster gRPC with Cilium ClusterMesh                                                                  | Planned                                                       |
+| Scenario                                                                               | Scope                                                                                                       | Status                                                        |
+| -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| [`http`](scenarios/01-simple/http/README.md)                                           | HTTPRoute, plaintext, one gateway, two backend namespaces                                                   | ✅ Pass                                                       |
+| [`grpc`](scenarios/01-simple/grpc/README.md)                                           | GRPCRoute, TLS termination at gateway, two backend namespaces                                               | ✅ Pass (status message [bug](#known-cilium-bugs) on ≤1.19.x) |
+| [`https`](scenarios/01-simple/https/README.md)                                         | HTTPRoute over HTTPS, TLS termination at gateway, two backend namespaces                                    | ✅ Pass                                                       |
+| [`tls-passthrough`](scenarios/01-simple/tls-passthrough/README.md)                     | TLSRoute passthrough, mTLS at backend, per-namespace PKI                                                    | ✅ Pass (status message [bug](#known-cilium-bugs) on ≤1.19.x) |
+| `05-tcp`                                                                               | TCPRoute, no TLS                                                                                            | Planned                                                       |
+| `06-http-header-routing`                                                               | HTTPRoute with header-based match rules                                                                     | Planned                                                       |
+| `07-http-canary`                                                                       | HTTPRoute with weighted backendRefs for traffic splitting                                                   | Planned                                                       |
+| [`http-grpc-split-port`](scenarios/01-simple/http-grpc-split-port/README.md)           | HTTPS + gRPC on one gateway, separate ports, two namespaces                                                 | ✅ Pass                                                       |
+| [`http-grpc-shared-port`](scenarios/01-simple/http-grpc-shared-port/README.md)         | HTTPRoute + GRPCRoute on one HTTPS listener (same port, different hostnames)                                | ✅ Pass                                                       |
+| [`kinds-split-port`](scenarios/02-listener-policy/kinds-split-port/README.md)          | HTTPS + gRPC on separate ports with per-listener `allowedRoutes.kinds`                                      | ⚠️ [Cilium bug](#known-cilium-bugs)                           |
+| [`kinds-shared-port`](scenarios/02-listener-policy/kinds-shared-port/README.md)        | HTTPRoute + GRPCRoute on one HTTPS listener with `allowedRoutes.kinds`                                      | ✅ Pass on ≥1.19.3 — [bug](#known-cilium-bugs) on ≤1.19.1     |
+| [`http-grpc-same-hostname`](scenarios/03-multi-port/http-grpc-same-hostname/README.md) | HTTPRoute + GRPCRoute on same hostname, different ports (443 / 50051)                                       | ⚠️ [Cilium bug](#known-cilium-bugs)                           |
+| [`https-tls-shared-port`](scenarios/01-simple/https-tls-shared-port/README.md)         | HTTPS termination + TLS passthrough on same port 443, disjoint hostnames                                    | ✅ Pass                                                       |
+| [`no-sectionname`](scenarios/02-listener-policy/no-sectionname/README.md)              | TLSRoute without sectionName on mixed-listener Gateway (HTTP/HTTPS/TLS)                                     | ⚠️ [Cilium bug](#known-cilium-bugs)                           |
+| [`kinds-multi-listener`](scenarios/02-listener-policy/kinds-multi-listener/README.md)  | 4 listeners (HTTP/HTTPS/gRPC/TLS), per-listener `allowedRoutes.kinds`, HTTP→HTTPS redirect, TLS passthrough | ⚠️ [Cilium bug](#known-cilium-bugs)                           |
+| `30-multi-gateway-grpc`                                                                | Two gateways, each serving gRPC                                                                             | Planned                                                       |
+| `31-multi-gateway-multi-protocol`                                                      | Two gateways, mixed protocols                                                                               | Planned                                                       |
+| `40-kyverno-route-governance`                                                          | Mutating + validating policies for Gateway API route hygiene                                                | Planned                                                       |
+| `41-http-rate-limit`                                                                   | HTTPRoute with Envoy rate-limit filter                                                                      | Planned                                                       |
+| `42-http-ext-auth`                                                                     | HTTPRoute with OIDC / external authorization                                                                | Planned                                                       |
+| `50-clustermesh-grpc`                                                                  | Cross-cluster gRPC with Cilium ClusterMesh                                                                  | Planned                                                       |
 
 ### Known Cilium bugs
 
@@ -185,22 +185,22 @@ The verify scripts use version-conditional `X_*` env vars to skip or adjust asse
 
 ### Test results by version
 
-| Scenario                               | 1.19.1 | 1.19.3 | 1.20.0-pre.1 | #44889 branch | fix/allowed-routes |
-| -------------------------------------- | :----: | :----: | :----------: | :-----------: | :----------------: |
-| http                                   |   ✅   |   ✅   |      ✅      |      ✅       |         ✅         |
-| grpc                                   |  ✅¹   |  ✅¹   |      ✅      |      ✅       |         ✅         |
-| https                                  |   ✅   |   ✅   |      ✅      |      ✅       |         ✅         |
-| tls-passthrough                        |  ✅¹   |  ✅¹   |      ✅      |      ✅       |         ✅         |
-| http-grpc-split-port                   |   ✅   |  ❌¹⁰  |     ❌¹⁰     |     ❌¹⁰      |        ✅¹¹        |
-| http-grpc-shared-port                  |   ✅   |   ✅   |      ✅      |      ✅       |         ✅         |
-| kinds-split-port                       |  ❌¹²  |  ⏭️³   |     ⏭️³      |      ⏭️³      |        ❌¹⁰        |
-| kinds-shared-port                      |  ❌¹³  |   ✅   |      ✅      |      ✅       |         ✅         |
-| 24-http-grpc-same-hostname-split-ports |  ⏭️³   |  ⏭️³   |     ⏭️³      |      ✅⁵      |        ❌¹⁰        |
-| https-tls-shared-port                  |   ✅   |   ✅   |      —       |      ✅       |         ✅         |
-| no-sectionname                         |  ❌¹⁴  |  ⏭️⁴   |      —       |      ❌⁶      |        ⏭️⁴         |
-| kinds-multi-listener                   |  ❌⁷   |  ❌⁷   |      —       |       —       |        ✅⁸         |
-| 35-tls-passthrough-same-hostname-split |  ⏭️⁹   |   —    |      —       |       —       |        ⏭️⁹         |
-| namespaces                             |   ✅   |   —    |      —       |       —       |         ✅         |
+| Scenario                      | 1.19.1 | 1.19.3 | 1.20.0-pre.1 | #44889 branch | fix/allowed-routes |
+| ----------------------------- | :----: | :----: | :----------: | :-----------: | :----------------: |
+| http                          |   ✅   |   ✅   |      ✅      |      ✅       |         ✅         |
+| grpc                          |  ✅¹   |  ✅¹   |      ✅      |      ✅       |         ✅         |
+| https                         |   ✅   |   ✅   |      ✅      |      ✅       |         ✅         |
+| tls-passthrough               |  ✅¹   |  ✅¹   |      ✅      |      ✅       |         ✅         |
+| http-grpc-split-port          |   ✅   |  ❌¹⁰  |     ❌¹⁰     |     ❌¹⁰      |        ✅¹¹        |
+| http-grpc-shared-port         |   ✅   |   ✅   |      ✅      |      ✅       |         ✅         |
+| kinds-split-port              |  ❌¹²  |  ⏭️³   |     ⏭️³      |      ⏭️³      |        ❌¹⁰        |
+| kinds-shared-port             |  ❌¹³  |   ✅   |      ✅      |      ✅       |         ✅         |
+| http-grpc-same-hostname       |  ❌¹⁵  |  ⏭️³   |     ⏭️³      |      ✅⁵      |        ❌¹⁰        |
+| https-tls-shared-port         |   ✅   |   ✅   |      —       |      ✅       |         ✅         |
+| no-sectionname                |  ❌¹⁴  |  ⏭️⁴   |      —       |      ❌⁶      |        ⏭️⁴         |
+| kinds-multi-listener          |  ❌⁷   |  ❌⁷   |      —       |       —       |        ✅⁸         |
+| tls-passthrough-same-hostname |  ❌¹⁶  |   —    |      —       |       —       |        ⏭️⁹         |
+| namespaces                    |   ✅   |   —    |      —       |       —       |         ✅         |
 
 ✅ = pass. ❌ = fail. ⏭️ = skipped by `skip_if`. — = not yet tested.
 ¹ Data plane passes; status message says "Accepted HTTPRoute" instead of correct route type.
@@ -217,6 +217,8 @@ The verify scripts use version-conditional `X_*` env vars to skip or adjust asse
 ¹² HTTPRoute never accepted — `kubectl wait` timed out. Per-listener `allowedRoutes.kinds` on separate ports does not work on 1.19.1.
 ¹³ Routes accepted but gRPC returns `Unimplemented` on shared port 443 — data-plane wiring broken for GRPCRoute when `allowedRoutes.kinds` is set on the listener.
 ¹⁴ Routes accepted but curl returns HTTP 404 — data-plane routing broken when TLSRoute omits `sectionName` on a mixed-listener Gateway. See [#45050](https://github.com/cilium/cilium/issues/45050).
+¹⁵ HTTPS passes but gRPC returns `Unimplemented` on split port 50051 — same-hostname GRPCRoutes on separate ports broken. See [#44877](https://github.com/cilium/cilium/issues/44877).
+¹⁶ `SSL_ERROR_SYSCALL` on TLS passthrough with same hostname across split ports — Envoy listener wiring issue. See [#42898](https://github.com/cilium/cilium/issues/42898).
 
 ---
 
