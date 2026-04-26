@@ -152,9 +152,10 @@ Read each scenario README for the scenario-specific test flow.
 | [`grpc`](scenarios/01-simple/grpc/README.md)                                           | GRPCRoute, TLS termination at gateway, two backend namespaces                                               | ✅ Pass (status message [bug](#known-cilium-bugs) on ≤1.19.x) |
 | [`https`](scenarios/01-simple/https/README.md)                                         | HTTPRoute over HTTPS, TLS termination at gateway, two backend namespaces                                    | ✅ Pass                                                       |
 | [`tls-passthrough`](scenarios/01-simple/tls-passthrough/README.md)                     | TLSRoute passthrough, mTLS at backend, per-namespace PKI                                                    | ✅ Pass (status message [bug](#known-cilium-bugs) on ≤1.19.x) |
-| `05-tcp`                                                                               | TCPRoute, no TLS                                                                                            | Planned                                                       |
-| `06-http-header-routing`                                                               | HTTPRoute with header-based match rules                                                                     | Planned                                                       |
-| `07-http-canary`                                                                       | HTTPRoute with weighted backendRefs for traffic splitting                                                   | Planned                                                       |
+| [`http-redirect`](scenarios/01-simple/http-redirect/README.md)                         | HTTP→HTTPS redirect with `RequestRedirect` filter, dual listener                                            | ✅ Pass                                                       |
+| [`http-header-match`](scenarios/01-simple/http-header-match/README.md)                 | HTTPRoute with header-based match rules, `RequestHeaderModifier`                                            | ✅ Pass                                                       |
+| [`http-path-match`](scenarios/01-simple/http-path-match/README.md)                     | HTTPRoute with path prefix routing, `URLRewrite` to strip prefix                                            | ✅ Pass                                                       |
+| `http-canary`                                                                          | HTTPRoute with weighted backendRefs for traffic splitting                                                   | Planned                                                       |
 | [`http-grpc-split-port`](scenarios/01-simple/http-grpc-split-port/README.md)           | HTTPS + gRPC on one gateway, separate ports, two namespaces                                                 | ✅ Pass                                                       |
 | [`http-grpc-shared-port`](scenarios/01-simple/http-grpc-shared-port/README.md)         | HTTPRoute + GRPCRoute on one HTTPS listener (same port, different hostnames)                                | ✅ Pass                                                       |
 | [`kinds-split-port`](scenarios/02-listener-policy/kinds-split-port/README.md)          | HTTPS + gRPC on separate ports with per-listener `allowedRoutes.kinds`                                      | ⚠️ [Cilium bug](#known-cilium-bugs)                           |
@@ -191,6 +192,9 @@ The verify scripts use version-conditional `X_*` env vars to skip or adjust asse
 | grpc                          |  ✅¹   |  ✅¹   |      ✅      |      ✅       |         ✅         |
 | https                         |   ✅   |   ✅   |      ✅      |      ✅       |         ✅         |
 | tls-passthrough               |  ✅¹   |  ✅¹   |      ✅      |      ✅       |         ✅         |
+| http-redirect                 |   ✅   |   —    |      —       |       —       |         —          |
+| http-header-match             |   ✅   |   —    |      —       |       —       |         —          |
+| http-path-match               |   ✅   |   —    |      —       |       —       |         —          |
 | http-grpc-split-port          |   ✅   |  ❌¹⁰  |     ❌¹⁰     |     ❌¹⁰      |        ✅¹¹        |
 | http-grpc-shared-port         |   ✅   |   ✅   |      ✅      |      ✅       |         ✅         |
 | kinds-split-port              |  ❌¹²  |  ⏭️³   |     ⏭️³      |      ⏭️³      |        ❌¹⁰        |

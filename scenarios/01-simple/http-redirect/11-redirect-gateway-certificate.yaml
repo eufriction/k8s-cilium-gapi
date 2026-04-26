@@ -1,0 +1,16 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: redirect-gateway-certificate
+  namespace: gateway-system
+spec:
+  secretName: redirect-gateway-tls
+  commonName: redirect.example.test
+  dnsNames:
+    - redirect.example.test
+    - localhost
+  ipAddresses:
+    - 127.0.0.1
+  issuerRef:
+    kind: Issuer
+    name: redirect-selfsigned

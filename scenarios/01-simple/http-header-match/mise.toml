@@ -1,0 +1,11 @@
+[tasks.start]
+extends = "scenario:start"
+description = "Deploy the HTTP header-based routing scenario"
+depends = ["//:kind:load:apps{% if usage.verbose %} --verbose{% endif %}"]
+
+[tasks.verify]
+extends = "scenario:verify"
+description = "Verify the HTTP header-based routing scenario"
+
+[tasks.delete]
+extends = "scenario:delete"
