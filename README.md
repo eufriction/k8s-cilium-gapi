@@ -136,13 +136,12 @@ Read each scenario README for the scenario-specific test flow.
 
 ### Directory structure
 
-| Group directory | Category              | Contents                                                        |
-| --------------- | --------------------- | --------------------------------------------------------------- |
-| `01-simple/`    | Simple gateway setups | Single or dual protocol, one gateway — the happy-path scenarios |
-| `22–29`         | Listener policy       | `allowedRoutes.kinds`, `allowedRoutes.namespaces`, sectionName  |
-| `30–39`         | Multi-port / topology | Same hostname on split ports, multi-gateway                     |
-| `40–49`         | Policy & filters      | Kyverno, rate limiting, auth — the protocol is incidental       |
-| `50+`           | Advanced topology     | ClusterMesh, federation, cross-cluster                          |
+| Group directory            | Category              | Contents                                                        |
+| -------------------------- | --------------------- | --------------------------------------------------------------- |
+| `01-simple/`               | Simple gateway setups | Single or dual protocol, one gateway — the happy-path scenarios |
+| `02-listener-policy/`      | Listener policy       | `allowedRoutes.kinds`, `allowedRoutes.namespaces`, sectionName  |
+| `03-multi-port/`           | Multi-port / topology | Same hostname on split ports, per-port Envoy listeners          |
+| `04-protocol-coexistence/` | Protocol coexistence  | Mixed HTTPS + TLS passthrough — hardest cases (empty/planned)   |
 
 ### Scenario table
 
