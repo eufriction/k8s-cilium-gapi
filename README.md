@@ -56,11 +56,13 @@ mise run //scenarios/01-simple/http:start              # deploy + verify
 mise run //scenarios/01-simple/http-grpc-split-port:start  # deploy + verify
 ```
 
-Each `start` task runs `kubectl apply -k .`, then `verify`. Set `DELETE=1` to clean up after verification:
+Each `start` task runs `kubectl apply -k .`, then `verify`. Pass `--delete` to clean up after verification:
 
 ```sh
-DELETE=1 mise run //scenarios/01-simple/http:start   # deploy + verify + delete
+mise run //scenarios/01-simple/http:start --delete   # deploy + verify + delete
 ```
+
+The `--delete` flag is backed by the `DELETE` env var, so `DELETE=1 mise run …` also works (useful for shell aliases and the glob-based run-all command below).
 
 List all available tasks:
 
@@ -72,11 +74,13 @@ mise tasks --all | grep scenarios
 
 ```sh
 mise run cluster:start
-DELETE=1 mise run --continue-on-error --jobs 1 '//scenarios/...:start'
+mise run --continue-on-error --jobs 1 '//scenarios/...:start' --delete
 mise run cluster:delete
 ```
 
-`--continue-on-error` ensures all 14 scenarios run even if some fail. `--jobs 1` keeps them sequential so namespaces don't collide.
+`--continue-on-error` ensures all 25 scenarios run even if some fail. `--jobs 1` keeps them sequential so namespaces don't collide. `--delete` cleans up each scenario's resources after verification.
+
+Scenarios gated by a `X_*_BROKEN` env var are skipped automatically before deploying — no resources are created and no time is wasted on known-broken configurations.
 
 ### Version profiles
 
@@ -85,7 +89,7 @@ The default Cilium version and version-conditional flags are set in `mise.toml` 
 ```sh
 cp versions/1.19.1.toml mise.local.toml
 mise run cluster:restart
-DELETE=1 mise run --continue-on-error --jobs 1 '//scenarios/...:start' 2>&1 | tee run.log
+mise run --continue-on-error --jobs 1 '//scenarios/...:start' --delete 2>&1 | tee run.log
 mise run cluster:delete
 rm mise.local.toml
 ```
@@ -122,7 +126,7 @@ Then run the standard workflow — `cluster:start` handles image loading and Hel
 
 ```sh
 mise run cluster:restart
-DELETE=1 mise run --continue-on-error --jobs 1 '//scenarios/...:start' 2>&1 | tee run-branch.log
+mise run --continue-on-error --jobs 1 '//scenarios/...:start' --delete 2>&1 | tee run-branch.log
 mise run cluster:delete
 rm mise.local.toml
 ```
@@ -285,6 +289,7 @@ hubble observe --namespace backend-a --follow
 ## Clean up
 
 ```sh
-mise run //scenarios/01-simple/http:delete    # delete a single scenario
-mise run cluster:delete                       # delete the cluster (removes everything)
+mise run //scenarios/01-simple/http:start --delete   # deploy + verify + delete in one step
+mise run //scenarios/01-simple/http:delete --delete   # delete a previously-deployed scenario
+mise run cluster:delete                               # delete the cluster (removes everything)
 ```
