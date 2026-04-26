@@ -2,17 +2,22 @@
 set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
-kubectl wait pod/api -n backend-a --for=condition=Ready --timeout=60s
-kubectl wait pod/api -n backend-b --for=condition=Ready --timeout=60s
-kubectl wait pod/grpc-api -n backend-a --for=condition=Ready --timeout=60s
-kubectl wait pod/grpc-api -n backend-b --for=condition=Ready --timeout=60s
-kubectl wait pod/netshoot-client -n client --for=condition=Ready --timeout=60s
-kubectl wait certificate/shared-port-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s
+# Tier 1: pods + certs in parallel
+wait_parallel \
+  "pod/api -n backend-a --for=condition=Ready --timeout=60s" \
+  "pod/api -n backend-b --for=condition=Ready --timeout=60s" \
+  "pod/grpc-api -n backend-a --for=condition=Ready --timeout=60s" \
+  "pod/grpc-api -n backend-b --for=condition=Ready --timeout=60s" \
+  "pod/netshoot-client -n client --for=condition=Ready --timeout=60s" \
+  "certificate/shared-port-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s"
+# Tier 2: gateway
 kubectl wait gateway/shared-port-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-kubectl wait grpcroute/backend-a-grpc-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-kubectl wait grpcroute/backend-b-grpc-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
+# Tier 3: routes in parallel
+kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
+kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
+kubectl wait grpcroute/backend-a-grpc-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
+kubectl wait grpcroute/backend-b-grpc-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
+wait
 
 GRPC_IMPORT_PATH="${REPO_ROOT}/apps/backend-grpc/proto"
 GRPC_PROTO=grpc/testing/testservice.proto
@@ -65,7 +70,7 @@ fi
 echo "PASS: backend-grpc-b.example.test — all $ITERATIONS requests routed to backend-b"
 
 echo "--- HTTPS checks (shared port 443) ---"
-retry 5 2 curl -kfsS --resolve "backend.example.test:443:127.0.0.1" https://backend.example.test/headers >/dev/null
+retry_until 5 curl -kfsS --resolve "backend.example.test:443:127.0.0.1" https://backend.example.test/headers >/dev/null
 echo "PASS: HTTPS backend-a on port 443"
 curl -kfsS --resolve "backend-b.example.test:443:127.0.0.1" https://backend-b.example.test/headers >/dev/null
 echo "PASS: HTTPS backend-b on port 443"

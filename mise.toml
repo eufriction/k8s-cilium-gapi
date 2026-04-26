@@ -33,6 +33,7 @@ X_TLSROUTE_API_VERSION = "v1alpha2"
 X_TLS_PASSTHROUGH_SPLIT_PORTS_BROKEN = "true"
 X_HTTPS_TLS_SPLIT_PORT_BROKEN = "true"
 X_ALLOWED_ROUTES_NAMESPACES_BROKEN = "true"
+SCENARIO_SKIP_VAR = ""
 
 [tools]
 hk = "latest"
@@ -77,6 +78,10 @@ flag "-v --verbose" env="VERBOSE" help="Enable verbose output for image pulls an
 flag "-d --delete" env="DELETE" help="Delete scenario resources after verify"
 '''
 run = """
+if [ -n "${SCENARIO_SKIP_VAR:-}" ] && [ "${!SCENARIO_SKIP_VAR}" = "true" ]; then
+  echo "SKIP: ${SCENARIO_SKIP_VAR}=true — skipping deploy"
+  exit 0
+fi
 kubectl apply -k .
 mise run :verify{% if usage.delete %} --delete{% endif %}
 """

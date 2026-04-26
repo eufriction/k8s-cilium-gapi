@@ -1,8 +1,15 @@
+[env]
+SCENARIO_SKIP_VAR = "X_ALLOWED_ROUTES_SEPARATE_PORT_BROKEN"
+
 [tasks.start]
 extends = "scenario:start"
 description = "Deploy the kind-restricted HTTPS + TLS passthrough shared-port scenario"
 depends = ["//:kind:load:apps{% if usage.verbose %} --verbose{% endif %}", "//:cert-manager:install"]
 run = """
+if [ -n "${SCENARIO_SKIP_VAR:-}" ] && [ "${!SCENARIO_SKIP_VAR}" = "true" ]; then
+  echo "SKIP: ${SCENARIO_SKIP_VAR}=true — skipping deploy"
+  exit 0
+fi
 if [ "${X_TLSROUTE_API_VERSION:-v1alpha2}" = "v1" ]; then
   echo "--- TLSRoute apiVersion override: v1alpha2 -> v1 ---"
   kubectl kustomize . | sed 's|gateway.networking.k8s.io/v1alpha2|gateway.networking.k8s.io/v1|g' | kubectl apply -f -

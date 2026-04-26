@@ -2,16 +2,17 @@
 set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
-kubectl wait pod/api -n backend-a --for=condition=Ready --timeout=60s
-kubectl wait pod/api -n backend-b --for=condition=Ready --timeout=60s
-kubectl wait pod/grpc-api -n backend-a --for=condition=Ready --timeout=60s
-kubectl wait pod/grpc-api -n backend-b --for=condition=Ready --timeout=60s
-kubectl wait pod/backend-mtls -n backend-a --for=condition=Ready --timeout=60s
-kubectl wait pod/netshoot-client -n client --for=condition=Ready --timeout=60s
-kubectl wait certificate/kind-restricted-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s
-kubectl wait certificate/backend-a-mtls-ca -n backend-a --for=condition=Ready --timeout=180s
-kubectl wait certificate/backend-a-mtls-server -n backend-a --for=condition=Ready --timeout=180s
-kubectl wait certificate/backend-a-mtls-client -n backend-a --for=condition=Ready --timeout=180s
+wait_parallel \
+  "pod/api -n backend-a --for=condition=Ready --timeout=60s" \
+  "pod/api -n backend-b --for=condition=Ready --timeout=60s" \
+  "pod/grpc-api -n backend-a --for=condition=Ready --timeout=60s" \
+  "pod/grpc-api -n backend-b --for=condition=Ready --timeout=60s" \
+  "pod/backend-mtls -n backend-a --for=condition=Ready --timeout=60s" \
+  "pod/netshoot-client -n client --for=condition=Ready --timeout=60s" \
+  "certificate/kind-restricted-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s" \
+  "certificate/backend-a-mtls-ca -n backend-a --for=condition=Ready --timeout=180s" \
+  "certificate/backend-a-mtls-server -n backend-a --for=condition=Ready --timeout=180s" \
+  "certificate/backend-a-mtls-client -n backend-a --for=condition=Ready --timeout=180s"
 kubectl wait gateway/kind-restricted-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
 
 echo "--- Checking route acceptance (4 listeners, per-listener kind restrictions) ---"
@@ -87,7 +88,7 @@ if [ "$route_fail" -eq 1 ]; then
 fi
 
 echo "--- HTTPS checks (port 443, https listener — HTTPRoute only) ---"
-retry 5 2 curl -kfsS --resolve "http-a.http.example.test:443:127.0.0.1" https://http-a.http.example.test/headers >/dev/null
+retry_until 5 curl -kfsS --resolve "http-a.http.example.test:443:127.0.0.1" https://http-a.http.example.test/headers >/dev/null
 echo "PASS: HTTPS backend-a on port 443"
 curl -kfsS --resolve "http-b.http.example.test:443:127.0.0.1" https://http-b.http.example.test/headers >/dev/null
 echo "PASS: HTTPS backend-b on port 443"
@@ -143,7 +144,7 @@ fi
 echo "PASS: grpc-b.grpc.example.test — all $ITERATIONS requests routed to backend-b"
 
 echo "--- HTTP redirect checks (port 80, http listener — no explicit kinds) ---"
-http_code=$(retry 5 2 curl -o /dev/null -s -w "%{http_code}" --resolve "http-a.http.example.test:80:127.0.0.1" http://http-a.http.example.test/headers)
+http_code=$(retry_until 5 curl -o /dev/null -s -w "%{http_code}" --resolve "http-a.http.example.test:80:127.0.0.1" http://http-a.http.example.test/headers)
 if [ "$http_code" != "301" ]; then
   echo "FAIL: HTTP redirect expected 301, got $http_code" >&2
   exit 1

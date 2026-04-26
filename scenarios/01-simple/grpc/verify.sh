@@ -1,14 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
-kubectl wait pod/grpc-api -n grpc-backend-a --for=condition=Ready --timeout=60s
-kubectl wait pod/grpc-api -n grpc-backend-b --for=condition=Ready --timeout=60s
-kubectl wait certificate/grpc-multi-namespace-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s
-kubectl wait gateway/grpc-multi-namespace-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-kubectl wait grpcroute/grpc-backend-a-route -n grpc-backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-kubectl wait grpcroute/grpc-backend-b-route -n grpc-backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
+
+# Tier 1: pods + certs in parallel
+wait_parallel \
+  "pod/grpc-api -n grpc-backend-a --for=condition=Ready --timeout=60s" \
+  "pod/grpc-api -n grpc-backend-b --for=condition=Ready --timeout=60s" \
+  "certificate/grpc-multi-namespace-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s"
+
+# Tier 2: gateway
+kubectl wait gateway/grpc-multi-namespace-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
+
+# Tier 3: routes in parallel
+kubectl wait grpcroute/grpc-backend-a-route -n grpc-backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
+kubectl wait grpcroute/grpc-backend-b-route -n grpc-backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
+wait
 GRPC_IMPORT_PATH="${REPO_ROOT}/apps/backend-grpc/proto"
 GRPC_PROTO=grpc/testing/testservice.proto
 GRPC_REQ='{"response_size":32,"fill_server_id":true}'

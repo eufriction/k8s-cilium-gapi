@@ -5,18 +5,25 @@ source "${REPO_ROOT}/lib/verify-helpers.sh"
 skip_if X_HTTPS_TLS_SPLIT_PORT_BROKEN "HTTPS + TLS passthrough same-hostname split-port broken (cilium#44889 + cilium#45371)"
 
 # --- Wait for resources ---
-kubectl wait pod/api -n backend-a --for=condition=Ready --timeout=60s
-kubectl wait pod/backend-mtls -n backend-b --for=condition=Ready --timeout=60s
-kubectl wait certificate/https-tls-split-port-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s
-kubectl wait certificate/backend-b-mtls-ca -n backend-b --for=condition=Ready --timeout=180s
-kubectl wait certificate/backend-b-mtls-server -n backend-b --for=condition=Ready --timeout=180s
-kubectl wait certificate/backend-b-mtls-client -n backend-b --for=condition=Ready --timeout=180s
+# Tier 1 — pods & certificates (parallel)
+wait_parallel \
+  "pod/api -n backend-a --for=condition=Ready --timeout=60s" \
+  "pod/backend-mtls -n backend-b --for=condition=Ready --timeout=60s" \
+  "certificate/https-tls-split-port-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s" \
+  "certificate/backend-b-mtls-ca -n backend-b --for=condition=Ready --timeout=180s" \
+  "certificate/backend-b-mtls-server -n backend-b --for=condition=Ready --timeout=180s" \
+  "certificate/backend-b-mtls-client -n backend-b --for=condition=Ready --timeout=180s"
+
+# Tier 2 — gateway
 kubectl wait gateway/https-tls-split-port-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-kubectl wait tlsroute/backend-b-tls-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
+
+# Tier 3 — routes (parallel, manual & + wait)
+kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
+kubectl wait tlsroute/backend-b-tls-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
+wait
 
 # --- HTTPS termination (api.example.test on port 443) ---
-retry 5 2 curl -kfsS --resolve "api.example.test:443:127.0.0.1" https://api.example.test/headers >/dev/null
+retry_until 5 curl -kfsS --resolve "api.example.test:443:127.0.0.1" https://api.example.test/headers >/dev/null
 echo "PASS: HTTPS termination — api.example.test on port 443"
 
 # --- TLS passthrough with mTLS (api.example.test on port 9443) ---

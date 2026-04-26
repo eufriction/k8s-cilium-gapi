@@ -5,7 +5,8 @@ source "${REPO_ROOT}/lib/verify-helpers.sh"
 skip_if X_ALLOWED_ROUTES_NAMESPACES_BROKEN "allowedRoutes.namespaces per-listener enforcement broken (cilium#42159)"
 
 # --- Wait for resources ---
-kubectl wait pod/api -n backend-a --for=condition=Ready --timeout=60s
+wait_parallel \
+  "pod/api -n backend-a --for=condition=Ready --timeout=60s"
 kubectl wait gateway/allowed-routes-ns-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
 
 # Give the controller time to reconcile route status

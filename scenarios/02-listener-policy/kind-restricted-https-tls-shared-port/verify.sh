@@ -5,12 +5,13 @@ source "${REPO_ROOT}/lib/verify-helpers.sh"
 skip_if X_ALLOWED_ROUTES_SEPARATE_PORT_BROKEN "per-listener allowedRoutes.kinds broken — CheckGatewayRouteKindAllowed global overwrite (cilium#45559)"
 
 # --- Wait for resources ---
-kubectl wait pod/api -n backend-a --for=condition=Ready --timeout=60s
-kubectl wait pod/backend-mtls -n backend-b --for=condition=Ready --timeout=60s
-kubectl wait certificate/kind-https-tls-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s
-kubectl wait certificate/backend-b-mtls-ca -n backend-b --for=condition=Ready --timeout=180s
-kubectl wait certificate/backend-b-mtls-server -n backend-b --for=condition=Ready --timeout=180s
-kubectl wait certificate/backend-b-mtls-client -n backend-b --for=condition=Ready --timeout=180s
+wait_parallel \
+  "pod/api -n backend-a --for=condition=Ready --timeout=60s" \
+  "pod/backend-mtls -n backend-b --for=condition=Ready --timeout=60s" \
+  "certificate/kind-https-tls-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s" \
+  "certificate/backend-b-mtls-ca -n backend-b --for=condition=Ready --timeout=180s" \
+  "certificate/backend-b-mtls-server -n backend-b --for=condition=Ready --timeout=180s" \
+  "certificate/backend-b-mtls-client -n backend-b --for=condition=Ready --timeout=180s"
 kubectl wait gateway/kind-https-tls-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
 
 echo "--- Checking route acceptance ---"
@@ -47,7 +48,7 @@ if [ "$route_fail" -eq 1 ]; then
 fi
 
 # --- HTTPS termination (web.example.test on port 443) ---
-retry 5 2 curl -kfsS --resolve "web.example.test:443:127.0.0.1" https://web.example.test/headers >/dev/null
+retry_until 5 curl -kfsS --resolve "web.example.test:443:127.0.0.1" https://web.example.test/headers >/dev/null
 echo "PASS: HTTPS termination — web.example.test on port 443"
 
 # --- TLS passthrough with mTLS (mtls-b.example.test on port 443) ---

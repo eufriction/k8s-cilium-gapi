@@ -1,3 +1,6 @@
+[env]
+SCENARIO_SKIP_VAR = "X_ALLOWED_ROUTES_SEPARATE_PORT_BROKEN"
+
 [tasks.start]
 extends = "scenario:start"
 description = "Deploy the allowed-routes kind-restricted scenario"

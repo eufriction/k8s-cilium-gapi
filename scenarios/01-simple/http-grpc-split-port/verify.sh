@@ -2,19 +2,24 @@
 set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
-kubectl wait pod/api -n backend-a --for=condition=Ready --timeout=60s
-kubectl wait pod/api -n backend-b --for=condition=Ready --timeout=60s
-kubectl wait pod/grpc-api -n backend-a --for=condition=Ready --timeout=60s
-kubectl wait pod/grpc-api -n backend-b --for=condition=Ready --timeout=60s
-kubectl wait certificate/https-grpc-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s
+# Tier 1: pods + certs in parallel
+wait_parallel \
+  "pod/api -n backend-a --for=condition=Ready --timeout=60s" \
+  "pod/api -n backend-b --for=condition=Ready --timeout=60s" \
+  "pod/grpc-api -n backend-a --for=condition=Ready --timeout=60s" \
+  "pod/grpc-api -n backend-b --for=condition=Ready --timeout=60s" \
+  "certificate/https-grpc-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s"
+# Tier 2: gateway
 kubectl wait gateway/https-grpc-multi-namespace-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-kubectl wait grpcroute/backend-a-grpc-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-kubectl wait grpcroute/backend-b-grpc-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
+# Tier 3: routes in parallel
+kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
+kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
+kubectl wait grpcroute/backend-a-grpc-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
+kubectl wait grpcroute/backend-b-grpc-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
+wait
 
 echo "--- HTTPS smoke checks (port 443) ---"
-retry 5 2 curl -kfsS --resolve "https-a.example.test:443:127.0.0.1" https://https-a.example.test/headers >/dev/null
+retry_until 5 curl -kfsS --resolve "https-a.example.test:443:127.0.0.1" https://https-a.example.test/headers >/dev/null
 echo "PASS: HTTPS backend-a on port 443"
 curl -kfsS --resolve "https-b.example.test:443:127.0.0.1" https://https-b.example.test/headers >/dev/null
 echo "PASS: HTTPS backend-b on port 443"
@@ -26,7 +31,7 @@ GRPC_METHOD=grpc.testing.TestService/UnaryCall
 ITERATIONS=10
 
 echo "--- gRPC affinity checks (port 50051) ---"
-retry 5 2 grpcurl -insecure \
+retry_until 5 grpcurl -insecure \
   -authority grpc-a.example.test \
   -import-path "$GRPC_IMPORT_PATH" \
   -proto "$GRPC_PROTO" \

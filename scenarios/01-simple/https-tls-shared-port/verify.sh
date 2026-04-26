@@ -3,19 +3,25 @@ set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
 
-# --- Wait for resources ---
-kubectl wait pod/api -n backend-a --for=condition=Ready --timeout=60s
-kubectl wait pod/backend-mtls -n backend-b --for=condition=Ready --timeout=60s
-kubectl wait certificate/scenario-25-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s
-kubectl wait certificate/backend-b-mtls-ca -n backend-b --for=condition=Ready --timeout=180s
-kubectl wait certificate/backend-b-mtls-server -n backend-b --for=condition=Ready --timeout=180s
-kubectl wait certificate/backend-b-mtls-client -n backend-b --for=condition=Ready --timeout=180s
+# --- Tier 1: pods + certs in parallel ---
+wait_parallel \
+  "pod/api -n backend-a --for=condition=Ready --timeout=60s" \
+  "pod/backend-mtls -n backend-b --for=condition=Ready --timeout=60s" \
+  "certificate/scenario-25-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s" \
+  "certificate/backend-b-mtls-ca -n backend-b --for=condition=Ready --timeout=180s" \
+  "certificate/backend-b-mtls-server -n backend-b --for=condition=Ready --timeout=180s" \
+  "certificate/backend-b-mtls-client -n backend-b --for=condition=Ready --timeout=180s"
+
+# --- Tier 2: gateway ---
 kubectl wait gateway/https-tls-same-port-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-kubectl wait httproute/backend-a-web-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-kubectl wait tlsroute/backend-b-mtls-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
+
+# --- Tier 3: routes in parallel ---
+kubectl wait httproute/backend-a-web-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
+kubectl wait tlsroute/backend-b-mtls-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
+wait
 
 # --- HTTPS termination (web.example.test on port 443) ---
-retry 5 2 curl -kfsS --resolve "web.example.test:443:127.0.0.1" https://web.example.test/headers >/dev/null
+retry_until 5 curl -kfsS --resolve "web.example.test:443:127.0.0.1" https://web.example.test/headers >/dev/null
 echo "PASS: HTTPS termination — web.example.test on port 443"
 
 # --- TLS passthrough with mTLS (mtls-b.example.test on port 443) ---

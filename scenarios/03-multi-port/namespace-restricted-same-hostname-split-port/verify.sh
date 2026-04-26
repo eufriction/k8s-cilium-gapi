@@ -5,8 +5,12 @@ source "${REPO_ROOT}/lib/verify-helpers.sh"
 skip_if X_ALLOWED_ROUTES_NAMESPACES_BROKEN "namespace-restricted same-hostname split-port broken (cilium#42159 + cilium#44889)"
 
 # --- Wait for resources ---
-kubectl wait pod/api -n backend-a --for=condition=Ready --timeout=60s
-kubectl wait certificate/ns-restricted-split-port-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s
+# Tier 1 — pods & certificates (parallel)
+wait_parallel \
+  "pod/api -n backend-a --for=condition=Ready --timeout=60s" \
+  "certificate/ns-restricted-split-port-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s"
+
+# Tier 2 — gateway
 kubectl wait gateway/ns-restricted-same-hostname-split-port-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
 
 # Give the controller time to reconcile route status
@@ -38,5 +42,5 @@ else
 fi
 
 # --- Traffic check on the open listener (port 50051) ---
-retry 5 2 curl -kfsS --resolve "api.example.test:50051:127.0.0.1" https://api.example.test:50051/headers >/dev/null
+retry_until 5 curl -kfsS --resolve "api.example.test:50051:127.0.0.1" https://api.example.test:50051/headers >/dev/null
 echo "PASS: HTTPS traffic — api.example.test on port 50051 (open listener)"

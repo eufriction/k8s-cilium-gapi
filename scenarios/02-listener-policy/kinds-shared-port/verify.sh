@@ -3,12 +3,13 @@ set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
 skip_if X_ALLOWED_ROUTES_SHARED_PORT_BROKEN "shared-port allowedRoutes.kinds bug — GRPCRoute excluded from Envoy config (fixed in 1.19.3)"
-kubectl wait pod/api -n backend-a --for=condition=Ready --timeout=60s
-kubectl wait pod/api -n backend-b --for=condition=Ready --timeout=60s
-kubectl wait pod/grpc-api -n backend-a --for=condition=Ready --timeout=60s
-kubectl wait pod/grpc-api -n backend-b --for=condition=Ready --timeout=60s
-kubectl wait pod/netshoot-client -n client --for=condition=Ready --timeout=60s
-kubectl wait certificate/shared-port-allowed-routes-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s
+wait_parallel \
+  "pod/api -n backend-a --for=condition=Ready --timeout=60s" \
+  "pod/api -n backend-b --for=condition=Ready --timeout=60s" \
+  "pod/grpc-api -n backend-a --for=condition=Ready --timeout=60s" \
+  "pod/grpc-api -n backend-b --for=condition=Ready --timeout=60s" \
+  "pod/netshoot-client -n client --for=condition=Ready --timeout=60s" \
+  "certificate/shared-port-allowed-routes-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s"
 kubectl wait gateway/shared-port-allowed-routes-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
 
 echo "--- Checking route attachment (allowedRoutes.kinds: HTTPRoute + GRPCRoute) ---"
@@ -120,7 +121,7 @@ fi
 echo "PASS: backend-grpc-b.example.test — all $ITERATIONS requests routed to backend-b"
 
 echo "--- HTTPS checks (shared port 443) ---"
-retry 5 2 curl -kfsS --resolve "backend.example.test:443:127.0.0.1" https://backend.example.test/headers >/dev/null
+retry_until 5 curl -kfsS --resolve "backend.example.test:443:127.0.0.1" https://backend.example.test/headers >/dev/null
 echo "PASS: HTTPS backend-a on port 443"
 curl -kfsS --resolve "backend-b.example.test:443:127.0.0.1" https://backend-b.example.test/headers >/dev/null
 echo "PASS: HTTPS backend-b on port 443"
