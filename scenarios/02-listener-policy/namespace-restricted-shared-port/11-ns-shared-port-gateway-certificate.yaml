@@ -1,0 +1,19 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ns-shared-port-gateway-certificate
+  namespace: gateway-system
+  labels:
+    app.kubernetes.io/part-of: demo
+spec:
+  secretName: ns-shared-port-gateway-tls
+  commonName: restricted.example.test
+  dnsNames:
+    - restricted.example.test
+    - open.example.test
+    - localhost
+  ipAddresses:
+    - 127.0.0.1
+  issuerRef:
+    kind: Issuer
+    name: ns-shared-port-selfsigned

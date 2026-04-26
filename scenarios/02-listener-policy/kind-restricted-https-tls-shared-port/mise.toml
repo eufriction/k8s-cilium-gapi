@@ -1,0 +1,20 @@
+[tasks.start]
+extends = "scenario:start"
+description = "Deploy the kind-restricted HTTPS + TLS passthrough shared-port scenario"
+depends = ["//:kind:load:apps{% if usage.verbose %} --verbose{% endif %}", "//:cert-manager:install"]
+run = """
+if [ "${X_TLSROUTE_API_VERSION:-v1alpha2}" = "v1" ]; then
+  echo "--- TLSRoute apiVersion override: v1alpha2 -> v1 ---"
+  kubectl kustomize . | sed 's|gateway.networking.k8s.io/v1alpha2|gateway.networking.k8s.io/v1|g' | kubectl apply -f -
+else
+  kubectl apply -k .
+fi
+mise run :verify{% if usage.delete %} --delete{% endif %}
+"""
+
+[tasks.verify]
+extends = "scenario:verify"
+description = "Verify kind-restricted HTTPS + TLS passthrough on shared port 443"
+
+[tasks.delete]
+extends = "scenario:delete"

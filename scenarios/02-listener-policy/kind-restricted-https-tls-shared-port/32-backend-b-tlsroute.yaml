@@ -1,0 +1,19 @@
+---
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TLSRoute
+metadata:
+  name: backend-b-mtls-route
+  namespace: backend-b
+  labels:
+    app.kubernetes.io/part-of: demo
+spec:
+  parentRefs:
+    - name: kind-https-tls-gateway
+      namespace: gateway-system
+      sectionName: tls
+  hostnames:
+    - mtls-b.example.test
+  rules:
+    - backendRefs:
+        - name: backend-mtls
+          port: 9443

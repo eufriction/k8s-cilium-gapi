@@ -1,0 +1,11 @@
+[tasks.start]
+extends = "scenario:start"
+description = "Deploy the namespace-restricted split-port HTTP scenario"
+depends = ["//:kind:load:apps{% if usage.verbose %} --verbose{% endif %}"]
+
+[tasks.verify]
+extends = "scenario:verify"
+description = "Verify namespace-restricted allowedRoutes on split HTTP ports"
+
+[tasks.delete]
+extends = "scenario:delete"

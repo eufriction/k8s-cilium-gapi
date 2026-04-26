@@ -1,0 +1,11 @@
+[tasks.start]
+extends = "scenario:start"
+description = "Deploy the namespace-restricted shared-port HTTPS scenario"
+depends = ["//:kind:load:apps{% if usage.verbose %} --verbose{% endif %}", "//:cert-manager:install"]
+
+[tasks.verify]
+extends = "scenario:verify"
+description = "Verify namespace-restricted allowedRoutes on shared HTTPS port"
+
+[tasks.delete]
+extends = "scenario:delete"

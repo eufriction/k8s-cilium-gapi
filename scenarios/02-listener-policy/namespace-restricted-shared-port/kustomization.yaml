@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization.json
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - 00-gateway-system-namespace.yaml
+  - 00-backend-a-namespace.yaml
+  - 10-ns-shared-port-selfsigned-issuer.yaml
+  - 11-ns-shared-port-gateway-certificate.yaml
+  - instances/backend-http-a
+  - 30-gateway.yaml
+  - 31-cross-ns-httproute.yaml

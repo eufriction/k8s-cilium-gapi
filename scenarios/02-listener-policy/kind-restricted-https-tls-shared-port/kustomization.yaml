@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization.json
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - 00-gateway-system-namespace.yaml
+  - 00-backend-a-namespace.yaml
+  - 00-backend-b-namespace.yaml
+  - 00-client-namespace.yaml
+  - 10-gateway-selfsigned-issuer.yaml
+  - 11-gateway-certificate.yaml
+  - 12-backend-b-pki.yaml
+  - instances/backend-http-a
+  - instances/backend-mtls-b
+  - instances/netshoot-client
+  - 30-gateway.yaml
+  - 31-backend-a-httproute.yaml
+  - 32-backend-b-tlsroute.yaml

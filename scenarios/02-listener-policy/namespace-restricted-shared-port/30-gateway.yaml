@@ -1,0 +1,36 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/gateway.networking.k8s.io/gateway_v1.json
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: ns-shared-port-gateway
+  namespace: gateway-system
+  labels:
+    app.kubernetes.io/part-of: demo
+spec:
+  gatewayClassName: cilium
+  listeners:
+    - name: https-restricted
+      protocol: HTTPS
+      port: 443
+      hostname: "restricted.example.test"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: ns-shared-port-gateway-tls
+      allowedRoutes:
+        namespaces:
+          from: Same
+    - name: https-open
+      protocol: HTTPS
+      port: 443
+      hostname: "open.example.test"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: ns-shared-port-gateway-tls
+      allowedRoutes:
+        namespaces:
+          from: All
