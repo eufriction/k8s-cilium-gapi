@@ -196,41 +196,40 @@ The verify scripts use version-conditional `X_*` env vars to skip or adjust asse
 | `01-simple`          | http                                  |   ✅   |   ✅   |      ✅      |      ✅       |         ✅         |
 | `01-simple`          | http-grpc-shared-port                 |   ✅   |   ✅   |      ✅      |      ✅       |         ✅         |
 | `01-simple`          | http-grpc-split-port                  |   ✅   |  ❌¹⁰  |     ❌¹⁰     |     ❌¹⁰      |        ✅¹¹        |
-| `01-simple`          | http-header-match                     |   ✅   |   —    |      —       |       —       |         —          |
-| `01-simple`          | http-path-match                       |   ✅   |   —    |      —       |       —       |         —          |
-| `01-simple`          | http-redirect                         |   ✅   |   —    |      —       |       —       |         —          |
+| `01-simple`          | http-header-match                     |   ✅   |   ✅   |      —       |       —       |         —          |
+| `01-simple`          | http-path-match                       |   ✅   |   ✅   |      —       |       —       |         —          |
+| `01-simple`          | http-redirect                         |   ✅   |   ✅   |      —       |       —       |         —          |
 | `01-simple`          | https                                 |   ✅   |   ✅   |      ✅      |      ✅       |         ✅         |
 | `01-simple`          | https-tls-shared-port                 |   ✅   |   ✅   |      —       |      ✅       |         ✅         |
 | `01-simple`          | tls-passthrough                       |  ✅¹   |  ✅¹   |      ✅      |      ✅       |         ✅         |
-| `02-listener-policy` | kind-restricted-https-tls-shared-port |  ❌¹⁷  |   —    |      —       |       —       |         —          |
+| `02-listener-policy` | kind-restricted-https-tls-shared-port |  ❌⁷   |  ❌⁷   |      —       |       —       |         —          |
 | `02-listener-policy` | kinds-multi-listener                  |  ❌⁷   |  ❌⁷   |      —       |       —       |        ✅⁸         |
 | `02-listener-policy` | kinds-shared-port                     |  ❌¹³  |   ✅   |      ✅      |      ✅       |         ✅         |
-| `02-listener-policy` | kinds-split-port                      |  ❌¹²  |  ⏭️³   |     ⏭️³      |      ⏭️³      |        ❌¹⁰        |
-| `02-listener-policy` | namespace-restricted-shared-port      |   ✅   |   —    |      —       |       —       |         —          |
-| `02-listener-policy` | namespace-restricted-split-port       |   ✅   |   —    |      —       |       —       |         —          |
-| `02-listener-policy` | namespaces                            |   ✅   |   —    |      —       |       —       |         ✅         |
-| `02-listener-policy` | no-sectionname                        |  ❌¹⁴  |  ⏭️⁴   |      —       |      ❌⁶      |        ⏭️⁴         |
-| `03-multi-port`      | http-grpc-same-hostname               |  ❌¹⁵  |  ⏭️³   |     ⏭️³      |      ✅⁵      |        ❌¹⁰        |
-| `03-multi-port`      | tls-passthrough-same-hostname         |  ❌¹⁶  |   —    |      —       |       —       |        ⏭️⁹         |
+| `02-listener-policy` | kinds-split-port                      |  ❌¹²  |  ❌¹²  |     ⏭️³      |      ⏭️³      |        ❌¹⁰        |
+| `02-listener-policy` | namespace-restricted-shared-port      |   ✅   |   ✅   |      —       |       —       |         —          |
+| `02-listener-policy` | namespace-restricted-split-port       |   ✅   |   ✅   |      —       |       —       |         —          |
+| `02-listener-policy` | namespaces                            |   ✅   |   ✅   |      —       |       —       |         ✅         |
+| `02-listener-policy` | no-sectionname                        |  ❌¹⁴  |  ❌¹⁴  |      —       |      ❌⁶      |        ⏭️⁴         |
+| `03-multi-port`      | http-grpc-same-hostname               |  ❌¹⁵  |  ❌¹⁰  |     ⏭️³      |      ✅⁵      |        ❌¹⁰        |
+| `03-multi-port`      | tls-passthrough-same-hostname         |  ❌¹⁶  |  ❌¹⁶  |      —       |       —       |        ⏭️⁹         |
 
 ✅ = pass. ❌ = fail. ⏭️ = skipped by `skip_if`. — = not yet tested.
 ¹ Data plane passes; status message says "Accepted HTTPRoute" instead of correct route type.
-² _(removed — was "transient SSL_ERROR_SYSCALL"; actually permanent NACK, see ¹⁰)_
+
 ³ Skipped; confirmed broken when run without skip — see [Known Cilium bugs](#known-cilium-bugs).
 ⁴ Skipped; confirmed broken (404 on HTTPS termination when TLSRoute omits sectionName) — see [#45050](https://github.com/cilium/cilium/issues/45050).
 ⁵ **Fixed by [#44889](https://github.com/cilium/cilium/pull/44889)** — gRPC traffic distributed 9/11 across both backends.
 ⁶ `SSL_ERROR_SYSCALL` — branch does not include [#45371](https://github.com/cilium/cilium/pull/45371) fix.
-⁷ 5/6 routes rejected with `NotAllowedByListeners` — only the TLSRoute (targeting the last listener `tls-passthrough`, `kinds: [TLSRoute]`) is accepted. All 3 HTTPRoutes and 2 GRPCRoutes are rejected because `CheckGatewayRouteKindAllowed` evaluates all listeners globally and the last listener's `SetParentCondition` call overwrites the result. See [#45559](https://github.com/cilium/cilium/issues/45559).
+⁷ Routes rejected with `NotAllowedByListeners` — `CheckGatewayRouteKindAllowed` evaluates all listeners globally and the last listener's `SetParentCondition` call overwrites the result. In kinds-multi-listener, 5/6 routes are rejected (only TLSRoute accepted); in kind-restricted-https-tls-shared-port, the HTTPRoute is rejected while the TLSRoute succeeds. See [#45559](https://github.com/cilium/cilium/issues/45559).
 ⁸ **Fixed by `fix/allowed-routes` branch** — all 6 routes accepted (3 HTTPRoutes, 2 GRPCRoutes, 1 TLSRoute), HTTPS + gRPC + HTTP redirect + TLS passthrough data plane verified. Covers [community-reported variant](https://github.com/cilium/cilium/issues/45559#issuecomment-4302047885) (HTTP/HTTPS/TLS mixed listeners with implicit kinds).
 ⁹ Skipped; `SSL_ERROR_SYSCALL` on branch builds — likely same Envoy listener timing issue. See [#42898](https://github.com/cilium/cilium/issues/42898).
 ¹⁰ **Permanent Envoy NACK — duplicate `serverNames` in filter chain ([#31122](https://github.com/cilium/cilium/issues/31122))** — the operator merges multi-port listeners (443 + 50051) into a single Envoy listener via `additionalAddresses`. When both ports share the same hostname pattern (`*.example.test`) and the same TLS secret, `TLSSecretsToHostnames()` appends the hostname once per listener, producing `['*.example.test', '*.example.test']` in the TLS filter chain's `serverNames`. Envoy rejects this as overlapping matching rules. **Root cause**: commit [`9ee2db2b32`](https://github.com/cilium/cilium/commit/9ee2db2b32) (backported to v1.19.2, upstream `6292f7d7195355dbbd017d8814d79a227ea2898f`) removed `slices.SortedUnique()` from `toFilterChainMatch()` with the incorrect comment "The hostNames slice cannot have duplicates". That assumption holds for the TLS _passthrough_ path (refactored in the same commit) but NOT for the TLS _termination_ path which still calls `toFilterChainMatch` with raw output from `TLSSecretsToHostnames()`. On **1.19.1** the dedup kept `serverNames` to a single entry → Envoy accepts. On **≥1.19.2** duplicates pass through → permanent NACK. The fix is to restore deduplication in `toFilterChainMatch()`, or deduplicate in `TLSSecretsToHostnames()` itself.
-¹¹ **Fixed by restoring `SortedUnique` in `toFilterChainMatch()`** — the `fix/allowed-routes` branch operator includes the one-line fix that restores `slices.SortedUnique()` in `toFilterChainMatch()`, eliminating the duplicate `serverNames` regression from `9ee2db2b32`. Scenario 20 now passes: HTTPS + gRPC data plane verified on both ports (443, 50051) with 10/10 gRPC affinity.
-¹² HTTPRoute never accepted — `kubectl wait` timed out. Per-listener `allowedRoutes.kinds` on separate ports does not work on 1.19.1.
+¹¹ **Fixed by restoring `SortedUnique` in `toFilterChainMatch()`** — the `fix/allowed-routes` branch operator includes the one-line fix that restores `slices.SortedUnique()` in `toFilterChainMatch()`, eliminating the duplicate `serverNames` regression from `9ee2db2b32`. http-grpc-split-port now passes: HTTPS + gRPC data plane verified on both ports (443, 50051) with 10/10 gRPC affinity.
+¹² HTTPRoute never accepted — `kubectl wait` timed out. Per-listener `allowedRoutes.kinds` on separate ports; same root cause as ⁷ ([#45559](https://github.com/cilium/cilium/issues/45559)).
 ¹³ Routes accepted but gRPC returns `Unimplemented` on shared port 443 — data-plane wiring broken for GRPCRoute when `allowedRoutes.kinds` is set on the listener.
 ¹⁴ Routes accepted but curl returns HTTP 404 — data-plane routing broken when TLSRoute omits `sectionName` on a mixed-listener Gateway. See [#45050](https://github.com/cilium/cilium/issues/45050).
 ¹⁵ HTTPS passes but gRPC returns `Unimplemented` on split port 50051 — same-hostname GRPCRoutes on separate ports broken. See [#44877](https://github.com/cilium/cilium/issues/44877).
 ¹⁶ `SSL_ERROR_SYSCALL` on TLS passthrough with same hostname across split ports — Envoy listener wiring issue. See [#42898](https://github.com/cilium/cilium/issues/42898).
-¹⁷ HTTPRoute rejected with `NotAllowedByListeners` — the TLS listener's `kinds=[TLSRoute]` overwrites the kind check for the HTTPS listener. Same root cause as ⁷. See [#45559](https://github.com/cilium/cilium/issues/45559).
 
 ---
 
