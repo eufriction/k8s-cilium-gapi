@@ -96,6 +96,28 @@ else
 fi
 """
 
+[tasks.clean]
+description = "Remove local overrides, logs, and CEC dumps"
+run = """
+set -euo pipefail
+removed=0
+for f in mise.local.toml *.log scenarios/*/run-*.log scenarios/*/*/run-*.log; do
+  if [ -e "$f" ]; then
+    rm -v "$f"
+    removed=$((removed + 1))
+  fi
+done
+for f in $(find scenarios -name 'cec-dump*.yaml' 2>/dev/null); do
+  rm -v "$f"
+  removed=$((removed + 1))
+done
+if [ "$removed" -eq 0 ]; then
+  echo "Nothing to clean"
+else
+  echo "Removed $removed file(s)"
+fi
+"""
+
 [tasks.lint]
 description = "Run all pre-commit checks against all files"
 run = "hk run pre-commit --all"
