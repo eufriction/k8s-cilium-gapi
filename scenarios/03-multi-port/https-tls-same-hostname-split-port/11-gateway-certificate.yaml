@@ -1,0 +1,18 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: https-tls-split-port-gateway-certificate
+  namespace: gateway-system
+  labels:
+    app.kubernetes.io/part-of: demo
+spec:
+  secretName: https-tls-split-port-gateway-tls
+  commonName: api.example.test
+  dnsNames:
+    - api.example.test
+    - localhost
+  ipAddresses:
+    - 127.0.0.1
+  issuerRef:
+    kind: Issuer
+    name: https-tls-split-port-selfsigned

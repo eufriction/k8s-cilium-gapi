@@ -1,0 +1,11 @@
+[tasks.start]
+extends = "scenario:start"
+description = "Deploy the namespace-restricted same-hostname split-port scenario"
+depends = ["//:kind:load:apps{% if usage.verbose %} --verbose{% endif %}", "//:cert-manager:install"]
+
+[tasks.verify]
+extends = "scenario:verify"
+description = "Verify namespace-restricted allowedRoutes on split HTTPS ports with same hostname"
+
+[tasks.delete]
+extends = "scenario:delete"

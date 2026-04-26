@@ -1,0 +1,20 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/gateway.networking.k8s.io/tlsroute_v1alpha2.json
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TLSRoute
+metadata:
+  name: backend-b-tls-route
+  namespace: backend-b
+  labels:
+    app.kubernetes.io/part-of: demo
+spec:
+  parentRefs:
+    - name: kind-restricted-https-tls-split-port-gateway
+      namespace: gateway-system
+      sectionName: tls
+  hostnames:
+    - api.example.test
+  rules:
+    - backendRefs:
+        - name: backend-mtls
+          port: 9443
