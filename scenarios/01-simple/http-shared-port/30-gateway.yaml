@@ -1,0 +1,26 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/gateway.networking.k8s.io/gateway_v1.json
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: http-shared-port-gateway
+  namespace: gateway-system
+  labels:
+    app.kubernetes.io/part-of: demo
+spec:
+  gatewayClassName: cilium
+  listeners:
+    - name: http-a
+      protocol: HTTP
+      port: 80
+      hostname: "api-a.example.test"
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: http-b
+      protocol: HTTP
+      port: 80
+      hostname: "api-b.example.test"
+      allowedRoutes:
+        namespaces:
+          from: All

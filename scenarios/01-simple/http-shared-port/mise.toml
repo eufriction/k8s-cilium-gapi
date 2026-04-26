@@ -1,0 +1,11 @@
+[tasks.start]
+extends = "scenario:start"
+description = "Deploy the two HTTP/80 listeners scenario"
+depends = ["//:kind:load:apps{% if usage.verbose %} --verbose{% endif %}"]
+
+[tasks.verify]
+extends = "scenario:verify"
+description = "Verify the two HTTP/80 listeners scenario"
+
+[tasks.delete]
+extends = "scenario:delete"
