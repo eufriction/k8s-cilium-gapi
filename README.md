@@ -106,13 +106,13 @@ rm mise.local.toml
 
 Available profiles in `versions/`:
 
-| File                          | Cilium       | Gateway API | Notes                                  |
-| ----------------------------- | ------------ | ----------- | -------------------------------------- |
-| `1.19.1.toml`                 | 1.19.1       | 1.4.1       | Oldest patch, regression baseline      |
-| `1.19.3.toml`                 | 1.19.3       | 1.4.1       | Matches `mise.toml` defaults           |
-| `1.20.0-pre.1.toml`           | 1.20.0-pre.1 | 1.5.1       | Pre-release                            |
-| `branch.toml`                 | local build  | 1.5.1       | Set `CILIUM_CHART_DIR` and image vars  |
-| `fix-server-names-dedup.toml` | local build  | 1.5.1       | fix/server-names-dedup branch (#45623) |
+| File                          | Cilium       | Gateway API | Notes                                     |
+| ----------------------------- | ------------ | ----------- | ----------------------------------------- |
+| `1.19.1.toml`                 | 1.19.1       | 1.4.1       | Oldest patch, regression baseline         |
+| `1.19.3.toml`                 | 1.19.3       | 1.4.1       | Matches `mise.toml` defaults              |
+| `1.20.0-pre.1.toml`           | 1.20.0-pre.1 | 1.5.1       | Pre-release                               |
+| `branch.toml`                 | local build  | 1.5.1       | Set `CILIUM_CHART_DIR` and image vars     |
+| `fix-server-names-dedup.toml` | local build  | 1.5.1       | fix/server-names-dedup branch (PR #45624) |
 
 Each profile sets `CILIUM_VERSION`, `GATEWAY_API_VERSION`, and `X_*` env vars that control version-conditional verify behavior (expected status messages, TLSRoute API version).
 
@@ -233,33 +233,33 @@ Scenarios affected by known bugs declare `SCENARIO_SKIP_VERSIONS` in their `mise
 
 ### Test results by version
 
-| Group                | Scenario                                      | 1.19.1 | 1.19.3 | 1.20.0-pre.1 | #44889 branch | fix/server-names-dedup | #44889+dedup |
-| -------------------- | --------------------------------------------- | :----: | :----: | :----------: | :-----------: | :--------------------: | :----------: |
-| `01-simple`          | grpc                                          |   ✅   |   ✅   |      ✅      |      ✅       |           ✅           |      ✅      |
-| `01-simple`          | http                                          |   ✅   |   ✅   |      ✅      |      ✅       |           ✅           |      ✅      |
-| `01-simple`          | http-grpc-shared-port                         |   ✅   |   ✅   |      ✅      |      ✅       |           ✅           |      ✅      |
-| `01-simple`          | http-grpc-split-port                          |   ✅   |   ❌   |      ❌      |      ❌       |           ✅           |      ✅      |
-| `01-simple`          | http-header-match                             |   ✅   |   ✅   |      ✅      |       —       |           ✅           |      ✅      |
-| `01-simple`          | http-path-match                               |   ✅   |   ✅   |      ✅      |       —       |           ✅           |      ✅      |
-| `01-simple`          | http-redirect                                 |   ✅   |   ✅   |      ✅      |       —       |           ✅           |      ✅      |
-| `01-simple`          | http-shared-port                              |   ✅   |   ✅   |      ✅      |       —       |           ✅           |      ✅      |
-| `01-simple`          | https                                         |   ✅   |   ✅   |      ✅      |      ✅       |           ✅           |      ✅      |
-| `01-simple`          | https-tls-shared-port                         |   ✅   |   ✅   |      ✅      |      ✅       |           ✅           |      ✅      |
-| `01-simple`          | tls-passthrough                               |   ✅   |   ✅   |      ✅      |      ✅       |           ✅           |      ✅      |
-| `01-simple`          | tls-split-port                                |   ✅   |   ✅   |      ✅      |       —       |           ✅           |      ✅      |
-| `02-listener-policy` | kind-restricted-https-tls-shared-port         |   ⏭️   |   ⏭️   |      ⏭️      |       —       |           ⏭️           |      ⏭️      |
-| `02-listener-policy` | kinds-multi-listener                          |   ❌   |   ❌   |      ❌      |       —       |           ❌           |      ✅      |
-| `02-listener-policy` | kinds-shared-port                             |   ⏭️   |   ✅   |      ✅      |      ✅       |           ✅           |      ✅      |
-| `02-listener-policy` | kinds-split-port                              |   ⏭️   |   ⏭️   |      ⏭️      |      ⏭️       |           ⏭️           |      ⏭️      |
-| `02-listener-policy` | namespace-restricted-shared-port              |   ✅   |   ✅   |      ✅      |       —       |           —            |      —       |
-| `02-listener-policy` | namespace-restricted-split-port               |   ✅   |   ✅   |      ✅      |       —       |           —            |      —       |
-| `02-listener-policy` | namespaces                                    |   ✅   |   ✅   |      ✅      |       —       |           —            |      —       |
-| `02-listener-policy` | no-sectionname                                |   ⏭️   |   ⏭️   |      ❌      |      ❌       |           ❌           |      ⏭️      |
-| `03-multi-port`      | http-grpc-same-hostname                       |   ⏭️   |   ⏭️   |      ⏭️      |      ✅       |           ⏭️           |      ✅      |
-| `03-multi-port`      | https-tls-same-hostname-split-port            |   ⏭️   |   ⏭️   |      ⏭️      |       —       |           ⏭️           |      ⏭️      |
-| `03-multi-port`      | kind-restricted-https-tls-split-port          |   ⏭️   |   ⏭️   |      ⏭️      |       —       |           ⏭️           |      ⏭️      |
-| `03-multi-port`      | namespace-restricted-same-hostname-split-port |   ⏭️   |   ⏭️   |      ⏭️      |       —       |           ⏭️           |      ⏭️      |
-| `03-multi-port`      | tls-passthrough-same-hostname                 |   ⏭️   |   ⏭️   |      ⏭️      |       —       |           ⏭️           |      ⏭️      |
+| Group                | Scenario                                      | 1.19.1 | 1.19.3 | 1.20.0-pre.1 | #45624 | #44889 branch | #44889+dedup |
+| -------------------- | --------------------------------------------- | :----: | :----: | :----------: | :----: | :-----------: | :----------: |
+| `01-simple`          | grpc                                          |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |      ✅      |
+| `01-simple`          | http                                          |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |      ✅      |
+| `01-simple`          | http-grpc-shared-port                         |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |      ✅      |
+| `01-simple`          | http-grpc-split-port                          |   ✅   |   ❌   |      ❌      |   ✅   |      ❌       |      ✅      |
+| `01-simple`          | http-header-match                             |   ✅   |   ✅   |      ✅      |   ✅   |       —       |      ✅      |
+| `01-simple`          | http-path-match                               |   ✅   |   ✅   |      ✅      |   ✅   |       —       |      ✅      |
+| `01-simple`          | http-redirect                                 |   ✅   |   ✅   |      ✅      |   ✅   |       —       |      ✅      |
+| `01-simple`          | http-shared-port                              |   ✅   |   ✅   |      ✅      |   ✅   |       —       |      ✅      |
+| `01-simple`          | https                                         |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |      ✅      |
+| `01-simple`          | https-tls-shared-port                         |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |      ✅      |
+| `01-simple`          | tls-passthrough                               |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |      ✅      |
+| `01-simple`          | tls-split-port                                |   ✅   |   ✅   |      ✅      |   ✅   |       —       |      ✅      |
+| `02-listener-policy` | kind-restricted-https-tls-shared-port         |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |       —       |      ⏭️      |
+| `02-listener-policy` | kinds-multi-listener                          |   ❌   |   ❌   |      ❌      |   ❌   |       —       |      ✅      |
+| `02-listener-policy` | kinds-shared-port                             |   ⏭️   |   ✅   |      ✅      |   ✅   |      ✅       |      ✅      |
+| `02-listener-policy` | kinds-split-port                              |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |      ⏭️       |      ⏭️      |
+| `02-listener-policy` | namespace-restricted-shared-port              |   ✅   |   ✅   |      ✅      |   ✅   |       —       |      —       |
+| `02-listener-policy` | namespace-restricted-split-port               |   ✅   |   ✅   |      ✅      |   ✅   |       —       |      —       |
+| `02-listener-policy` | namespaces                                    |   ✅   |   ✅   |      ✅      |   ✅   |       —       |      —       |
+| `02-listener-policy` | no-sectionname                                |   ⏭️   |   ⏭️   |      ❌      |   ❌   |      ❌       |      ⏭️      |
+| `03-multi-port`      | http-grpc-same-hostname                       |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |      ✅       |      ✅      |
+| `03-multi-port`      | https-tls-same-hostname-split-port            |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |       —       |      ⏭️      |
+| `03-multi-port`      | kind-restricted-https-tls-split-port          |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |       —       |      ⏭️      |
+| `03-multi-port`      | namespace-restricted-same-hostname-split-port |   ⏭️   |   ⏭️   |      ⏭️      |   ✅   |       —       |      ⏭️      |
+| `03-multi-port`      | tls-passthrough-same-hostname                 |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |       —       |      ⏭️      |
 
 ✅ = pass ❌ = fail ⏭️ = skipped (known bug) — = not yet tested.
 Cross-reference scenario names with the [Known Cilium bugs](#known-cilium-bugs) table for failure and skip details.
