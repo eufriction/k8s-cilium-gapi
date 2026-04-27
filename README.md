@@ -237,27 +237,27 @@ Scenarios affected by known bugs declare `SCENARIO_SKIP_VERSIONS` in their `mise
 | `01-simple`          | http                                          |   ✅   |   ✅   |      ✅      |      ✅       |           ✅           |      ✅      |
 | `01-simple`          | http-grpc-shared-port                         |   ✅   |   ✅   |      ✅      |      ✅       |           ✅           |      ✅      |
 | `01-simple`          | http-grpc-split-port                          |   ✅   |   ❌   |      ❌      |      ❌       |           ✅           |      ✅      |
-| `01-simple`          | http-header-match                             |   ✅   |   ✅   |      —       |       —       |           ✅           |      ✅      |
-| `01-simple`          | http-path-match                               |   ✅   |   ✅   |      —       |       —       |           ✅           |      ✅      |
-| `01-simple`          | http-redirect                                 |   ✅   |   ✅   |      —       |       —       |           ✅           |      ✅      |
-| `01-simple`          | http-shared-port                              |   ✅   |   ✅   |      —       |       —       |           ✅           |      ✅      |
+| `01-simple`          | http-header-match                             |   ✅   |   ✅   |      ✅      |       —       |           ✅           |      ✅      |
+| `01-simple`          | http-path-match                               |   ✅   |   ✅   |      ✅      |       —       |           ✅           |      ✅      |
+| `01-simple`          | http-redirect                                 |   ✅   |   ✅   |      ✅      |       —       |           ✅           |      ✅      |
+| `01-simple`          | http-shared-port                              |   ✅   |   ✅   |      ✅      |       —       |           ✅           |      ✅      |
 | `01-simple`          | https                                         |   ✅   |   ✅   |      ✅      |      ✅       |           ✅           |      ✅      |
-| `01-simple`          | https-tls-shared-port                         |   ✅   |   ✅   |      —       |      ✅       |           ✅           |      ✅      |
+| `01-simple`          | https-tls-shared-port                         |   ✅   |   ✅   |      ✅      |      ✅       |           ✅           |      ✅      |
 | `01-simple`          | tls-passthrough                               |   ✅   |   ✅   |      ✅      |      ✅       |           ✅           |      ✅      |
-| `01-simple`          | tls-split-port                                |   ✅   |   ✅   |      —       |       —       |           ✅           |      ✅      |
-| `02-listener-policy` | kind-restricted-https-tls-shared-port         |   ⏭️   |   ⏭️   |      —       |       —       |           ⏭️           |      ⏭️      |
-| `02-listener-policy` | kinds-multi-listener                          |   ❌   |   ❌   |      —       |       —       |           ❌           |      ✅      |
+| `01-simple`          | tls-split-port                                |   ✅   |   ✅   |      ✅      |       —       |           ✅           |      ✅      |
+| `02-listener-policy` | kind-restricted-https-tls-shared-port         |   ⏭️   |   ⏭️   |      ⏭️      |       —       |           ⏭️           |      ⏭️      |
+| `02-listener-policy` | kinds-multi-listener                          |   ❌   |   ❌   |      ❌      |       —       |           ❌           |      ✅      |
 | `02-listener-policy` | kinds-shared-port                             |   ⏭️   |   ✅   |      ✅      |      ✅       |           ✅           |      ✅      |
 | `02-listener-policy` | kinds-split-port                              |   ⏭️   |   ⏭️   |      ⏭️      |      ⏭️       |           ⏭️           |      ⏭️      |
-| `02-listener-policy` | namespace-restricted-shared-port              |   ✅   |   ✅   |      —       |       —       |           —            |      —       |
-| `02-listener-policy` | namespace-restricted-split-port               |   ✅   |   ✅   |      —       |       —       |           —            |      —       |
-| `02-listener-policy` | namespaces                                    |   ✅   |   ✅   |      —       |       —       |           —            |      —       |
-| `02-listener-policy` | no-sectionname                                |   ⏭️   |   ⏭️   |      —       |      ❌       |           ❌           |      ⏭️      |
+| `02-listener-policy` | namespace-restricted-shared-port              |   ✅   |   ✅   |      ✅      |       —       |           —            |      —       |
+| `02-listener-policy` | namespace-restricted-split-port               |   ✅   |   ✅   |      ✅      |       —       |           —            |      —       |
+| `02-listener-policy` | namespaces                                    |   ✅   |   ✅   |      ✅      |       —       |           —            |      —       |
+| `02-listener-policy` | no-sectionname                                |   ⏭️   |   ⏭️   |      ❌      |      ❌       |           ❌           |      ⏭️      |
 | `03-multi-port`      | http-grpc-same-hostname                       |   ⏭️   |   ⏭️   |      ⏭️      |      ✅       |           ⏭️           |      ✅      |
-| `03-multi-port`      | https-tls-same-hostname-split-port            |   ⏭️   |   ⏭️   |      —       |       —       |           ⏭️           |      ⏭️      |
-| `03-multi-port`      | kind-restricted-https-tls-split-port          |   ⏭️   |   ⏭️   |      —       |       —       |           ⏭️           |      ⏭️      |
-| `03-multi-port`      | namespace-restricted-same-hostname-split-port |   ⏭️   |   ⏭️   |      —       |       —       |           ⏭️           |      ⏭️      |
-| `03-multi-port`      | tls-passthrough-same-hostname                 |   ⏭️   |   ⏭️   |      —       |       —       |           ⏭️           |      ⏭️      |
+| `03-multi-port`      | https-tls-same-hostname-split-port            |   ⏭️   |   ⏭️   |      ⏭️      |       —       |           ⏭️           |      ⏭️      |
+| `03-multi-port`      | kind-restricted-https-tls-split-port          |   ⏭️   |   ⏭️   |      ⏭️      |       —       |           ⏭️           |      ⏭️      |
+| `03-multi-port`      | namespace-restricted-same-hostname-split-port |   ⏭️   |   ⏭️   |      ⏭️      |       —       |           ⏭️           |      ⏭️      |
+| `03-multi-port`      | tls-passthrough-same-hostname                 |   ⏭️   |   ⏭️   |      ⏭️      |       —       |           ⏭️           |      ⏭️      |
 
 ✅ = pass ❌ = fail ⏭️ = skipped (known bug) — = not yet tested.
 Cross-reference scenario names with the [Known Cilium bugs](#known-cilium-bugs) table for failure and skip details.
