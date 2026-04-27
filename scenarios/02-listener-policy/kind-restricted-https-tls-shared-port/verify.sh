@@ -6,18 +6,18 @@ skip_if X_ALLOWED_ROUTES_SEPARATE_PORT_BROKEN "per-listener allowedRoutes.kinds 
 
 # --- Wait for resources ---
 wait_parallel \
-  "pod/api -n backend-a --for=condition=Ready --timeout=60s" \
-  "pod/backend-mtls -n backend-b --for=condition=Ready --timeout=60s" \
-  "certificate/kind-https-tls-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s" \
-  "certificate/backend-b-mtls-ca -n backend-b --for=condition=Ready --timeout=180s" \
-  "certificate/backend-b-mtls-server -n backend-b --for=condition=Ready --timeout=180s" \
-  "certificate/backend-b-mtls-client -n backend-b --for=condition=Ready --timeout=180s"
-kubectl wait gateway/kind-https-tls-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
+  "pod/api -n backend-a --for=condition=Ready --timeout=5s" \
+  "pod/backend-mtls -n backend-b --for=condition=Ready --timeout=5s" \
+  "certificate/kind-https-tls-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s" \
+  "certificate/backend-b-mtls-ca -n backend-b --for=condition=Ready --timeout=10s" \
+  "certificate/backend-b-mtls-server -n backend-b --for=condition=Ready --timeout=10s" \
+  "certificate/backend-b-mtls-client -n backend-b --for=condition=Ready --timeout=10s"
+kubectl wait gateway/kind-https-tls-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=5s
 
 echo "--- Checking route acceptance ---"
 route_fail=0
 
-if ! kubectl wait httproute/backend-a-web-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s 2>/dev/null; then
+if ! kubectl wait httproute/backend-a-web-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s 2>/dev/null; then
   echo "FAIL: HTTPRoute backend-a-web-route NOT accepted by https listener"
   echo "  reason: $(kubectl get httproute backend-a-web-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].reason}')"
   echo "  message: $(kubectl get httproute backend-a-web-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')"
@@ -26,7 +26,7 @@ else
   echo "PASS: HTTPRoute backend-a-web-route accepted by https listener"
 fi
 
-if ! kubectl wait tlsroute/backend-b-mtls-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s 2>/dev/null; then
+if ! kubectl wait tlsroute/backend-b-mtls-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s 2>/dev/null; then
   echo "FAIL: TLSRoute backend-b-mtls-route NOT accepted by tls listener"
   echo "  reason: $(kubectl get tlsroute backend-b-mtls-route -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].reason}')"
   echo "  message: $(kubectl get tlsroute backend-b-mtls-route -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')"

@@ -8,19 +8,19 @@ skip_if X_ALLOWED_ROUTES_SEPARATE_PORT_BROKEN "kind-restricted HTTPS+TLS split-p
 
 # Tier 1 — pods & certificates (parallel)
 wait_parallel \
-  "pod/api -n backend-a --for=condition=Ready --timeout=60s" \
-  "pod/backend-mtls -n backend-b --for=condition=Ready --timeout=60s" \
-  "certificate/kind-restricted-split-port-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s" \
-  "certificate/backend-b-mtls-ca -n backend-b --for=condition=Ready --timeout=180s" \
-  "certificate/backend-b-mtls-server -n backend-b --for=condition=Ready --timeout=180s" \
-  "certificate/backend-b-mtls-client -n backend-b --for=condition=Ready --timeout=180s"
+  "pod/api -n backend-a --for=condition=Ready --timeout=5s" \
+  "pod/backend-mtls -n backend-b --for=condition=Ready --timeout=5s" \
+  "certificate/kind-restricted-split-port-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s" \
+  "certificate/backend-b-mtls-ca -n backend-b --for=condition=Ready --timeout=10s" \
+  "certificate/backend-b-mtls-server -n backend-b --for=condition=Ready --timeout=10s" \
+  "certificate/backend-b-mtls-client -n backend-b --for=condition=Ready --timeout=10s"
 
 # Tier 2 — gateway
-kubectl wait gateway/kind-restricted-https-tls-split-port-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
+kubectl wait gateway/kind-restricted-https-tls-split-port-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=5s
 
 # Tier 3 — routes (parallel, manual & + wait)
-kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
-kubectl wait tlsroute/backend-b-tls-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
+kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
+kubectl wait tlsroute/backend-b-tls-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
 wait
 
 # --- HTTPS termination (api.example.test on port 443, kinds: [HTTPRoute]) ---

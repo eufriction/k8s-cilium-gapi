@@ -7,11 +7,11 @@ skip_if X_ALLOWED_ROUTES_NAMESPACES_BROKEN "namespace-restricted same-hostname s
 # --- Wait for resources ---
 # Tier 1 — pods & certificates (parallel)
 wait_parallel \
-  "pod/api -n backend-a --for=condition=Ready --timeout=60s" \
-  "certificate/ns-restricted-split-port-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s"
+  "pod/api -n backend-a --for=condition=Ready --timeout=5s" \
+  "certificate/ns-restricted-split-port-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s"
 
 # Tier 2 — gateway
-kubectl wait gateway/ns-restricted-same-hostname-split-port-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
+kubectl wait gateway/ns-restricted-same-hostname-split-port-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=5s
 
 # Give the controller time to reconcile route status
 sleep 5

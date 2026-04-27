@@ -5,20 +5,20 @@ source "${REPO_ROOT}/lib/verify-helpers.sh"
 skip_if X_SPLIT_PORT_GRPC_BROKEN "same-hostname split-port gRPC bug — not yet fixed upstream"
 # Tier 1 — pods & certificates (parallel)
 wait_parallel \
-  "pod/api -n backend-a --for=condition=Ready --timeout=60s" \
-  "pod/api -n backend-b --for=condition=Ready --timeout=60s" \
-  "pod/grpc-api -n backend-a --for=condition=Ready --timeout=60s" \
-  "pod/grpc-api -n backend-b --for=condition=Ready --timeout=60s" \
-  "certificate/same-hostname-split-ports-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s"
+  "pod/api -n backend-a --for=condition=Ready --timeout=5s" \
+  "pod/api -n backend-b --for=condition=Ready --timeout=5s" \
+  "pod/grpc-api -n backend-a --for=condition=Ready --timeout=5s" \
+  "pod/grpc-api -n backend-b --for=condition=Ready --timeout=5s" \
+  "certificate/same-hostname-split-ports-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s"
 
 # Tier 2 — gateway
-kubectl wait gateway/same-hostname-split-ports-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
+kubectl wait gateway/same-hostname-split-ports-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=5s
 
 # Tier 3 — routes (parallel, manual & + wait)
-kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
-kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
-kubectl wait grpcroute/backend-a-grpc-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
-kubectl wait grpcroute/backend-b-grpc-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
+kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
+kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
+kubectl wait grpcroute/backend-a-grpc-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
+kubectl wait grpcroute/backend-b-grpc-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
 wait
 
 echo "--- HTTPS checks (port 443, hostname api.example.test) ---"

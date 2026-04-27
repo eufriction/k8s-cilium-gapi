@@ -4,16 +4,16 @@ REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
 skip_if X_ALLOWED_ROUTES_SEPARATE_PORT_BROKEN "separate-port allowedRoutes.kinds bug — HTTPRoute not accepted (not yet fixed upstream)"
 wait_parallel \
-  "pod/api -n backend-a --for=condition=Ready --timeout=60s" \
-  "pod/api -n backend-b --for=condition=Ready --timeout=60s" \
-  "pod/grpc-api -n backend-a --for=condition=Ready --timeout=60s" \
-  "pod/grpc-api -n backend-b --for=condition=Ready --timeout=60s" \
-  "certificate/allowed-routes-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s"
-kubectl wait gateway/allowed-routes-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
-kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
-kubectl wait grpcroute/backend-a-grpc-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
-kubectl wait grpcroute/backend-b-grpc-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
+  "pod/api -n backend-a --for=condition=Ready --timeout=5s" \
+  "pod/api -n backend-b --for=condition=Ready --timeout=5s" \
+  "pod/grpc-api -n backend-a --for=condition=Ready --timeout=5s" \
+  "pod/grpc-api -n backend-b --for=condition=Ready --timeout=5s" \
+  "certificate/allowed-routes-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s"
+kubectl wait gateway/allowed-routes-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=5s
+kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
+kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
+kubectl wait grpcroute/backend-a-grpc-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
+kubectl wait grpcroute/backend-b-grpc-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
 wait
 
 echo "--- HTTPS checks (port 443, kind-restricted to HTTPRoute) ---"

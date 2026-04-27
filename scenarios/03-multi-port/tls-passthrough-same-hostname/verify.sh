@@ -6,21 +6,21 @@ skip_if X_TLS_PASSTHROUGH_SPLIT_PORTS_BROKEN "TLS passthrough same-hostname spli
 
 # --- Tier 1: pods & certificates (parallel) ---
 wait_parallel \
-  "pod/backend-mtls -n backend-a --for=condition=Ready --timeout=60s" \
-  "pod/backend-mtls -n backend-b --for=condition=Ready --timeout=60s" \
-  "certificate/backend-a-mtls-ca -n backend-a --for=condition=Ready --timeout=180s" \
-  "certificate/backend-a-mtls-server -n backend-a --for=condition=Ready --timeout=180s" \
-  "certificate/backend-a-mtls-client -n backend-a --for=condition=Ready --timeout=180s" \
-  "certificate/backend-b-mtls-ca -n backend-b --for=condition=Ready --timeout=180s" \
-  "certificate/backend-b-mtls-server -n backend-b --for=condition=Ready --timeout=180s" \
-  "certificate/backend-b-mtls-client -n backend-b --for=condition=Ready --timeout=180s"
+  "pod/backend-mtls -n backend-a --for=condition=Ready --timeout=5s" \
+  "pod/backend-mtls -n backend-b --for=condition=Ready --timeout=5s" \
+  "certificate/backend-a-mtls-ca -n backend-a --for=condition=Ready --timeout=10s" \
+  "certificate/backend-a-mtls-server -n backend-a --for=condition=Ready --timeout=10s" \
+  "certificate/backend-a-mtls-client -n backend-a --for=condition=Ready --timeout=10s" \
+  "certificate/backend-b-mtls-ca -n backend-b --for=condition=Ready --timeout=10s" \
+  "certificate/backend-b-mtls-server -n backend-b --for=condition=Ready --timeout=10s" \
+  "certificate/backend-b-mtls-client -n backend-b --for=condition=Ready --timeout=10s"
 
 # --- Tier 2: gateway ---
-kubectl wait gateway/tls-passthrough-split-ports-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
+kubectl wait gateway/tls-passthrough-split-ports-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=5s
 
 # --- Tier 3: routes (parallel, manual & + wait) ---
-kubectl wait tlsroute/backend-a-tls-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
-kubectl wait tlsroute/backend-b-tls-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
+kubectl wait tlsroute/backend-a-tls-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
+kubectl wait tlsroute/backend-b-tls-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
 wait
 
 # --- Extract certs ---

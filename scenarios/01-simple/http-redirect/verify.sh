@@ -5,15 +5,15 @@ source "${REPO_ROOT}/lib/verify-helpers.sh"
 
 # Tier 1: pods + certs in parallel
 wait_parallel \
-  "pod/api -n backend-a --for=condition=Ready --timeout=60s" \
-  "certificate/redirect-gateway-certificate -n gateway-system --for=condition=Ready --timeout=120s"
+  "pod/api -n backend-a --for=condition=Ready --timeout=5s" \
+  "certificate/redirect-gateway-certificate -n gateway-system --for=condition=Ready --timeout=5s"
 
 # Tier 2: gateway
-kubectl wait gateway/redirect-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
+kubectl wait gateway/redirect-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=5s
 
 # Tier 3: routes in parallel
-kubectl wait httproute/http-redirect -n gateway-system --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
-kubectl wait httproute/backend-a-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
+kubectl wait httproute/http-redirect -n gateway-system --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
+kubectl wait httproute/backend-a-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
 wait
 
 # Warm up the HTTP listener before testing

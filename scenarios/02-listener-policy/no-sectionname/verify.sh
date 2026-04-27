@@ -6,15 +6,15 @@ skip_if X_TLSROUTE_NO_SECTIONNAME_BROKEN "TLSRoute no-sectionName bug — duplic
 
 # --- Wait for resources ---
 wait_parallel \
-  "pod/api -n backend-a --for=condition=Ready --timeout=60s" \
-  "pod/backend-mtls -n backend-b --for=condition=Ready --timeout=60s" \
-  "certificate/scenario-26-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s" \
-  "certificate/backend-b-mtls-ca -n backend-b --for=condition=Ready --timeout=180s" \
-  "certificate/backend-b-mtls-server -n backend-b --for=condition=Ready --timeout=180s" \
-  "certificate/backend-b-mtls-client -n backend-b --for=condition=Ready --timeout=180s"
-kubectl wait gateway/mixed-listener-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
-kubectl wait httproute/backend-a-web-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
-kubectl wait tlsroute/backend-b-mtls-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
+  "pod/api -n backend-a --for=condition=Ready --timeout=5s" \
+  "pod/backend-mtls -n backend-b --for=condition=Ready --timeout=5s" \
+  "certificate/scenario-26-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s" \
+  "certificate/backend-b-mtls-ca -n backend-b --for=condition=Ready --timeout=10s" \
+  "certificate/backend-b-mtls-server -n backend-b --for=condition=Ready --timeout=10s" \
+  "certificate/backend-b-mtls-client -n backend-b --for=condition=Ready --timeout=10s"
+kubectl wait gateway/mixed-listener-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=5s
+kubectl wait httproute/backend-a-web-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
+kubectl wait tlsroute/backend-b-mtls-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
 wait
 
 # --- HTTPS termination (web.example.test on port 443) ---

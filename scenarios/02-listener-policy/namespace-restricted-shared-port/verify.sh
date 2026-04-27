@@ -6,9 +6,9 @@ skip_if X_ALLOWED_ROUTES_NAMESPACES_BROKEN "allowedRoutes.namespaces per-listene
 
 # --- Wait for resources ---
 wait_parallel \
-  "pod/api -n backend-a --for=condition=Ready --timeout=60s" \
-  "certificate/ns-shared-port-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s"
-kubectl wait gateway/ns-shared-port-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
+  "pod/api -n backend-a --for=condition=Ready --timeout=5s" \
+  "certificate/ns-shared-port-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s"
+kubectl wait gateway/ns-shared-port-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=5s
 
 # Give the controller time to reconcile route status
 sleep 5

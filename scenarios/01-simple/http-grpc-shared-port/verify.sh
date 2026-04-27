@@ -4,18 +4,18 @@ REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
 # Tier 1: pods + certs in parallel
 wait_parallel \
-  "pod/api -n backend-a --for=condition=Ready --timeout=60s" \
-  "pod/api -n backend-b --for=condition=Ready --timeout=60s" \
-  "pod/grpc-api -n backend-a --for=condition=Ready --timeout=60s" \
-  "pod/grpc-api -n backend-b --for=condition=Ready --timeout=60s" \
-  "certificate/shared-port-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s"
+  "pod/api -n backend-a --for=condition=Ready --timeout=5s" \
+  "pod/api -n backend-b --for=condition=Ready --timeout=5s" \
+  "pod/grpc-api -n backend-a --for=condition=Ready --timeout=5s" \
+  "pod/grpc-api -n backend-b --for=condition=Ready --timeout=5s" \
+  "certificate/shared-port-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s"
 # Tier 2: gateway
-kubectl wait gateway/shared-port-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
+kubectl wait gateway/shared-port-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=5s
 # Tier 3: routes in parallel
-kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
-kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
-kubectl wait grpcroute/backend-a-grpc-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
-kubectl wait grpcroute/backend-b-grpc-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
+kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
+kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
+kubectl wait grpcroute/backend-a-grpc-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
+kubectl wait grpcroute/backend-b-grpc-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
 wait
 
 GRPC_IMPORT_PATH="${REPO_ROOT}/apps/backend-grpc/proto"
