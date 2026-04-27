@@ -21,7 +21,7 @@ kubectl wait tlsroute/backend-b-mtls-route -n backend-b --for='jsonpath={.status
 wait
 
 # --- HTTPS termination (web.example.test on port 443) ---
-retry_until 5 curl -kfsS --resolve "web.example.test:443:127.0.0.1" https://web.example.test/headers >/dev/null
+retry_until 10 curl -kfsS --resolve "web.example.test:443:127.0.0.1" https://web.example.test/headers >/dev/null
 echo "PASS: HTTPS termination — web.example.test on port 443"
 
 # --- TLS passthrough with mTLS (mtls-b.example.test on port 443) ---
@@ -32,7 +32,7 @@ kubectl get secret backend-b-mtls-server -n backend-b -o jsonpath='{.data.ca\.cr
 kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.crt}' | base64 -d > "$TMPDIR/b-client.crt"
 kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.key}' | base64 -d > "$TMPDIR/b-client.key"
 
-curl -fsS --resolve "mtls-b.example.test:443:127.0.0.1" \
+retry_until 10 curl -fsS --resolve "mtls-b.example.test:443:127.0.0.1" \
   --cacert "$TMPDIR/b-ca.crt" --cert "$TMPDIR/b-client.crt" --key "$TMPDIR/b-client.key" \
   https://mtls-b.example.test:443/ >/dev/null
 echo "PASS: TLS passthrough — mtls-b.example.test mTLS on port 443"

@@ -5,7 +5,6 @@ source "${REPO_ROOT}/lib/verify-helpers.sh"
 
 # Tier 1: pods in parallel
 wait_parallel \
-  "pod/netshoot-client -n client --for=condition=Ready --timeout=60s" \
   "pod/api -n backend-a --for=condition=Ready --timeout=60s" \
   "pod/api -n backend-b --for=condition=Ready --timeout=60s"
 
@@ -16,6 +15,9 @@ kubectl wait gateway/path-match-gateway -n gateway-system --for='jsonpath={.stat
 kubectl wait httproute/backend-a-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
 kubectl wait httproute/backend-b-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
 wait
+
+# Warm up the HTTP listener
+retry_until 10 curl -fsS -H 'Host: app.example.test' http://localhost/api/headers >/dev/null
 
 # Test 1: /api/* → backend-a
 body=$(curl -fsS -H 'Host: app.example.test' http://localhost/api/headers)

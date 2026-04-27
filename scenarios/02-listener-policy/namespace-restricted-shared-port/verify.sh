@@ -39,5 +39,5 @@ else
 fi
 
 # --- Traffic check on open listener ---
-retry_until 5 curl -kfsS --resolve "open.example.test:443:127.0.0.1" https://open.example.test/headers >/dev/null
+retry_until 10 curl -kfsS --resolve "open.example.test:443:127.0.0.1" https://open.example.test/headers >/dev/null
 echo "PASS: HTTPS traffic to open.example.test on port 443"

@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization.json
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../10-same-hostname-split-ports-selfsigned-issuer.yaml
+  - ../11-same-hostname-split-ports-gateway-certificate.yaml
+  - ../30-gateway.yaml
+  - ../31-backend-a-httproute.yaml
+  - ../32-backend-b-httproute.yaml
+  - ../33-backend-a-grpcroute.yaml
+  - ../34-backend-b-grpcroute.yaml

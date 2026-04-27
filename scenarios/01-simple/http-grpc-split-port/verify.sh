@@ -19,7 +19,7 @@ kubectl wait grpcroute/backend-b-grpc-route -n backend-b --for='jsonpath={.statu
 wait
 
 echo "--- HTTPS smoke checks (port 443) ---"
-retry_until 5 curl -kfsS --resolve "https-a.example.test:443:127.0.0.1" https://https-a.example.test/headers >/dev/null
+retry_until 10 curl -kfsS --resolve "https-a.example.test:443:127.0.0.1" https://https-a.example.test/headers >/dev/null
 echo "PASS: HTTPS backend-a on port 443"
 curl -kfsS --resolve "https-b.example.test:443:127.0.0.1" https://https-b.example.test/headers >/dev/null
 echo "PASS: HTTPS backend-b on port 443"
@@ -31,7 +31,7 @@ GRPC_METHOD=grpc.testing.TestService/UnaryCall
 ITERATIONS=10
 
 echo "--- gRPC affinity checks (port 50051) ---"
-retry_until 5 grpcurl -insecure \
+retry_until 10 grpcurl -insecure \
   -authority grpc-a.example.test \
   -import-path "$GRPC_IMPORT_PATH" \
   -proto "$GRPC_PROTO" \

@@ -42,5 +42,5 @@ else
 fi
 
 # --- Traffic check on the open listener (port 50051) ---
-retry_until 5 curl -kfsS --resolve "api.example.test:50051:127.0.0.1" https://api.example.test:50051/headers >/dev/null
+retry_until 10 curl -kfsS --resolve "api.example.test:50051:127.0.0.1" https://api.example.test:50051/headers >/dev/null
 echo "PASS: HTTPS traffic — api.example.test on port 50051 (open listener)"

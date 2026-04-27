@@ -14,7 +14,6 @@ It deploys:
 
 - `backend-http` and `backend-grpc` into `backend-a`
 - `backend-http` and `backend-grpc` into `backend-b`
-- one `netshoot-client` pod in `client`
 - one shared Gateway in `gateway-system` with a **single** HTTPS listener on port `443`
 
 The Gateway exposes:

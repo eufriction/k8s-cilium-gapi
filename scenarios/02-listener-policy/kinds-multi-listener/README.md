@@ -18,7 +18,6 @@ It deploys:
 - `backend-http` and `backend-grpc` into `backend-a`
 - `backend-http` and `backend-grpc` into `backend-b`
 - `backend-mtls` into `backend-a` (TLS-terminating Envoy for passthrough)
-- one `netshoot-client` pod in `client`
 - one shared Gateway in `gateway-system`
 
 Routes attached to the Gateway:

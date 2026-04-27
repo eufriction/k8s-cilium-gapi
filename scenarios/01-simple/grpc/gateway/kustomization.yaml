@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization.json
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../00-grpc-backend-a-namespace.yaml
+  - ../00-grpc-backend-b-namespace.yaml
+  - ../10-grpc-selfsigned-issuer.yaml
+  - ../11-grpc-multi-namespace-gateway-certificate.yaml
+  - ../instances/backend-grpc-a
+  - ../instances/backend-grpc-b
+  - ../30-gateway.yaml
+  - ../31-backend-a-grpcroute.yaml
+  - ../32-backend-b-grpcroute.yaml

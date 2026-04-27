@@ -72,6 +72,18 @@ mise tasks --all | grep scenarios
 
 ### Run all scenarios
 
+The fastest way to run all scenarios uses a shared fixture that pre-deploys backend pods once:
+
+```sh
+mise run cluster:start
+mise run scenarios:run-all
+mise run cluster:delete
+```
+
+`scenarios:run-all` deploys a shared fixture (namespaces + backend pods), runs every scenario in gateway-only mode (only Gateway + Route resources are applied/deleted per scenario), then tears down the fixture. Broken scenarios are skipped before deploying.
+
+To run without the fixture (each scenario deploys its own backends):
+
 ```sh
 mise run cluster:start
 mise run --continue-on-error --jobs 1 '//scenarios/...:start' --delete
@@ -79,8 +91,6 @@ mise run cluster:delete
 ```
 
 `--continue-on-error` ensures all 25 scenarios run even if some fail. `--jobs 1` keeps them sequential so namespaces don't collide. `--delete` cleans up each scenario's resources after verification.
-
-Scenarios gated by a `X_*_BROKEN` env var are skipped automatically before deploying — no resources are created and no time is wasted on known-broken configurations.
 
 ### Version profiles
 

@@ -8,7 +8,6 @@ wait_parallel \
   "pod/grpc-api -n backend-a --for=condition=Ready --timeout=60s" \
   "pod/grpc-api -n backend-b --for=condition=Ready --timeout=60s" \
   "pod/backend-mtls -n backend-a --for=condition=Ready --timeout=60s" \
-  "pod/netshoot-client -n client --for=condition=Ready --timeout=60s" \
   "certificate/kind-restricted-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s" \
   "certificate/backend-a-mtls-ca -n backend-a --for=condition=Ready --timeout=180s" \
   "certificate/backend-a-mtls-server -n backend-a --for=condition=Ready --timeout=180s" \
@@ -88,7 +87,7 @@ if [ "$route_fail" -eq 1 ]; then
 fi
 
 echo "--- HTTPS checks (port 443, https listener — HTTPRoute only) ---"
-retry_until 5 curl -kfsS --resolve "http-a.http.example.test:443:127.0.0.1" https://http-a.http.example.test/headers >/dev/null
+retry_until 10 curl -kfsS --resolve "http-a.http.example.test:443:127.0.0.1" https://http-a.http.example.test/headers >/dev/null
 echo "PASS: HTTPS backend-a on port 443"
 curl -kfsS --resolve "http-b.http.example.test:443:127.0.0.1" https://http-b.http.example.test/headers >/dev/null
 echo "PASS: HTTPS backend-b on port 443"
@@ -100,6 +99,14 @@ GRPC_METHOD=grpc.testing.TestService/UnaryCall
 ITERATIONS=10
 
 echo "--- gRPC affinity checks (port 443, grpcs listener — GRPCRoute only) ---"
+retry_until 10 grpcurl -insecure \
+  -authority grpc-a.grpc.example.test \
+  -import-path "$GRPC_IMPORT_PATH" \
+  -proto "$GRPC_PROTO" \
+  -d "$GRPC_REQ" \
+  localhost:443 \
+  "$GRPC_METHOD" >/dev/null
+echo "gRPC listener warm-up complete"
 
 # grpc-a.grpc.example.test must always route to backend-a
 misrouted=0
@@ -144,7 +151,7 @@ fi
 echo "PASS: grpc-b.grpc.example.test — all $ITERATIONS requests routed to backend-b"
 
 echo "--- HTTP redirect checks (port 80, http listener — no explicit kinds) ---"
-http_code=$(retry_until 5 curl -o /dev/null -s -w "%{http_code}" --resolve "http-a.http.example.test:80:127.0.0.1" http://http-a.http.example.test/headers)
+http_code=$(retry_until 10 curl -o /dev/null -s -w "%{http_code}" --resolve "http-a.http.example.test:80:127.0.0.1" http://http-a.http.example.test/headers)
 if [ "$http_code" != "301" ]; then
   echo "FAIL: HTTP redirect expected 301, got $http_code" >&2
   exit 1

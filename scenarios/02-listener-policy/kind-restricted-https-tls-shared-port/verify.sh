@@ -48,7 +48,7 @@ if [ "$route_fail" -eq 1 ]; then
 fi
 
 # --- HTTPS termination (web.example.test on port 443) ---
-retry_until 5 curl -kfsS --resolve "web.example.test:443:127.0.0.1" https://web.example.test/headers >/dev/null
+retry_until 10 curl -kfsS --resolve "web.example.test:443:127.0.0.1" https://web.example.test/headers >/dev/null
 echo "PASS: HTTPS termination — web.example.test on port 443"
 
 # --- TLS passthrough with mTLS (mtls-b.example.test on port 443) ---

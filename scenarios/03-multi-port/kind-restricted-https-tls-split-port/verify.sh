@@ -24,7 +24,7 @@ kubectl wait tlsroute/backend-b-tls-route -n backend-b --for='jsonpath={.status.
 wait
 
 # --- HTTPS termination (api.example.test on port 443, kinds: [HTTPRoute]) ---
-retry_until 5 curl -kfsS --resolve "api.example.test:443:127.0.0.1" https://api.example.test/headers >/dev/null
+retry_until 10 curl -kfsS --resolve "api.example.test:443:127.0.0.1" https://api.example.test/headers >/dev/null
 echo "PASS: HTTPS termination — api.example.test on port 443 (kind-restricted to HTTPRoute)"
 
 # --- TLS passthrough with mTLS (api.example.test on port 9443, kinds: [TLSRoute]) ---

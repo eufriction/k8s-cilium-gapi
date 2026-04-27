@@ -5,7 +5,6 @@ source "${REPO_ROOT}/lib/verify-helpers.sh"
 
 # Tier 1: pods in parallel
 wait_parallel \
-  "pod/netshoot-client -n client --for=condition=Ready --timeout=60s" \
   "pod/api -n backend-a --for=condition=Ready --timeout=60s" \
   "pod/api -n backend-b --for=condition=Ready --timeout=60s"
 
@@ -16,7 +15,7 @@ kubectl wait gateway/http-shared-port-gateway -n gateway-system --for='jsonpath=
 kubectl wait httproute/backend-a-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
 kubectl wait httproute/backend-b-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=120s &
 wait
-curl -fsS -H 'Host: api-a.example.test' http://localhost/headers >/dev/null
+retry_until 10 curl -fsS -H 'Host: api-a.example.test' http://localhost/headers >/dev/null
 echo "PASS: api-a HTTP"
 curl -fsS -H 'Host: api-b.example.test' http://localhost/headers >/dev/null
 echo "PASS: api-b HTTP"

@@ -4,10 +4,8 @@ kind: Kustomization
 resources:
   - 00-gateway-system-namespace.yaml
   - 00-backend-a-namespace.yaml
-  - 00-client-namespace.yaml
   - 10-gateway-selfsigned-issuer.yaml
   - 11-gateway-certificate.yaml
   - instances/backend-http-a
-  - instances/netshoot-client
   - 30-gateway.yaml
   - 31-backend-a-httproute.yaml

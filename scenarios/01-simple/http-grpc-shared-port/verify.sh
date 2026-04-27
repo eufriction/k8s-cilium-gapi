@@ -8,7 +8,6 @@ wait_parallel \
   "pod/api -n backend-b --for=condition=Ready --timeout=60s" \
   "pod/grpc-api -n backend-a --for=condition=Ready --timeout=60s" \
   "pod/grpc-api -n backend-b --for=condition=Ready --timeout=60s" \
-  "pod/netshoot-client -n client --for=condition=Ready --timeout=60s" \
   "certificate/shared-port-gateway-certificate -n gateway-system --for=condition=Ready --timeout=180s"
 # Tier 2: gateway
 kubectl wait gateway/shared-port-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=120s
@@ -26,6 +25,14 @@ GRPC_METHOD=grpc.testing.TestService/UnaryCall
 ITERATIONS=10
 
 echo "--- gRPC affinity checks (shared port 443) ---"
+retry_until 10 grpcurl -insecure \
+  -authority backend-grpc.example.test \
+  -import-path "$GRPC_IMPORT_PATH" \
+  -proto "$GRPC_PROTO" \
+  -d "$GRPC_REQ" \
+  localhost:443 \
+  "$GRPC_METHOD" >/dev/null
+echo "gRPC listener warm-up complete"
 
 # backend-grpc.example.test must always route to backend-a
 misrouted=0
@@ -70,7 +77,7 @@ fi
 echo "PASS: backend-grpc-b.example.test — all $ITERATIONS requests routed to backend-b"
 
 echo "--- HTTPS checks (shared port 443) ---"
-retry_until 5 curl -kfsS --resolve "backend.example.test:443:127.0.0.1" https://backend.example.test/headers >/dev/null
+retry_until 10 curl -kfsS --resolve "backend.example.test:443:127.0.0.1" https://backend.example.test/headers >/dev/null
 echo "PASS: HTTPS backend-a on port 443"
 curl -kfsS --resolve "backend-b.example.test:443:127.0.0.1" https://backend-b.example.test/headers >/dev/null
 echo "PASS: HTTPS backend-b on port 443"

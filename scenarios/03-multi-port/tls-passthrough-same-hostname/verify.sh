@@ -35,7 +35,7 @@ kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.c
 kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.key}' | base64 -d > "$TMPDIR/b-client.key"
 
 # --- TLS passthrough on port 443 → backend-a ---
-retry_until 5 curl -fsS --resolve "tls.example.test:443:127.0.0.1" \
+retry_until 10 curl -fsS --resolve "tls.example.test:443:127.0.0.1" \
   --cacert "$TMPDIR/a-ca.crt" --cert "$TMPDIR/a-client.crt" --key "$TMPDIR/a-client.key" \
   https://tls.example.test:443/ >/dev/null
 echo "PASS: TLS passthrough — tls.example.test on port 443 → backend-a"

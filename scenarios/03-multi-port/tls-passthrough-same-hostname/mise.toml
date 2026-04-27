@@ -10,11 +10,15 @@ if [ -n "${SCENARIO_SKIP_VAR:-}" ] && [ "${!SCENARIO_SKIP_VAR}" = "true" ]; then
   echo "SKIP: ${SCENARIO_SKIP_VAR}=true — skipping deploy"
   exit 0
 fi
+KUSTOMIZE_DIR="."
+if [ "${FIXTURE_DEPLOYED:-}" = "true" ] && [ -d gateway ]; then
+  KUSTOMIZE_DIR="gateway"
+fi
 if [ "${X_TLSROUTE_API_VERSION:-v1alpha2}" = "v1" ]; then
   echo "--- TLSRoute apiVersion override: v1alpha2 -> v1 ---"
-  kubectl kustomize . | sed 's|gateway.networking.k8s.io/v1alpha2|gateway.networking.k8s.io/v1|g' | kubectl apply -f -
+  kubectl kustomize "$KUSTOMIZE_DIR" --load-restrictor=LoadRestrictionsNone | sed 's|gateway.networking.k8s.io/v1alpha2|gateway.networking.k8s.io/v1|g' | kubectl apply -f -
 else
-  kubectl apply -k .
+  kubectl kustomize "$KUSTOMIZE_DIR" --load-restrictor=LoadRestrictionsNone | kubectl apply -f -
 fi
 mise run :verify{% if usage.delete %} --delete{% endif %}
 """

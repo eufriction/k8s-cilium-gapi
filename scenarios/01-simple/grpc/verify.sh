@@ -23,6 +23,14 @@ GRPC_METHOD=grpc.testing.TestService/UnaryCall
 ITERATIONS=10
 
 echo "--- gRPC affinity checks (port 443) ---"
+retry_until 10 grpcurl -insecure \
+  -authority grpc-a.example.test \
+  -import-path "$GRPC_IMPORT_PATH" \
+  -proto "$GRPC_PROTO" \
+  -d "$GRPC_REQ" \
+  localhost:443 \
+  "$GRPC_METHOD" >/dev/null
+echo "gRPC listener warm-up complete"
 
 misrouted=0
 for i in $(seq 1 $ITERATIONS); do

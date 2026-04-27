@@ -29,7 +29,7 @@ kubectl get secret backend-b-mtls-server -n backend-b -o jsonpath='{.data.ca\.cr
 kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.crt}' | base64 -d > "$TMPDIR/b-client.crt"
 kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.key}' | base64 -d > "$TMPDIR/b-client.key"
 
-retry_until 5 curl -fsS --resolve "mtls-a.example.test:9443:127.0.0.1" \
+retry_until 10 curl -fsS --resolve "mtls-a.example.test:9443:127.0.0.1" \
   --cacert "$TMPDIR/a-ca.crt" --cert "$TMPDIR/a-client.crt" --key "$TMPDIR/a-client.key" \
   https://mtls-a.example.test:9443/ >/dev/null
 echo "PASS: backend-a accepts correct client cert"

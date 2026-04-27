@@ -21,7 +21,6 @@ protocol discriminator.
 | `pod/api`                                   | `backend-b`      | HTTP backend B (path `/b`) |
 | `pod/grpc-api`                              | `backend-a`      | gRPC backend A             |
 | `pod/grpc-api`                              | `backend-b`      | gRPC backend B             |
-| `pod/netshoot-client`                       | `client`         | Debug / manual testing     |
 | `Gateway/same-hostname-split-ports-gateway` | `gateway-system` | Shared Gateway             |
 
 ## Gateway listeners
