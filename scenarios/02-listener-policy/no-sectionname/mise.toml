@@ -1,14 +1,18 @@
 [env]
-SCENARIO_SKIP_VAR = "X_TLSROUTE_NO_SECTIONNAME_BROKEN"
+SCENARIO_SKIP_VERSIONS = "1.19.1 1.19.3"
 
 [tasks.start]
 extends = "scenario:start"
 description = "Deploy the TLSRoute no-sectionName mixed-listener scenario"
 depends = ["//:kind:load:apps{% if usage.verbose %} --verbose{% endif %}", "//:cert-manager:install"]
 run = """
-if [ -n "${SCENARIO_SKIP_VAR:-}" ] && [ "${!SCENARIO_SKIP_VAR}" = "true" ]; then
-  echo "SKIP: ${SCENARIO_SKIP_VAR}=true — skipping deploy"
-  exit 0
+if [ -n "${SCENARIO_SKIP_VERSIONS:-}" ]; then
+  for _v in ${SCENARIO_SKIP_VERSIONS}; do
+    if [ "$_v" = "${CILIUM_VERSION}" ]; then
+      echo "SKIP: known broken on Cilium ${CILIUM_VERSION}"
+      exit 0
+    fi
+  done
 fi
 KUSTOMIZE_DIR="."
 if [ "${FIXTURE_DEPLOYED:-}" = "true" ] && [ -d gateway ]; then

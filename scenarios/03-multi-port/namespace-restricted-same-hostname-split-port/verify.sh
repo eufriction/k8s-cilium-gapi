@@ -2,7 +2,7 @@
 set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
-skip_if X_ALLOWED_ROUTES_NAMESPACES_BROKEN "namespace-restricted same-hostname split-port broken (cilium#42159 + cilium#44889)"
+skip_on_versions "1.19.1 1.19.3 1.20.0-pre.1" "namespace-restricted same-hostname split-port broken (cilium#42159 + cilium#44889)"
 
 # --- Wait for resources ---
 # Tier 1 — pods & certificates (parallel)

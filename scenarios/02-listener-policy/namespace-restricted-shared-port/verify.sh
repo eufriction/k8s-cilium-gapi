@@ -2,7 +2,6 @@
 set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
-skip_if X_ALLOWED_ROUTES_NAMESPACES_BROKEN "allowedRoutes.namespaces per-listener enforcement broken (cilium#42159)"
 
 # --- Wait for resources ---
 wait_parallel \

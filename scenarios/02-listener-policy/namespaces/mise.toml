@@ -1,6 +1,3 @@
-[env]
-SCENARIO_SKIP_VAR = "X_ALLOWED_ROUTES_NAMESPACES_BROKEN"
-
 [tasks.start]
 extends = "scenario:start"
 description = "Deploy the allowedRoutes.namespaces cross-namespace scenario"

@@ -2,7 +2,7 @@
 set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
-skip_if X_TLS_PASSTHROUGH_SPLIT_PORTS_BROKEN "TLS passthrough same-hostname split ports broken (cilium#42898)"
+skip_on_versions "1.19.1 1.19.3 1.20.0-pre.1" "TLS passthrough same-hostname split ports broken (cilium#42898)"
 
 # --- Tier 1: pods & certificates (parallel) ---
 wait_parallel \

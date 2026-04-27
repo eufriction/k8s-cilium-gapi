@@ -2,7 +2,7 @@
 set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
-skip_if X_TLSROUTE_NO_SECTIONNAME_BROKEN "TLSRoute no-sectionName bug — duplicate FilterChains on mixed-listener Gateway (cilium#45050)"
+skip_on_versions "1.19.1 1.19.3" "TLSRoute no-sectionName bug — duplicate FilterChains on mixed-listener Gateway (cilium#45050)"
 
 # --- Wait for resources ---
 wait_parallel \

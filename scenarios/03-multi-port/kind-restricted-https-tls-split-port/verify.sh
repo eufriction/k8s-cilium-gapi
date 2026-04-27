@@ -2,7 +2,7 @@
 set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
-skip_if X_ALLOWED_ROUTES_SEPARATE_PORT_BROKEN "kind-restricted HTTPS+TLS split-port broken (cilium#45559 + cilium#44889 + cilium#45371)"
+skip_on_versions "1.19.1 1.19.3 1.20.0-pre.1" "kind-restricted HTTPS+TLS split-port broken (cilium#45559 + cilium#44889 + cilium#45371)"
 
 # --- Wait for resources ---
 

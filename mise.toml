@@ -25,15 +25,8 @@ KIND_CLUSTER_NAME = "k8s-cilium-gapi"
 # Override by copying a versions/*.toml to mise.local.toml.
 X_GRPCROUTE_ACCEPTED_MSG = "Accepted HTTPRoute"
 X_TLSROUTE_ACCEPTED_MSG = "Accepted HTTPRoute"
-X_ALLOWED_ROUTES_SEPARATE_PORT_BROKEN = "true"
-X_ALLOWED_ROUTES_SHARED_PORT_BROKEN = "false"
-X_SPLIT_PORT_GRPC_BROKEN = "true"
-X_TLSROUTE_NO_SECTIONNAME_BROKEN = "true"
 X_TLSROUTE_API_VERSION = "v1alpha2"
-X_TLS_PASSTHROUGH_SPLIT_PORTS_BROKEN = "true"
-X_HTTPS_TLS_SPLIT_PORT_BROKEN = "true"
-X_ALLOWED_ROUTES_NAMESPACES_BROKEN = "true"
-SCENARIO_SKIP_VAR = ""
+SCENARIO_SKIP_VERSIONS = ""
 
 [tools]
 hk = "latest"
@@ -78,9 +71,13 @@ flag "-v --verbose" env="VERBOSE" help="Enable verbose output for image pulls an
 flag "-d --delete" env="DELETE" help="Delete scenario resources after verify"
 '''
 run = """
-if [ -n "${SCENARIO_SKIP_VAR:-}" ] && [ "${!SCENARIO_SKIP_VAR}" = "true" ]; then
-  echo "SKIP: ${SCENARIO_SKIP_VAR}=true — skipping deploy"
-  exit 0
+if [ -n "${SCENARIO_SKIP_VERSIONS:-}" ]; then
+  for _v in ${SCENARIO_SKIP_VERSIONS}; do
+    if [ "$_v" = "${CILIUM_VERSION}" ]; then
+      echo "SKIP: known broken on Cilium ${CILIUM_VERSION}"
+      exit 0
+    fi
+  done
 fi
 if [ "${FIXTURE_DEPLOYED:-}" = "true" ] && [ -d gateway ]; then
   kubectl kustomize gateway/ --load-restrictor=LoadRestrictionsNone | kubectl apply -f -

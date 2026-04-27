@@ -80,7 +80,7 @@ mise run scenarios:run-all
 mise run cluster:delete
 ```
 
-`scenarios:run-all` deploys a shared fixture (namespaces + backend pods), runs every scenario in gateway-only mode (only Gateway + Route resources are applied/deleted per scenario), then tears down the fixture. Broken scenarios are skipped before deploying.
+`scenarios:run-all` deploys a shared fixture (namespaces + backend pods), runs every scenario in gateway-only mode (only Gateway + Route resources are applied/deleted per scenario), then tears down the fixture. Scenarios known to be broken on the active `CILIUM_VERSION` are skipped before deploying.
 
 To run without the fixture (each scenario deploys its own backends):
 
@@ -114,7 +114,20 @@ Available profiles in `versions/`:
 | `branch.toml`                 | local build  | 1.5.1       | Set `CILIUM_CHART_DIR` and image vars  |
 | `fix-server-names-dedup.toml` | local build  | 1.5.1       | fix/server-names-dedup branch (#45623) |
 
-Each profile sets `CILIUM_VERSION`, `GATEWAY_API_VERSION`, and `X_*` env vars that control version-conditional verify behavior (expected status messages, known-bug skips).
+Each profile sets `CILIUM_VERSION`, `GATEWAY_API_VERSION`, and `X_*` env vars that control version-conditional verify behavior (expected status messages, TLSRoute API version).
+
+#### Skip logic
+
+Scenarios that are known to be broken on specific Cilium releases declare a `SCENARIO_SKIP_VERSIONS` env var in their `mise.toml`:
+
+```toml
+[env]
+SCENARIO_SKIP_VERSIONS = "1.19.1 1.19.3 1.20.0-pre.1"
+```
+
+Before deploying, the `scenario:start` template compares `CILIUM_VERSION` against this space-separated list. If it matches, the scenario is skipped with exit 0. The same check runs inside `verify.sh` via `skip_on_versions` as a safety net for standalone invocation.
+
+Branch builds set `CILIUM_VERSION = "branch"`, which never matches a release version — so branch builds run every scenario and report real pass/fail results.
 
 ### Branch builds
 
@@ -178,9 +191,9 @@ Read each scenario README for the scenario-specific test flow.
 | `02-listener-policy` | [`kinds-multi-listener`](scenarios/02-listener-policy/kinds-multi-listener/README.md)                                              | 4 listeners (HTTP/HTTPS/gRPC/TLS), per-listener `allowedRoutes.kinds`, HTTP→HTTPS redirect, TLS passthrough | ⚠️ [Cilium bug](#known-cilium-bugs)                           |
 | `02-listener-policy` | [`kinds-shared-port`](scenarios/02-listener-policy/kinds-shared-port/README.md)                                                    | HTTPRoute + GRPCRoute on one HTTPS listener with `allowedRoutes.kinds`                                      | ✅ Pass on ≥1.19.3 — [bug](#known-cilium-bugs) on ≤1.19.1     |
 | `02-listener-policy` | [`kinds-split-port`](scenarios/02-listener-policy/kinds-split-port/README.md)                                                      | HTTPS + gRPC on separate ports with per-listener `allowedRoutes.kinds`                                      | ⚠️ [Cilium bug](#known-cilium-bugs)                           |
-| `02-listener-policy` | [`namespace-restricted-shared-port`](scenarios/02-listener-policy/namespace-restricted-shared-port/README.md)                      | Namespace-scoped `allowedRoutes` on shared HTTPS port 443                                                   | ⚠️ [Cilium bug](#known-cilium-bugs)                           |
-| `02-listener-policy` | [`namespace-restricted-split-port`](scenarios/02-listener-policy/namespace-restricted-split-port/README.md)                        | Namespace-scoped `allowedRoutes` on split HTTP ports with hostnames                                         | ⚠️ [Cilium bug](#known-cilium-bugs)                           |
-| `02-listener-policy` | [`namespaces`](scenarios/02-listener-policy/namespaces/README.md)                                                                  | `allowedRoutes.namespaces` per-listener enforcement, cross-namespace HTTPRoute                              | ⚠️ [Cilium bug](#known-cilium-bugs)                           |
+| `02-listener-policy` | [`namespace-restricted-shared-port`](scenarios/02-listener-policy/namespace-restricted-shared-port/README.md)                      | Namespace-scoped `allowedRoutes` on shared HTTPS port 443                                                   | ✅ Pass                                                       |
+| `02-listener-policy` | [`namespace-restricted-split-port`](scenarios/02-listener-policy/namespace-restricted-split-port/README.md)                        | Namespace-scoped `allowedRoutes` on split HTTP ports with hostnames                                         | ✅ Pass                                                       |
+| `02-listener-policy` | [`namespaces`](scenarios/02-listener-policy/namespaces/README.md)                                                                  | `allowedRoutes.namespaces` per-listener enforcement, cross-namespace HTTPRoute                              | ✅ Pass                                                       |
 | `02-listener-policy` | [`no-sectionname`](scenarios/02-listener-policy/no-sectionname/README.md)                                                          | TLSRoute without sectionName on mixed-listener Gateway (HTTP/HTTPS/TLS)                                     | ⚠️ [Cilium bug](#known-cilium-bugs)                           |
 | `03-multi-port`      | [`http-grpc-same-hostname`](scenarios/03-multi-port/http-grpc-same-hostname/README.md)                                             | HTTPRoute + GRPCRoute on same hostname, different ports (443 / 50051)                                       | ⚠️ [Cilium bug](#known-cilium-bugs)                           |
 | `03-multi-port`      | [`https-tls-same-hostname-split-port`](scenarios/03-multi-port/https-tls-same-hostname-split-port/README.md)                       | HTTPS termination + TLS passthrough, same hostname, different ports                                         | ⚠️ [Cilium bug](#known-cilium-bugs)                           |
@@ -196,18 +209,18 @@ Read each scenario README for the scenario-specific test flow.
 
 ### Known Cilium bugs
 
-The verify scripts use version-conditional `X_*` env vars to skip or adjust assertions for known issues.
+Scenarios affected by known bugs declare `SCENARIO_SKIP_VERSIONS` in their `mise.toml` to skip broken Cilium releases automatically. The verify scripts also call `skip_on_versions` as a safety net. See [Skip logic](#skip-logic) above.
 
 #### Open bugs
 
-| Bug                                                                                   | Scenarios                                                                                                                    | Cilium issue                                            | Fix                                                                                    | Status                                                                                                                                                      |
-| ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `CheckGatewayAllowedForNamespace` doesn't enforce per-listener namespace restrictions | namespaces, namespace-restricted-split-port, namespace-restricted-shared-port, namespace-restricted-same-hostname-split-port | [#42159](https://github.com/cilium/cilium/issues/42159) | —                                                                                      | Broken on all tested versions                                                                                                                               |
-| `CheckGatewayRouteKindAllowed` overwrites Accepted condition across listeners         | kinds-split-port, kinds-multi-listener, kind-restricted-https-tls-shared-port                                                | [#45559](https://github.com/cilium/cilium/issues/45559) | —                                                                                      | Broken on all tested versions                                                                                                                               |
-| TLS passthrough split-port same-hostname Envoy wiring failure                         | tls-passthrough-same-hostname                                                                                                | [#42898](https://github.com/cilium/cilium/issues/42898) | —                                                                                      | Broken on all tested versions (`SSL_ERROR_SYSCALL`)                                                                                                         |
-| TLSRoute without sectionName creates duplicate FilterChains on mixed-listener Gateway | no-sectionname                                                                                                               | [#45050](https://github.com/cilium/cilium/issues/45050) | [#45371](https://github.com/cilium/cilium/pull/45371)                                  | Broken on ≤1.19.3 and #44889 branch build (#45371 not merged)                                                                                               |
-| `toFilterChainMatch` duplicate `serverNames` after `SortedUnique` removal             | http-grpc-split-port, kinds-split-port, http-grpc-same-hostname                                                              | [#45623](https://github.com/cilium/cilium/issues/45623) | [fix/server-names-dedup](https://github.com/cilium/cilium/tree/fix/server-names-dedup) | Broken on ≥1.19.2 (regression in `9ee2db2b32`); works on 1.19.1; verified fixed on fix/server-names-dedup (restores `SortedUnique` in `toFilterChainMatch`) |
-| Same-hostname GRPCRoutes on split ports return 404                                    | http-grpc-same-hostname                                                                                                      | [#44877](https://github.com/cilium/cilium/issues/44877) | [#44889](https://github.com/cilium/cilium/pull/44889)                                  | Broken on ≤1.20.0-pre.1; verified fixed on #44889 branch build (not yet in a release)                                                                       |
+| Bug                                                                                   | Scenarios                                                                     | Cilium issue                                            | Fix                                                                                    | Status                                                                                                                                                      |
+| ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CheckGatewayAllowedForNamespace` doesn't enforce per-listener namespace restrictions | namespace-restricted-same-hostname-split-port                                 | [#42159](https://github.com/cilium/cilium/issues/42159) | —                                                                                      | Broken on all tested versions; namespaces, namespace-restricted-shared-port, namespace-restricted-split-port pass despite the bug                           |
+| `CheckGatewayRouteKindAllowed` overwrites Accepted condition across listeners         | kinds-split-port, kinds-multi-listener, kind-restricted-https-tls-shared-port | [#45559](https://github.com/cilium/cilium/issues/45559) | —                                                                                      | Broken on all tested versions                                                                                                                               |
+| TLS passthrough split-port same-hostname Envoy wiring failure                         | tls-passthrough-same-hostname                                                 | [#42898](https://github.com/cilium/cilium/issues/42898) | —                                                                                      | Broken on all tested versions (`SSL_ERROR_SYSCALL`)                                                                                                         |
+| TLSRoute without sectionName creates duplicate FilterChains on mixed-listener Gateway | no-sectionname                                                                | [#45050](https://github.com/cilium/cilium/issues/45050) | [#45371](https://github.com/cilium/cilium/pull/45371)                                  | Broken on ≤1.19.3 and #44889 branch build (#45371 not merged)                                                                                               |
+| `toFilterChainMatch` duplicate `serverNames` after `SortedUnique` removal             | http-grpc-split-port, kinds-split-port, http-grpc-same-hostname               | [#45623](https://github.com/cilium/cilium/issues/45623) | [fix/server-names-dedup](https://github.com/cilium/cilium/tree/fix/server-names-dedup) | Broken on ≥1.19.2 (regression in `9ee2db2b32`); works on 1.19.1; verified fixed on fix/server-names-dedup (restores `SortedUnique` in `toFilterChainMatch`) |
+| Same-hostname GRPCRoutes on split ports return 404                                    | http-grpc-same-hostname                                                       | [#44877](https://github.com/cilium/cilium/issues/44877) | [#44889](https://github.com/cilium/cilium/pull/44889)                                  | Broken on ≤1.20.0-pre.1; verified fixed on #44889 branch build (not yet in a release)                                                                       |
 
 #### Fixed bugs
 
@@ -232,19 +245,19 @@ The verify scripts use version-conditional `X_*` env vars to skip or adjust asse
 | `01-simple`          | https-tls-shared-port                         |   ✅   |   ✅   |      —       |      ✅       |           ✅           |      ✅      |
 | `01-simple`          | tls-passthrough                               |   ✅   |   ✅   |      ✅      |      ✅       |           ✅           |      ✅      |
 | `01-simple`          | tls-split-port                                |   ✅   |   —    |      —       |       —       |           ✅           |      ✅      |
-| `02-listener-policy` | kind-restricted-https-tls-shared-port         |   ❌   |   ❌   |      —       |       —       |           ⏭️           |      ⏭️      |
+| `02-listener-policy` | kind-restricted-https-tls-shared-port         |   ⏭️   |   ❌   |      —       |       —       |           ⏭️           |      ⏭️      |
 | `02-listener-policy` | kinds-multi-listener                          |   ❌   |   ❌   |      —       |       —       |           ❌           |      ✅      |
-| `02-listener-policy` | kinds-shared-port                             |   ❌   |   ✅   |      ✅      |      ✅       |           ✅           |      ✅      |
-| `02-listener-policy` | kinds-split-port                              |   ❌   |   ❌   |      ⏭️      |      ⏭️       |           ⏭️           |      ⏭️      |
-| `02-listener-policy` | namespace-restricted-shared-port              |   ✅   |   ✅   |      —       |       —       |           ⏭️           |      ⏭️      |
-| `02-listener-policy` | namespace-restricted-split-port               |   ✅   |   ✅   |      —       |       —       |           ⏭️           |      ⏭️      |
-| `02-listener-policy` | namespaces                                    |   ✅   |   ✅   |      —       |       —       |           ⏭️           |      ⏭️      |
-| `02-listener-policy` | no-sectionname                                |   ❌   |   ❌   |      —       |      ❌       |           ❌           |      ⏭️      |
-| `03-multi-port`      | http-grpc-same-hostname                       |   ❌   |   ❌   |      ⏭️      |      ✅       |           ⏭️           |      ✅      |
+| `02-listener-policy` | kinds-shared-port                             |   ⏭️   |   ✅   |      ✅      |      ✅       |           ✅           |      ✅      |
+| `02-listener-policy` | kinds-split-port                              |   ⏭️   |   ❌   |      ⏭️      |      ⏭️       |           ⏭️           |      ⏭️      |
+| `02-listener-policy` | namespace-restricted-shared-port              |   ✅   |   ✅   |      —       |       —       |           —            |      —       |
+| `02-listener-policy` | namespace-restricted-split-port               |   ✅   |   ✅   |      —       |       —       |           —            |      —       |
+| `02-listener-policy` | namespaces                                    |   ✅   |   ✅   |      —       |       —       |           —            |      —       |
+| `02-listener-policy` | no-sectionname                                |   ⏭️   |   ❌   |      —       |      ❌       |           ❌           |      ⏭️      |
+| `03-multi-port`      | http-grpc-same-hostname                       |   ⏭️   |   ❌   |      ⏭️      |      ✅       |           ⏭️           |      ✅      |
 | `03-multi-port`      | https-tls-same-hostname-split-port            |   ⏭️   |   —    |      —       |       —       |           ⏭️           |      ⏭️      |
 | `03-multi-port`      | kind-restricted-https-tls-split-port          |   ⏭️   |   —    |      —       |       —       |           ⏭️           |      ⏭️      |
 | `03-multi-port`      | namespace-restricted-same-hostname-split-port |   ⏭️   |   —    |      —       |       —       |           ⏭️           |      ⏭️      |
-| `03-multi-port`      | tls-passthrough-same-hostname                 |   ❌   |   ❌   |      —       |       —       |           ⏭️           |      ⏭️      |
+| `03-multi-port`      | tls-passthrough-same-hostname                 |   ⏭️   |   ❌   |      —       |       —       |           ⏭️           |      ⏭️      |
 
 ✅ = pass ❌ = fail ⏭️ = skipped (known bug) — = not yet tested.
 Cross-reference scenario names with the [Known Cilium bugs](#known-cilium-bugs) table for failure and skip details.

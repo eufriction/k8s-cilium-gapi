@@ -90,15 +90,18 @@ assert_msg() {
   return 1
 }
 
-# skip_if <env_var_name> [message]
+# skip_on_versions <versions> [message]
 #
-# If the named env var is "true", prints a SKIP message and exits 0.
-# Use at the top of a verify script to skip the entire scenario.
-skip_if() {
-  local var_name="$1"
-  local msg="${2:-known bug (${var_name}=true)}"
-  if [ "${!var_name}" = "true" ]; then
-    echo "SKIP: ${msg}"
-    exit 0
-  fi
+# If CILIUM_VERSION matches any version in the space-separated list,
+# prints a SKIP message and exits 0.
+# Use at the top of a verify script to skip known-broken scenarios.
+skip_on_versions() {
+  local versions="$1"
+  local msg="${2:-known broken on Cilium ${CILIUM_VERSION}}"
+  for _v in $versions; do
+    if [ "$_v" = "${CILIUM_VERSION}" ]; then
+      echo "SKIP: ${msg}"
+      exit 0
+    fi
+  done
 }

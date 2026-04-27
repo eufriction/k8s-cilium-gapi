@@ -11,17 +11,3 @@ GATEWAY_API_VERSION = "1.5.1"
 X_GRPCROUTE_ACCEPTED_MSG = "Accepted GRPCRoute"
 X_TLSROUTE_ACCEPTED_MSG = "Accepted TLSRoute"
 X_TLSROUTE_API_VERSION = "v1"
-# Fixed on main (since 1.19.0)
-X_ALLOWED_ROUTES_SHARED_PORT_BROKEN = "false"
-# Fixed by #44889 — same-hostname split-port GRPCRoutes no longer 404
-X_SPLIT_PORT_GRPC_BROKEN = "false"
-# NOT fixed — cilium#45050 (TLSRoute no-sectionName duplicate FilterChains)
-X_TLSROUTE_NO_SECTIONNAME_BROKEN = "true"
-# NOT fixed — cilium#45559 (CheckGatewayRouteKindAllowed)
-X_ALLOWED_ROUTES_SEPARATE_PORT_BROKEN = "true"
-# NOT fixed — cilium#42159 (CheckGatewayAllowedForNamespace)
-X_ALLOWED_ROUTES_NAMESPACES_BROKEN = "true"
-# NOT fixed — cilium#42898 (TLS split-port)
-X_TLS_PASSTHROUGH_SPLIT_PORTS_BROKEN = "true"
-# NOT fixed — needs #44889 + cilium#45371 (HTTPS+TLS split-port); only #44889 present
-X_HTTPS_TLS_SPLIT_PORT_BROKEN = "true"

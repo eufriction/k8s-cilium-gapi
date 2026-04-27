@@ -2,7 +2,7 @@
 set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
-skip_if X_ALLOWED_ROUTES_SEPARATE_PORT_BROKEN "separate-port allowedRoutes.kinds bug — HTTPRoute not accepted (not yet fixed upstream)"
+skip_on_versions "1.19.1 1.19.3 1.20.0-pre.1" "separate-port allowedRoutes.kinds bug — HTTPRoute not accepted (not yet fixed upstream)"
 wait_parallel \
   "pod/api -n backend-a --for=condition=Ready --timeout=5s" \
   "pod/api -n backend-b --for=condition=Ready --timeout=5s" \
