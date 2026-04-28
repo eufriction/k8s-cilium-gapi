@@ -31,6 +31,10 @@ restricted listener should reject the cross-namespace route.
 1. `https-restricted` listener: `attachedRoutes = 0`
 2. `https-open` listener: `attachedRoutes = 1`
 3. HTTPS traffic on port 50051 succeeds
+4. **Negative on port 443** — `curl` to `api.example.test:443` returns 404
+   (restricted listener has no attached routes). Currently broken: Cilium's
+   data plane leaks the route from the open listener onto port 443 via shared
+   Envoy filter chains ([cilium#42159](https://github.com/cilium/cilium/issues/42159) data-plane half).
 
 ## Status
 

@@ -44,3 +44,16 @@ fi
 # --- Traffic check on the open listener (port 50051) ---
 retry_until 10 curl -kfsS --resolve "api.example.test:50051:127.0.0.1" https://api.example.test:50051/headers >/dev/null
 echo "PASS: HTTPS traffic — api.example.test on port 50051 (open listener)"
+
+# --- Negative: restricted listener must not serve the same-hostname route ---
+# The cross-namespace route is rejected by the restricted listener (attachedRoutes=0),
+# so traffic on port 443 for the same hostname should return 404.
+# Currently broken: Cilium's data plane leaks the route from the open listener
+# onto port 443 via shared envoy filter chains — cilium#42159 (data-plane half).
+http_status=$(curl -kso /dev/null -w '%{http_code}' --resolve "api.example.test:443:127.0.0.1" https://api.example.test:443/headers || true)
+if [ "$http_status" = "404" ]; then
+  echo "PASS: restricted listener returns 404 for same hostname (listener isolation enforced)"
+else
+  echo "FAIL: restricted listener returned HTTP ${http_status} (expected 404) — data-plane half of cilium#42159" >&2
+  exit 1
+fi
