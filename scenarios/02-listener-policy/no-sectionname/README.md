@@ -12,7 +12,7 @@ creating duplicate Envoy FilterChains that silently break passthrough traffic.
 | Resource                         | Namespace      | Purpose                                         |
 | -------------------------------- | -------------- | ----------------------------------------------- |
 | Gateway `mixed-listener-gateway` | gateway-system | HTTP/80 + HTTPS/443 + TLS/443                   |
-| HTTPRoute `backend-a-web-route`  | backend-a      | HTTPS termination → go-httpbin                  |
+| HTTPRoute `backend-a-web-route`  | backend-a      | HTTP + HTTPS termination → go-httpbin           |
 | TLSRoute `backend-b-mtls-route`  | backend-b      | TLS passthrough → backend-mtls (no sectionName) |
 | Pod `api`                        | backend-a      | go-httpbin (HTTP backend)                       |
 | Pod `backend-mtls`               | backend-b      | Envoy with per-namespace mTLS certs             |

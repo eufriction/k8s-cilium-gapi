@@ -12,6 +12,9 @@ spec:
     - name: mixed-listener-gateway
       namespace: gateway-system
       sectionName: https
+    - name: mixed-listener-gateway
+      namespace: gateway-system
+      sectionName: http
   hostnames:
     - web.example.test
   rules:

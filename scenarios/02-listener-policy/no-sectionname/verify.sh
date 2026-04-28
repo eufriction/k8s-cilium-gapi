@@ -14,6 +14,7 @@ wait_parallel \
   "certificate/backend-b-mtls-client -n backend-b --for=condition=Ready --timeout=10s"
 kubectl wait gateway/mixed-listener-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=5s
 kubectl wait httproute/backend-a-web-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
+kubectl wait httproute/backend-a-web-route -n backend-a --for='jsonpath={.status.parents[1].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
 kubectl wait tlsroute/backend-b-mtls-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
 wait
 
@@ -35,7 +36,7 @@ curl -fsS --resolve "mtls.example.test:443:127.0.0.1" \
 echo "PASS: TLS passthrough — mtls.example.test mTLS on port 443"
 
 # --- HTTP listener (port 80) ---
-curl -fsS -H 'Host: web.example.test' http://localhost/headers >/dev/null
+retry_until 10 curl -fsS -H 'Host: web.example.test' http://localhost/headers >/dev/null
 echo "PASS: HTTP — web.example.test on port 80"
 
 # --- TLSRoute parent count assertion ---
