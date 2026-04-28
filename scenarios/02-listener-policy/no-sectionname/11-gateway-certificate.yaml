@@ -1,12 +1,12 @@
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: scenario-26-gateway-certificate
+  name: no-sectionname-gateway-certificate
   namespace: gateway-system
   labels:
     app.kubernetes.io/part-of: demo
 spec:
-  secretName: scenario-26-gateway-tls
+  secretName: no-sectionname-gateway-tls
   commonName: web.example.test
   dnsNames:
     - web.example.test
@@ -15,4 +15,4 @@ spec:
     - 127.0.0.1
   issuerRef:
     kind: Issuer
-    name: scenario-26-selfsigned
+    name: no-sectionname-selfsigned

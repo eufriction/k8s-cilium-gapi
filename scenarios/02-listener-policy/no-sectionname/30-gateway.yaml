@@ -24,7 +24,7 @@ spec:
         mode: Terminate
         certificateRefs:
           - kind: Secret
-            name: scenario-26-gateway-tls
+            name: no-sectionname-gateway-tls
       allowedRoutes:
         namespaces:
           from: All

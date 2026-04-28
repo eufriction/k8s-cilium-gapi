@@ -1,4 +1,4 @@
-# Scenario 26 — TLSRoute without sectionName on mixed-listener Gateway
+# no-sectionname — TLSRoute without sectionName on mixed-listener Gateway
 
 Three-listener Gateway (HTTP/80, HTTPS-Terminate/443, TLS-Passthrough/443).
 The TLSRoute **omits `sectionName`** and should auto-attach only to the TLS

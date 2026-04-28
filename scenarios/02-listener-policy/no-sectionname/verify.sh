@@ -8,7 +8,7 @@ skip_on_versions "1.19.1 1.19.3 1.20.0-pre.1" "TLSRoute no-sectionName bug — d
 wait_parallel \
   "pod/api -n backend-a --for=condition=Ready --timeout=5s" \
   "pod/backend-mtls -n backend-b --for=condition=Ready --timeout=5s" \
-  "certificate/scenario-26-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s" \
+  "certificate/no-sectionname-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s" \
   "certificate/backend-b-mtls-ca -n backend-b --for=condition=Ready --timeout=10s" \
   "certificate/backend-b-mtls-server -n backend-b --for=condition=Ready --timeout=10s" \
   "certificate/backend-b-mtls-client -n backend-b --for=condition=Ready --timeout=10s"
