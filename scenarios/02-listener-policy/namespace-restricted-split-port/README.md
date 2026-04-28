@@ -22,10 +22,13 @@ The [`namespaces`](../namespaces/README.md) scenario uses HTTP on split ports
 listener, testing whether hostname-based listener matching affects the namespace
 policy evaluation path.
 
-## Note
+## Verification
 
-Port 8080 is not mapped to the host in the kind cluster config, so this scenario
-verifies via `attachedRoutes` status only (no traffic test).
+1. **`attachedRoutes` status** — restricted listener (port 80) has 0 attached routes;
+   open listener (port 8080) has 1.
+2. **Traffic on port 8080** — `curl` to `open.example.test:8080` succeeds (open listener).
+3. **Negative on port 80** — `curl` to `restricted.example.test:80` returns 404
+   (no routes attached to the restricted listener).
 
 ## Run
 
