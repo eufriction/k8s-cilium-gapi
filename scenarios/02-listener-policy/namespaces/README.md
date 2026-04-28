@@ -10,3 +10,14 @@ Tests that `allowedRoutes.namespaces` is evaluated **independently per listener*
 | `http-open`       | 8080 | `All`             | 1                                                 |
 
 The HTTPRoute in `backend-a` references the Gateway without `sectionName`. Per the Gateway API spec, each listener should independently evaluate its namespace policy.
+
+## Verification
+
+1. **`attachedRoutes` status** — restricted listener (port 80) has 0 attached routes;
+   open listener (port 8080) has 1.
+2. **Traffic on port 8080** — `curl` to `web.example.test:8080` succeeds (open listener).
+3. **Negative on port 80** — `curl` to `restricted.example.test:80` returns 404
+   (no routes attached to the restricted listener). The negative test uses a
+   non-matching hostname because Cilium's data plane merges Envoy filter chains
+   across listeners sharing the same IP, leaking the open-listener route onto
+   port 80 for the same hostname ([cilium#42159](https://github.com/cilium/cilium/issues/42159) data-plane half).

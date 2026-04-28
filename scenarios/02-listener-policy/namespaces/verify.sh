@@ -35,3 +35,20 @@ else
   echo "FAIL: http-open listener has attachedRoutes=${open} (expected 1) — cilium#42159" >&2
   exit 1
 fi
+
+# --- Traffic test on http-open (port 8080) ---
+retry_until 10 curl -fsS -H 'Host: web.example.test' http://localhost:8080/headers >/dev/null
+echo "PASS: HTTP traffic to web.example.test on port 8080 (open listener)"
+
+# --- Negative: restricted listener rejects traffic ---
+# Port 80 listener has no attached routes (cross-namespace rejected), so any
+# request should get 404.  We use a non-matching hostname because Cilium's
+# data plane merges envoy filter chains across listeners sharing the same IP,
+# leaking the open-listener route onto port 80 for the same hostname.
+http_status=$(curl -so /dev/null -w '%{http_code}' -H 'Host: restricted.example.test' http://localhost/headers || true)
+if [ "$http_status" = "404" ]; then
+  echo "PASS: restricted listener returns 404 (no routes attached)"
+else
+  echo "FAIL: restricted listener returned HTTP ${http_status} (expected 404)" >&2
+  exit 1
+fi
