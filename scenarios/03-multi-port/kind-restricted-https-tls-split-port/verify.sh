@@ -40,6 +40,39 @@ curl -fsS --resolve "api.example.test:9443:127.0.0.1" \
   https://api.example.test:9443/ >/dev/null
 echo "PASS: TLS passthrough — api.example.test mTLS on port 9443 (kind-restricted to TLSRoute)"
 
+# --- Negative: wrong-kind HTTPRoute targeting tls listener should be rejected ---
+sleep 2  # allow controller reconciliation
+wrong_kind_accepted=$(kubectl get httproute/wrong-kind-http-route -n backend-a \
+  -o jsonpath='{.status.parents[?(@.parentRef.sectionName=="tls")].conditions[?(@.type=="Accepted")].status}' 2>/dev/null || echo "")
+if [ "$wrong_kind_accepted" = "False" ]; then
+  echo "PASS: wrong-kind HTTPRoute correctly rejected by tls listener (kinds: [TLSRoute])"
+elif [ -z "$wrong_kind_accepted" ]; then
+  echo "PASS: wrong-kind HTTPRoute has no parent status for tls listener (not attached)"
+else
+  echo "FAIL: wrong-kind HTTPRoute was accepted by tls listener (expected rejection)" >&2
+  exit 1
+fi
+
+# --- Verify listener attachedRoutes counts ---
+https_attached=$(kubectl get gateway/kind-restricted-https-tls-split-port-gateway -n gateway-system \
+  -o jsonpath='{.status.listeners[?(@.name=="https")].attachedRoutes}')
+tls_attached=$(kubectl get gateway/kind-restricted-https-tls-split-port-gateway -n gateway-system \
+  -o jsonpath='{.status.listeners[?(@.name=="tls")].attachedRoutes}')
+
+if [ "$https_attached" = "1" ]; then
+  echo "PASS: https listener has 1 attachedRoute (HTTPRoute only)"
+else
+  echo "FAIL: https listener has ${https_attached} attachedRoutes (expected 1)" >&2
+  exit 1
+fi
+
+if [ "$tls_attached" = "1" ]; then
+  echo "PASS: tls listener has 1 attachedRoute (TLSRoute only)"
+else
+  echo "FAIL: tls listener has ${tls_attached} attachedRoutes (expected 1)" >&2
+  exit 1
+fi
+
 # --- Status message checks ---
 msg=$(kubectl get tlsroute/backend-b-tls-route -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
 assert_msg "$msg" "X_TLSROUTE_ACCEPTED_MSG" "backend-b-tls-route"

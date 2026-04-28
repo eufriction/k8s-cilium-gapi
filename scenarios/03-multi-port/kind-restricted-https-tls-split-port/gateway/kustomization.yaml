@@ -9,3 +9,4 @@ resources:
   - ../30-gateway.yaml
   - ../31-backend-a-httproute.yaml
   - ../32-backend-b-tlsroute.yaml
+  - ../33-wrong-kind-httproute.yaml

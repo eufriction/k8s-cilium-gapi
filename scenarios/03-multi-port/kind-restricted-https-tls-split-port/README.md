@@ -19,10 +19,18 @@ only accepts `HTTPRoute`, the TLS listener only accepts `TLSRoute`.
 
 ## Routes
 
-| Kind        | Name                    | Namespace   | Listener      | Backend           |
-| ----------- | ----------------------- | ----------- | ------------- | ----------------- |
-| `HTTPRoute` | `backend-a-https-route` | `backend-a` | `https` (443) | api:80            |
-| `TLSRoute`  | `backend-b-tls-route`   | `backend-b` | `tls` (9443)  | backend-mtls:9443 |
+| Kind        | Name                    | Namespace   | Listener      | Backend                                |
+| ----------- | ----------------------- | ----------- | ------------- | -------------------------------------- |
+| `HTTPRoute` | `backend-a-https-route` | `backend-a` | `https` (443) | api:80                                 |
+| `TLSRoute`  | `backend-b-tls-route`   | `backend-b` | `tls` (9443)  | backend-mtls:9443                      |
+| `HTTPRoute` | `wrong-kind-http-route` | `backend-a` | `tls` (9443)  | _(negative test — should be rejected)_ |
+
+## Verification
+
+1. **HTTPS traffic on port 443** — `curl` to `api.example.test:443` succeeds (HTTPRoute on https listener).
+2. **TLS passthrough on port 9443** — mTLS `curl` to `api.example.test:9443` succeeds (TLSRoute on tls listener).
+3. **Negative: wrong-kind rejection** — `wrong-kind-http-route` (HTTPRoute targeting the `tls` listener) has `Accepted=False` or no parent status.
+4. **`attachedRoutes` counts** — https listener has 1 (HTTPRoute only); tls listener has 1 (TLSRoute only).
 
 ## Status
 
