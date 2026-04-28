@@ -1,4 +1,4 @@
-# Scenario 25 — HTTPS termination + TLS passthrough on same port
+# https-tls-shared-port — HTTPS termination + TLS passthrough on same port
 
 One Gateway, two listeners on **port 443** with disjoint hostnames:
 
@@ -21,7 +21,7 @@ mTLS succeeding on the passthrough side **proves** the Gateway did not terminate
 
 ✅ Passes on 1.19.3. This scenario validates that HTTPS termination and TLS passthrough coexist on the same port when listeners have disjoint hostnames.
 
-See [scenario 26](../../02-listener-policy/no-sectionname/README.md) for the variant where the TLSRoute omits `sectionName` (triggers [cilium#45050](https://github.com/cilium/cilium/issues/45050)).
+See [no-sectionname](../../02-listener-policy/no-sectionname/README.md) for the variant where the TLSRoute omits `sectionName` (triggers [cilium#45050](https://github.com/cilium/cilium/issues/45050)).
 
 ## Run
 

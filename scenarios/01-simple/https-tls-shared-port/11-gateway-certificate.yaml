@@ -1,12 +1,12 @@
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: scenario-25-gateway-certificate
+  name: https-tls-shared-port-gateway-certificate
   namespace: gateway-system
   labels:
     app.kubernetes.io/part-of: demo
 spec:
-  secretName: scenario-25-gateway-tls
+  secretName: https-tls-shared-port-gateway-tls
   commonName: web.example.test
   dnsNames:
     - web.example.test
@@ -15,4 +15,4 @@ spec:
     - 127.0.0.1
   issuerRef:
     kind: Issuer
-    name: scenario-25-selfsigned
+    name: https-tls-shared-port-selfsigned

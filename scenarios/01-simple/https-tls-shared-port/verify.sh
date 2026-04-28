@@ -7,7 +7,7 @@ source "${REPO_ROOT}/lib/verify-helpers.sh"
 wait_parallel \
   "pod/api -n backend-a --for=condition=Ready --timeout=5s" \
   "pod/backend-mtls -n backend-b --for=condition=Ready --timeout=5s" \
-  "certificate/scenario-25-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s" \
+  "certificate/https-tls-shared-port-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s" \
   "certificate/backend-b-mtls-ca -n backend-b --for=condition=Ready --timeout=10s" \
   "certificate/backend-b-mtls-server -n backend-b --for=condition=Ready --timeout=10s" \
   "certificate/backend-b-mtls-client -n backend-b --for=condition=Ready --timeout=10s"

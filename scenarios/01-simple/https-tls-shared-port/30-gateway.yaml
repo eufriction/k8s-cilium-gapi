@@ -18,7 +18,7 @@ spec:
         mode: Terminate
         certificateRefs:
           - kind: Secret
-            name: scenario-25-gateway-tls
+            name: https-tls-shared-port-gateway-tls
       allowedRoutes:
         namespaces:
           from: All
