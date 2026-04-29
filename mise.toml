@@ -27,6 +27,7 @@ X_GRPCROUTE_ACCEPTED_MSG = "Accepted HTTPRoute"
 X_TLSROUTE_ACCEPTED_MSG = "Accepted HTTPRoute"
 X_TLSROUTE_API_VERSION = "v1alpha2"
 SCENARIO_SKIP_VERSIONS = ""
+POST_DELETE_SLEEP = "10"
 
 [tools]
 "aqua:betterleaks/betterleaks" = "latest"
@@ -83,6 +84,7 @@ if [ -n "${SCENARIO_SKIP_VERSIONS:-}" ]; then
     fi
   done
 fi
+kubectl rollout status daemonset/cilium -n kube-system --timeout=60s >/dev/null
 if [ "${FIXTURE_DEPLOYED:-}" = "true" ] && [ -d gateway ]; then
   kubectl kustomize gateway/ --load-restrictor=LoadRestrictionsNone | kubectl apply -f -
 else
@@ -105,6 +107,10 @@ if [ "${usage_delete:-false}" = "true" ]; then
     kubectl kustomize gateway/ --load-restrictor=LoadRestrictionsNone | kubectl delete --ignore-not-found -f -
   else
     kubectl delete -k . --ignore-not-found
+  fi
+  if [ "${POST_DELETE_SLEEP:-0}" -gt 0 ]; then
+    echo "Sleeping ${POST_DELETE_SLEEP}s after delete (POST_DELETE_SLEEP)..."
+    sleep "$POST_DELETE_SLEEP"
   fi
 else
   echo "--- SKIPPED Deleting scenario resources ---"
