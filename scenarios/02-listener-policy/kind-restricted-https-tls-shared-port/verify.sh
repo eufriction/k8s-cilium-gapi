@@ -50,7 +50,7 @@ fi
 # --- Listener status assertions ---
 # Explicit allowedRoutes.kinds — assert both attachedRoutes and supportedKinds.
 assert_listener_status kind-https-tls-gateway gateway-system https 1 HTTPRoute
-assert_listener_status kind-https-tls-gateway gateway-system tls   1 TLSRoute
+assert_listener_status kind-https-tls-gateway gateway-system tls 1 TLSRoute
 echo "PASS: Per-listener attachedRoutes and supportedKinds correct"
 
 # --- HTTPS termination (web.example.test on port 443) ---
@@ -61,9 +61,9 @@ echo "PASS: HTTPS termination — web.example.test on port 443"
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
 
-kubectl get secret backend-b-mtls-server -n backend-b -o jsonpath='{.data.ca\.crt}' | base64 -d > "$TMPDIR/b-ca.crt"
-kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.crt}' | base64 -d > "$TMPDIR/b-client.crt"
-kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.key}' | base64 -d > "$TMPDIR/b-client.key"
+kubectl get secret backend-b-mtls-server -n backend-b -o jsonpath='{.data.ca\.crt}' | base64 -d >"$TMPDIR/b-ca.crt"
+kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.crt}' | base64 -d >"$TMPDIR/b-client.crt"
+kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.key}' | base64 -d >"$TMPDIR/b-client.key"
 
 curl -fsS --resolve "mtls-b.example.test:443:127.0.0.1" \
   --cacert "$TMPDIR/b-ca.crt" --cert "$TMPDIR/b-client.crt" --key "$TMPDIR/b-client.key" \

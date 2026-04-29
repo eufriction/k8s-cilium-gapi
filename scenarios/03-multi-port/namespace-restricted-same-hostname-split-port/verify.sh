@@ -18,7 +18,7 @@ sleep 5
 
 # --- Listener status assertions ---
 assert_listener_status ns-restricted-same-hostname-split-port-gateway gateway-system https-restricted 0 HTTPRoute GRPCRoute
-assert_listener_status ns-restricted-same-hostname-split-port-gateway gateway-system https-open       1 HTTPRoute GRPCRoute
+assert_listener_status ns-restricted-same-hostname-split-port-gateway gateway-system https-open 1 HTTPRoute GRPCRoute
 
 # --- Traffic check on the open listener (port 50051) ---
 retry_until 10 curl -kfsS --resolve "api.example.test:50051:127.0.0.1" https://api.example.test:50051/headers >/dev/null

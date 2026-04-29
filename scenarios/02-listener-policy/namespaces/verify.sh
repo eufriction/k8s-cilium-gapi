@@ -13,7 +13,7 @@ sleep 5
 
 # --- Listener status assertions ---
 assert_listener_status allowed-routes-ns-gateway gateway-system http-restricted 0 HTTPRoute GRPCRoute
-assert_listener_status allowed-routes-ns-gateway gateway-system http-open      1 HTTPRoute GRPCRoute
+assert_listener_status allowed-routes-ns-gateway gateway-system http-open 1 HTTPRoute GRPCRoute
 
 # --- Traffic test on http-open (port 8080) ---
 retry_until 10 curl -fsS -H 'Host: web.example.test' http://localhost:8080/headers >/dev/null

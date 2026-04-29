@@ -89,9 +89,9 @@ fi
 # --- Listener status assertions ---
 # 3 listeners have explicit allowedRoutes.kinds; http uses implicit defaults
 # (spec: HTTP protocol → HTTPRoute + GRPCRoute). Assert the full set to catch regressions.
-assert_listener_status kind-restricted-gateway gateway-system http            1 HTTPRoute GRPCRoute
-assert_listener_status kind-restricted-gateway gateway-system https           2 HTTPRoute
-assert_listener_status kind-restricted-gateway gateway-system grpcs           2 GRPCRoute
+assert_listener_status kind-restricted-gateway gateway-system http 1 HTTPRoute GRPCRoute
+assert_listener_status kind-restricted-gateway gateway-system https 2 HTTPRoute
+assert_listener_status kind-restricted-gateway gateway-system grpcs 2 GRPCRoute
 assert_listener_status kind-restricted-gateway gateway-system tls-passthrough 1 TLSRoute
 echo "PASS: Per-listener attachedRoutes and supportedKinds correct"
 
@@ -171,9 +171,9 @@ echo "--- TLS passthrough checks (port 443, tls-passthrough listener — TLSRout
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
 
-kubectl get secret backend-a-mtls-server -n backend-a -o jsonpath='{.data.ca\.crt}' | base64 -d > "$TMPDIR/a-ca.crt"
-kubectl get secret backend-a-mtls-client -n backend-a -o jsonpath='{.data.tls\.crt}' | base64 -d > "$TMPDIR/a-client.crt"
-kubectl get secret backend-a-mtls-client -n backend-a -o jsonpath='{.data.tls\.key}' | base64 -d > "$TMPDIR/a-client.key"
+kubectl get secret backend-a-mtls-server -n backend-a -o jsonpath='{.data.ca\.crt}' | base64 -d >"$TMPDIR/a-ca.crt"
+kubectl get secret backend-a-mtls-client -n backend-a -o jsonpath='{.data.tls\.crt}' | base64 -d >"$TMPDIR/a-client.crt"
+kubectl get secret backend-a-mtls-client -n backend-a -o jsonpath='{.data.tls\.key}' | base64 -d >"$TMPDIR/a-client.key"
 
 curl -fsS --resolve "tls-a.tls.example.test:443:127.0.0.1" \
   --cacert "$TMPDIR/a-ca.crt" --cert "$TMPDIR/a-client.crt" --key "$TMPDIR/a-client.key" \

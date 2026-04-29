@@ -24,17 +24,26 @@ retry_until 10 curl -fsS -H 'Host: api.example.test' -H 'X-Version: v1' http://l
 
 # Test 1: X-Version: v1 → backend-a
 body=$(curl -fsS -H 'Host: api.example.test' -H 'X-Version: v1' http://localhost/headers)
-echo "$body" | grep -q '"X-Routed-To"' && echo "$body" | grep -q 'backend-a' \
-  || { echo "FAIL: X-Version: v1 not routed to backend-a" >&2; echo "$body" >&2; exit 1; }
+if ! echo "$body" | grep -q '"X-Routed-To"' || ! echo "$body" | grep -q 'backend-a'; then
+  echo "FAIL: X-Version: v1 not routed to backend-a" >&2
+  echo "$body" >&2
+  exit 1
+fi
 echo "PASS: X-Version: v1 → backend-a"
 
 # Test 2: X-Version: v2 → backend-b
 body=$(curl -fsS -H 'Host: api.example.test' -H 'X-Version: v2' http://localhost/headers)
-echo "$body" | grep -q '"X-Routed-To"' && echo "$body" | grep -q 'backend-b' \
-  || { echo "FAIL: X-Version: v2 not routed to backend-b" >&2; echo "$body" >&2; exit 1; }
+if ! echo "$body" | grep -q '"X-Routed-To"' || ! echo "$body" | grep -q 'backend-b'; then
+  echo "FAIL: X-Version: v2 not routed to backend-b" >&2
+  echo "$body" >&2
+  exit 1
+fi
 echo "PASS: X-Version: v2 → backend-b"
 
 # Test 3: No X-Version header → 404 (no matching route)
 http_code=$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: api.example.test' http://localhost/headers)
-[ "$http_code" = "404" ] || { echo "FAIL: expected 404 without X-Version header, got $http_code" >&2; exit 1; }
+[ "$http_code" = "404" ] || {
+  echo "FAIL: expected 404 without X-Version header, got $http_code" >&2
+  exit 1
+}
 echo "PASS: no X-Version header → 404 (no matching route)"

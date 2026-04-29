@@ -50,7 +50,10 @@ for i in $(seq 1 $ITERATIONS); do
     misrouted=$((misrouted + 1))
   fi
 done
-[ "$misrouted" -eq 0 ] || { echo "FAIL: grpc-a mis-routed $misrouted/$ITERATIONS" >&2; exit 1; }
+[ "$misrouted" -eq 0 ] || {
+  echo "FAIL: grpc-a mis-routed $misrouted/$ITERATIONS" >&2
+  exit 1
+}
 echo "PASS: grpc-a.example.test — all $ITERATIONS requests routed to grpc-backend-a"
 
 misrouted=0
@@ -67,7 +70,10 @@ for i in $(seq 1 $ITERATIONS); do
     misrouted=$((misrouted + 1))
   fi
 done
-[ "$misrouted" -eq 0 ] || { echo "FAIL: grpc-b mis-routed $misrouted/$ITERATIONS" >&2; exit 1; }
+[ "$misrouted" -eq 0 ] || {
+  echo "FAIL: grpc-b mis-routed $misrouted/$ITERATIONS" >&2
+  exit 1
+}
 echo "PASS: grpc-b.example.test — all $ITERATIONS requests routed to grpc-backend-b"
 
 # cilium/cilium#43881 — GRPCRoute reports "Accepted HTTPRoute" on <= 1.19.x

@@ -10,6 +10,8 @@ hooks {
       ["vale"] = (Builtins.vale) {
         glob = List("**/*.md")
       }
+      ["shellcheck"] = Builtins.shellcheck
+      ["shfmt"] = Builtins.shfmt
       ["lint-images"] = new Step {
         check = "mise run lint:images"
       }

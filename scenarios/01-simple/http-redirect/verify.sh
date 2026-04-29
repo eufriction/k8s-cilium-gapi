@@ -17,7 +17,7 @@ kubectl wait httproute/backend-a-route -n backend-a --for='jsonpath={.status.par
 wait
 
 # --- Listener status assertions ---
-assert_listener_status redirect-gateway gateway-system http  1 HTTPRoute GRPCRoute
+assert_listener_status redirect-gateway gateway-system http 1 HTTPRoute GRPCRoute
 assert_listener_status redirect-gateway gateway-system https 1 HTTPRoute GRPCRoute
 
 # Warm up the HTTP listener before testing
@@ -25,12 +25,18 @@ retry_until 10 curl -fsS -o /dev/null -H 'Host: redirect.example.test' http://lo
 
 # Test 1: HTTP request should get 301 redirect
 http_code=$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: redirect.example.test' http://localhost/)
-[ "$http_code" = "301" ] || { echo "FAIL: expected HTTP 301, got $http_code" >&2; exit 1; }
+[ "$http_code" = "301" ] || {
+  echo "FAIL: expected HTTP 301, got $http_code" >&2
+  exit 1
+}
 echo "PASS: HTTP→HTTPS redirect returns 301"
 
 # Test 2: Redirect Location header points to HTTPS
 location=$(curl -s -I -H 'Host: redirect.example.test' http://localhost/ | grep -i '^location:' | tr -d '\r' | awk '{print $2}')
-echo "$location" | grep -q '^https://' || { echo "FAIL: redirect Location not HTTPS: $location" >&2; exit 1; }
+echo "$location" | grep -q '^https://' || {
+  echo "FAIL: redirect Location not HTTPS: $location" >&2
+  exit 1
+}
 echo "PASS: redirect Location header is HTTPS ($location)"
 
 # Test 3: HTTPS endpoint serves traffic

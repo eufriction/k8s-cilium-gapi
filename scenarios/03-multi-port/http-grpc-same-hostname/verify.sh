@@ -60,9 +60,9 @@ for i in $(seq 1 $ITERATIONS); do
     localhost:50051 \
     "$GRPC_METHOD" | jq -r '.serverId')
   case "$server_id" in
-    backend-a) seen_a=$((seen_a + 1)) ;;
-    backend-b) seen_b=$((seen_b + 1)) ;;
-    *) echo "  iteration $i: unexpected server_id '$server_id'" >&2 ;;
+  backend-a) seen_a=$((seen_a + 1)) ;;
+  backend-b) seen_b=$((seen_b + 1)) ;;
+  *) echo "  iteration $i: unexpected server_id '$server_id'" >&2 ;;
   esac
 done
 

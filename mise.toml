@@ -42,6 +42,8 @@ cilium-hubble = "latest"
 kyverno = "latest"
 node = "latest"
 prettier = "latest"
+shellcheck = "latest"
+shfmt = "latest"
 vale = "latest"
 
 [hooks]

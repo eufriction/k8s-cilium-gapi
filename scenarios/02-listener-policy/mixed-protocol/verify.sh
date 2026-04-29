@@ -49,9 +49,9 @@ echo "PASS: All routes accepted (no NotAllowedByListeners regression — cilium#
 # 3 listeners with implicit kinds — catches cilium#45371 isKindAllowed cross-count.
 # No explicit allowedRoutes.kinds — only check attachedRoutes (implicit kinds
 # may vary by Cilium version).
-assert_listener_status mixed-protocol-gateway gateway-system http  1
+assert_listener_status mixed-protocol-gateway gateway-system http 1
 assert_listener_status mixed-protocol-gateway gateway-system https 1
-assert_listener_status mixed-protocol-gateway gateway-system tls   1
+assert_listener_status mixed-protocol-gateway gateway-system tls 1
 echo "PASS: Per-listener attachedRoutes correct (no isKindAllowed cross-count — cilium#45371)"
 
 # --- HTTPS termination (app.example.test on port 443) ---
@@ -61,7 +61,7 @@ echo "PASS: HTTPS termination — app.example.test on port 443"
 # --- HTTP → HTTPS redirect (port 80, expect 301) ---
 redirect_status=""
 end=$((SECONDS + 10))
-while (( SECONDS < end )); do
+while ((SECONDS < end)); do
   redirect_status=$(curl -ksS -o /dev/null -w '%{http_code}' \
     --resolve "app.example.test:80:127.0.0.1" \
     http://app.example.test/ 2>/dev/null) && break
@@ -79,9 +79,9 @@ fi
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
 
-kubectl get secret backend-b-mtls-server -n backend-b -o jsonpath='{.data.ca\.crt}' | base64 -d > "$TMPDIR/b-ca.crt"
-kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.crt}' | base64 -d > "$TMPDIR/b-client.crt"
-kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.key}' | base64 -d > "$TMPDIR/b-client.key"
+kubectl get secret backend-b-mtls-server -n backend-b -o jsonpath='{.data.ca\.crt}' | base64 -d >"$TMPDIR/b-ca.crt"
+kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.crt}' | base64 -d >"$TMPDIR/b-client.crt"
+kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.key}' | base64 -d >"$TMPDIR/b-client.key"
 
 retry_until 10 curl -fsS --resolve "mtls.example.test:443:127.0.0.1" \
   --cacert "$TMPDIR/b-ca.crt" --cert "$TMPDIR/b-client.crt" --key "$TMPDIR/b-client.key" \

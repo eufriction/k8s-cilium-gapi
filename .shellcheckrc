@@ -1,0 +1,9 @@
+# .shellcheckrc — project-wide ShellCheck configuration
+
+# Follow sourced files even when the path is dynamic.
+external-sources=true
+
+# SC1091: "Not following: ... was not specified as input"
+# All verify scripts source lib/verify-helpers.sh via a dynamic REPO_ROOT path;
+# ShellCheck cannot resolve it, but the file is always present at runtime.
+disable=SC1091,SC1094

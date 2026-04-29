@@ -18,6 +18,8 @@
 wait_parallel() {
   local pids=() cmds=() rc=0
   for args in "$@"; do
+    # intentional word splitting
+    # shellcheck disable=SC2086
     kubectl wait $args &
     pids+=($!)
     cmds+=("$args")
@@ -41,10 +43,11 @@ wait_parallel() {
 # Example:
 #   retry 5 2 curl -kfsS --resolve "host:443:127.0.0.1" https://host/path >/dev/null
 retry() {
-  local max=$1 sleep_s=$2; shift 2
-  for ((i=1; i<max; i++)); do
+  local max=$1 sleep_s=$2
+  shift 2
+  for ((i = 1; i < max; i++)); do
     if "$@" 2>/dev/null; then return 0; fi
-    echo "  listener not ready, retrying in ${sleep_s}s ($i/$((max-1)))..." >&2
+    echo "  listener not ready, retrying in ${sleep_s}s ($i/$((max - 1)))..." >&2
     sleep "$sleep_s"
   done
   "$@"
@@ -59,9 +62,10 @@ retry() {
 # Example:
 #   retry_until 5 curl -kfsS --resolve "host:443:127.0.0.1" https://host/path >/dev/null
 retry_until() {
-  local deadline=$1; shift
+  local deadline=$1
+  shift
   local end=$((SECONDS + deadline))
-  while (( SECONDS < end )); do
+  while ((SECONDS < end)); do
     if "$@" 2>/dev/null; then return 0; fi
     echo "  listener not ready, retrying in 1s..." >&2
     sleep 1

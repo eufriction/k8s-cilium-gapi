@@ -24,9 +24,15 @@ echo "PASS: https-b.example.test"
 
 # cilium/cilium#43881
 msg=$(kubectl get httproute/backend-a-https-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
-[ "$msg" = "Accepted HTTPRoute" ] || { echo "FAIL: backend-a-https-route message='$msg'" >&2; exit 1; }
+[ "$msg" = "Accepted HTTPRoute" ] || {
+  echo "FAIL: backend-a-https-route message='$msg'" >&2
+  exit 1
+}
 echo "PASS: backend-a-https-route Accepted message = '$msg'"
 
 msg=$(kubectl get httproute/backend-b-https-route -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
-[ "$msg" = "Accepted HTTPRoute" ] || { echo "FAIL: backend-b-https-route message='$msg'" >&2; exit 1; }
+[ "$msg" = "Accepted HTTPRoute" ] || {
+  echo "FAIL: backend-b-https-route message='$msg'" >&2
+  exit 1
+}
 echo "PASS: backend-b-https-route Accepted message = '$msg'"
