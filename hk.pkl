@@ -1,11 +1,13 @@
-amends "package://github.com/jdx/hk/releases/download/v1.36.0/hk@1.36.0#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.36.0/hk@1.36.0#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v1.44.2/hk@1.44.2#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.44.2/hk@1.44.2#/Builtins.pkl"
 
 hooks {
   ["pre-commit"] {
     fix = true
     stash = "git"
     steps {
+      ["betterleaks"] = Builtins.betterleaks
+      ["detect-private-key"] = Builtins.detect_private_key
       ["prettier"] = Builtins.prettier
       ["vale"] = (Builtins.vale) {
         glob = List("**/*.md")

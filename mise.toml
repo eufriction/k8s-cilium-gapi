@@ -29,6 +29,7 @@ X_TLSROUTE_API_VERSION = "v1alpha2"
 SCENARIO_SKIP_VERSIONS = ""
 
 [tools]
+"aqua:betterleaks/betterleaks" = "latest"
 hk = "latest"
 pkl = "latest"
 k9s = "latest"
