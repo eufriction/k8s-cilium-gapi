@@ -69,3 +69,27 @@ if [ "$seen_a" -eq 0 ] || [ "$seen_b" -eq 0 ]; then
   exit 1
 fi
 echo "PASS: gRPC traffic distributed across both backends ($seen_a/$seen_b split)"
+
+# --- Negative: per-port listener isolation ---
+# The HTTPRoutes (sectionName: https, port 443) define path-prefix routes like
+# "/" and "/b".  These must NOT be accessible on the gRPC port (50051), which
+# should only serve GRPCRoute method paths.  When Cilium collapses multi-port
+# HTTPS listeners into a single envoy listener, the HTTPRoute path prefixes
+# leak onto the gRPC port and return 200 (served by the HTTP backend).
+#
+# With correct per-port routing:
+#   404 = no route matched (ideal)
+#   415 = gRPC backend's catch-all prefix "/" matched, but rejected the
+#         non-gRPC content-type (proves HTTPRoute /b did NOT leak)
+#   200 = FAIL — the HTTP backend served the request, meaning the HTTPRoute
+#         leaked from port 443 to port 50051 (listener collapse)
+http_status=$(curl -kso /dev/null -w '%{http_code}' --resolve "api.example.test:50051:127.0.0.1" https://api.example.test:50051/b/headers || true)
+if [ "$http_status" = "404" ] || [ "$http_status" = "415" ]; then
+  echo "PASS: HTTP path /b returned ${http_status} on gRPC port (per-port isolation — HTTPRoute did not leak)"
+elif [ "$http_status" = "200" ]; then
+  echo "FAIL: HTTP path /b returned 200 on gRPC port 50051 — listener collapse leaks HTTPRoutes across ports" >&2
+  exit 1
+else
+  echo "FAIL: HTTP path /b returned unexpected HTTP ${http_status} on gRPC port 50051" >&2
+  exit 1
+fi

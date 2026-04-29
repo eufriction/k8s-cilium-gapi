@@ -81,3 +81,15 @@ if [ "$misrouted" -gt 0 ]; then
   exit 1
 fi
 echo "PASS: grpc-b.example.test — all $ITERATIONS requests routed to backend-b"
+
+# --- Negative: per-port listener isolation ---
+# HTTP hostnames (sectionName: https, port 443) must NOT be accessible on
+# the gRPC port (50051).  When Cilium collapses multi-port HTTPS listeners
+# into a single envoy listener, routes leak across ports.
+http_status=$(curl -kso /dev/null -w '%{http_code}' --resolve "https-a.example.test:50051:127.0.0.1" https://https-a.example.test:50051/headers || true)
+if [ "$http_status" = "404" ]; then
+  echo "PASS: HTTP hostname correctly returns 404 on gRPC port (per-port isolation)"
+else
+  echo "FAIL: HTTP hostname returned HTTP ${http_status} on gRPC port 50051 (expected 404) — listener collapse leaks routes across ports" >&2
+  exit 1
+fi
