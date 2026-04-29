@@ -47,6 +47,12 @@ if [ "$route_fail" -eq 1 ]; then
   exit 1
 fi
 
+# --- Listener status assertions ---
+# Explicit allowedRoutes.kinds — assert both attachedRoutes and supportedKinds.
+assert_listener_status kind-https-tls-gateway gateway-system https 1 HTTPRoute
+assert_listener_status kind-https-tls-gateway gateway-system tls   1 TLSRoute
+echo "PASS: Per-listener attachedRoutes and supportedKinds correct"
+
 # --- HTTPS termination (web.example.test on port 443) ---
 retry_until 10 curl -kfsS --resolve "web.example.test:443:127.0.0.1" https://web.example.test/headers >/dev/null
 echo "PASS: HTTPS termination — web.example.test on port 443"

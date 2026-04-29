@@ -20,6 +20,14 @@ kubectl wait httproute/backend-a-web-route -n backend-a --for='jsonpath={.status
 kubectl wait tlsroute/backend-b-mtls-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
 wait
 
+# --- Listener status assertions ---
+# Catches cilium#45371: isKindAllowed cross-counts TLSRoute on HTTPS listener.
+# No explicit allowedRoutes.kinds — only check attachedRoutes (implicit kinds
+# may vary by Cilium version).
+assert_listener_status https-tls-same-port-gateway gateway-system https 1
+assert_listener_status https-tls-same-port-gateway gateway-system tls   1
+echo "PASS: Per-listener attachedRoutes correct (no isKindAllowed cross-count — cilium#45371)"
+
 # --- HTTPS termination (web.example.test on port 443) ---
 retry_until 10 curl -kfsS --resolve "web.example.test:443:127.0.0.1" https://web.example.test/headers >/dev/null
 echo "PASS: HTTPS termination — web.example.test on port 443"

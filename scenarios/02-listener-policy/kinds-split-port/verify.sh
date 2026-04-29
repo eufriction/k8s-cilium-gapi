@@ -16,6 +16,12 @@ kubectl wait grpcroute/backend-a-grpc-route -n backend-a --for='jsonpath={.statu
 kubectl wait grpcroute/backend-b-grpc-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
 wait
 
+# --- Listener status assertions ---
+# Explicit allowedRoutes.kinds on split ports — assert counts and kinds.
+assert_listener_status allowed-routes-gateway gateway-system https 2 HTTPRoute
+assert_listener_status allowed-routes-gateway gateway-system grpcs 2 GRPCRoute
+echo "PASS: Per-listener attachedRoutes and supportedKinds correct"
+
 echo "--- HTTPS checks (port 443, kind-restricted to HTTPRoute) ---"
 retry_until 10 curl -kfsS --resolve "https-a.example.test:443:127.0.0.1" https://https-a.example.test/headers >/dev/null
 echo "PASS: HTTPS backend-a on port 443"

@@ -76,7 +76,7 @@ retry_until() {
 # Prints PASS/FAIL and returns 0/1.
 assert_msg() {
   local actual="$1" var_name="$2" resource="$3"
-  local expected="${!var_name}"
+  local expected="${!var_name:-}"
 
   if [ -z "$expected" ]; then
     echo "SKIP: ${resource} message check — ${var_name} not set"
@@ -88,6 +88,63 @@ assert_msg() {
   fi
   echo "FAIL: ${resource} message='${actual}' (expected '${expected}' from ${var_name})" >&2
   return 1
+}
+
+# assert_listener_status <gateway> <namespace> <listener> <expected_attached> [<expected_kind> ...]
+#
+# Verifies a gateway listener's attachedRoutes count and optionally its
+# supportedKinds set (order-insensitive). Prints PASS/FAIL and returns 0/1.
+#
+# When no expected_kind args are given, only attachedRoutes is checked.
+# When one or more expected_kind args are given, the supportedKinds set
+# must match exactly (sorted comparison).
+#
+# Examples:
+#   assert_listener_status my-gw gateway-system https 1
+#   assert_listener_status my-gw gateway-system https 1 HTTPRoute
+#   assert_listener_status my-gw gateway-system https 2 HTTPRoute GRPCRoute
+assert_listener_status() {
+  local gw="$1" ns="$2" listener="$3" expected_attached="$4"
+  shift 4
+  local expected_kinds=("$@")
+
+  local actual_attached
+  actual_attached=$(kubectl get "gateway/${gw}" -n "$ns" \
+    -o jsonpath="{.status.listeners[?(@.name==\"${listener}\")].attachedRoutes}")
+
+  if [ -z "$actual_attached" ]; then
+    echo "FAIL: ${listener} listener — no attachedRoutes in gateway status (listener not found?)" >&2
+    return 1
+  fi
+
+  if [ "$actual_attached" != "$expected_attached" ]; then
+    echo "FAIL: ${listener} listener — attachedRoutes=${actual_attached} (expected ${expected_attached})" >&2
+    kubectl get "gateway/${gw}" -n "$ns" \
+      -o jsonpath="{range .status.listeners[?(@.name==\"${listener}\")]}{\"  supportedKinds=\"}{.supportedKinds[*].kind}{\"  conditions=\"}{.conditions}{\"\\n\"}{end}" >&2
+    return 1
+  fi
+
+  # If no expected kinds specified, pass on attachedRoutes alone
+  if [ ${#expected_kinds[@]} -eq 0 ]; then
+    echo "PASS: ${listener} listener — attachedRoutes=${actual_attached}"
+    return 0
+  fi
+
+  # Compare supportedKinds (sorted, space-separated)
+  local actual_kinds_raw
+  actual_kinds_raw=$(kubectl get "gateway/${gw}" -n "$ns" \
+    -o jsonpath="{.status.listeners[?(@.name==\"${listener}\")].supportedKinds[*].kind}")
+  local actual_sorted expected_sorted
+  actual_sorted=$(echo "$actual_kinds_raw" | tr ' ' '\n' | sort | tr '\n' ' ' | sed 's/ $//')
+  expected_sorted=$(printf '%s\n' "${expected_kinds[@]}" | sort | tr '\n' ' ' | sed 's/ $//')
+
+  if [ "$actual_sorted" != "$expected_sorted" ]; then
+    echo "FAIL: ${listener} listener — attachedRoutes=${actual_attached} OK but supportedKinds=[${actual_sorted}] (expected [${expected_sorted}])" >&2
+    return 1
+  fi
+
+  echo "PASS: ${listener} listener — attachedRoutes=${actual_attached}, supportedKinds=[${actual_sorted}]"
+  return 0
 }
 
 # skip_on_versions <versions> [message]
