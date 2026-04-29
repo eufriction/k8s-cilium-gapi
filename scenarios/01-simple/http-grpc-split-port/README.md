@@ -1,45 +1,45 @@
-# 20 · HTTPS + gRPC split-port Gateway
+# http-grpc-split-port — HTTPS + gRPC on separate ports
 
-One Gateway serving HTTPS (443) and gRPC-over-TLS (50051) across two backend namespaces. Combines scenarios 01 and 02.
+One Gateway serving HTTPS (port 443) and gRPC-over-TLS (port 50051) across two
+backend namespaces. Each protocol gets its own listener and port, with HTTPRoutes
+on 443 and GRPCRoutes on 50051. This validates that Cilium correctly isolates
+routes to their respective listeners when multiple TLS ports share a hostname
+wildcard and TLS secret.
 
-## Layout
+## Resources
 
-| Component                    | Namespace                |
-| ---------------------------- | ------------------------ |
-| HTTPRoute × 2, GRPCRoute × 2 | `backend-a`, `backend-b` |
-| Gateway + TLS cert           | `gateway-system`         |
-| netshoot client              | `client`                 |
+| Resource                                     | Namespace            | Purpose                                           |
+| -------------------------------------------- | -------------------- | ------------------------------------------------- |
+| Gateway `https-grpc-multi-namespace-gateway` | gateway-system       | Two TLS listeners: `https` (443), `grpcs` (50051) |
+| Certificate `https-grpc-gateway-certificate` | gateway-system       | Wildcard TLS cert for both listeners              |
+| HTTPRoute `backend-a-https-route`            | backend-a            | HTTPS → go-httpbin (backend-a)                    |
+| HTTPRoute `backend-b-https-route`            | backend-b            | HTTPS → go-httpbin (backend-b)                    |
+| GRPCRoute `backend-a-grpc-route`             | backend-a            | gRPC → backend-grpc (backend-a)                   |
+| GRPCRoute `backend-b-grpc-route`             | backend-b            | gRPC → backend-grpc (backend-b)                   |
+| Pod `api`                                    | backend-a, backend-b | go-httpbin HTTP backends                          |
+| Pod `grpc-api`                               | backend-a, backend-b | gRPC test-service backends                        |
+| Pod `netshoot-client`                        | client               | In-cluster debugging                              |
+
+## Verification
+
+What `verify.sh` checks:
+
+1. All pods and the TLS certificate reach Ready state.
+2. Gateway is Accepted.
+3. All four routes (2 HTTPRoute + 2 GRPCRoute) are Accepted.
+4. Listener `https` reports 2 attached routes; listener `grpcs` reports 2 attached routes.
+5. HTTPS backend-a responds on port 443 (`https-a.example.test`).
+6. HTTPS backend-b responds on port 443 (`https-b.example.test`).
+7. gRPC affinity: `grpc-a.example.test:50051` routes all 10 requests to backend-a.
+8. gRPC affinity: `grpc-b.example.test:50051` routes all 10 requests to backend-b.
+9. Per-port listener isolation: HTTP hostname returns 404 on gRPC port 50051 (routes must not leak across ports).
+
+## Related scenarios
+
+- [`http-grpc-shared-port`](../http-grpc-shared-port/README.md) — same protocols collapsed onto a single port.
 
 ## Run
 
 ```sh
-mise run //scenarios/01-simple/http-grpc-split-port:start        # deploy + verify
-DELETE=1 mise run //scenarios/01-simple/http-grpc-split-port:start  # deploy + verify + teardown
-```
-
-Cert-manager is installed automatically if absent.
-
-## Known issue — duplicate `serverNames` NACK (≥ 1.19.2)
-
-Commit [`9ee2db2b32`](https://github.com/cilium/cilium/commit/9ee2db2b32) removed `slices.SortedUnique()` from `toFilterChainMatch()`. When ports 443 and 50051 share a hostname (`*.example.test`) and TLS secret, the operator produces duplicate `serverNames` entries. Envoy rejects this permanently:
-
-```
-multiple filter chains with overlapping matching rules are defined
-```
-
-Works on **1.19.1** (dedup still present). Fixed on `fix/allowed-routes` branch (restores `SortedUnique`).
-
-**Refs:** [#31122](https://github.com/cilium/cilium/issues/31122), [#37609](https://github.com/cilium/cilium/issues/37609). Also affects scenarios [22](../../02-listener-policy/kinds-split-port/README.md) and [24](../../03-multi-port/http-grpc-same-hostname/README.md).
-
-## Manual check
-
-```sh
-# HTTPS
-curl -k --resolve "https-a.example.test:443:127.0.0.1" https://https-a.example.test/headers
-curl -k --resolve "https-b.example.test:443:127.0.0.1" https://https-b.example.test/headers
-
-# gRPC
-grpcurl -insecure -authority grpc-a.example.test \
-  -d '{"response_size":32,"fill_server_id":true}' \
-  localhost:50051 grpc.testing.TestService/UnaryCall
+mise run //scenarios/01-simple/http-grpc-split-port:start
 ```

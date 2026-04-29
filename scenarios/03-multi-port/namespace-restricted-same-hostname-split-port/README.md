@@ -1,13 +1,22 @@
-# Namespace-Restricted Same-Hostname HTTPS on Split Ports (443 / 50051)
-
-> **Cilium bugs:**
->
-> - [cilium/cilium#42159](https://github.com/cilium/cilium/issues/42159) — `allowedRoutes.namespaces` per-listener enforcement
-> - [cilium/cilium#44889](https://github.com/cilium/cilium/pull/44889) — per-port CEC listener separation
+# namespace-restricted-same-hostname-split-port — per-listener namespace restriction on same hostname
 
 This scenario tests that `allowedRoutes.namespaces` is evaluated **independently
 per listener** when two HTTPS listeners share the **same hostname**
 (`api.example.test`) but use **different ports** (443, 50051).
+
+A cross-namespace HTTPRoute targets the Gateway without `sectionName`. Both
+listeners match the hostname, but the restricted listener (`Same` namespace)
+should reject the cross-namespace route while the open listener (`All`
+namespaces) accepts it. Traffic on the restricted listener's port must return
+404, proving that the route did not leak across listeners.
+
+## Resources
+
+| Resource                                                 | Namespace        | Purpose                                                           |
+| -------------------------------------------------------- | ---------------- | ----------------------------------------------------------------- |
+| `Gateway/ns-restricted-same-hostname-split-port-gateway` | `gateway-system` | Two HTTPS listeners with different namespace policies             |
+| `HTTPRoute/backend-a-cross-ns-route`                     | `backend-a`      | Cross-namespace route (no `sectionName`) targeting both listeners |
+| `Pod/api`                                                | `backend-a`      | HTTP backend                                                      |
 
 ## Gateway listeners
 
@@ -22,25 +31,16 @@ per listener** when two HTTPS listeners share the **same hostname**
 | ----------- | -------------------------- | ----------- | ----------- | ------------------------------ |
 | `HTTPRoute` | `backend-a-cross-ns-route` | `backend-a` | _(none)_    | Only `https-open` (port 50051) |
 
-The HTTPRoute targets the gateway **without `sectionName`** and specifies
-`hostnames: [api.example.test]`. Both listeners match the hostname, but the
-restricted listener should reject the cross-namespace route.
-
 ## Verification
 
-1. `https-restricted` listener: `attachedRoutes = 0`
-2. `https-open` listener: `attachedRoutes = 1`
-3. HTTPS traffic on port 50051 succeeds
-4. **Negative on port 443** — `curl` to `api.example.test:443` returns 404
-   (restricted listener has no attached routes). Currently broken: Cilium's
-   data plane leaks the route from the open listener onto port 443 via shared
-   Envoy filter chains ([cilium#42159](https://github.com/cilium/cilium/issues/42159) data-plane half).
+What `verify.sh` checks:
 
-## Status
-
-⚠️ **Broken on all released versions** — requires namespace restriction fix
-([#42159](https://github.com/cilium/cilium/issues/42159)) and per-port listener
-separation ([#44889](https://github.com/cilium/cilium/pull/44889)).
+1. Pod and certificate readiness.
+2. Gateway is accepted.
+3. `https-restricted` listener reports `attachedRoutes = 0` (cross-namespace route rejected).
+4. `https-open` listener reports `attachedRoutes = 1` (cross-namespace route accepted).
+5. HTTPS traffic on port 50051 succeeds (open listener serves the route).
+6. **Negative:** HTTPS traffic on port 443 returns 404 (restricted listener has no attached routes — per-port isolation enforced).
 
 ## Related scenarios
 

@@ -1,100 +1,44 @@
-# Multi-Namespace mTLS
+# tls-passthrough — Multi-namespace mTLS with TLS passthrough
 
-This scenario adds a focused mTLS test path using one passthrough Gateway listener and two `backend-mtls` instances in separate namespaces.
+This scenario tests TLSRoute passthrough with per-namespace mTLS enforcement.
+A single Gateway listener on port 9443 performs TLS passthrough (SNI-based
+routing without terminating TLS). Two `backend-mtls` instances in separate
+namespaces each run an Envoy sidecar that terminates TLS and enforces client
+certificate verification against its own CA.
 
-It deploys:
+Each namespace has an independent PKI chain (CA → server cert, client cert).
+This proves that the Gateway does not interfere with the TLS handshake and
+that cross-namespace client certificates are correctly rejected.
 
-- one `backend-mtls` instance in `backend-a`
-- one `backend-mtls` instance in `backend-b`
-- one `netshoot-client` pod in `client`
-- one shared Gateway in `gateway-system`
+## Resources
 
-The Gateway exposes:
+| Resource                                        | Namespace      | Purpose                                   |
+| ----------------------------------------------- | -------------- | ----------------------------------------- |
+| Gateway `mtls-multi-namespace-gateway`          | gateway-system | TLS passthrough listener on port 9443     |
+| TLSRoute `backend-a-mtls-route`                 | backend-a      | Routes `mtls-a.example.test` to backend-a |
+| TLSRoute `backend-b-mtls-route`                 | backend-b      | Routes `mtls-b.example.test` to backend-b |
+| Pod `backend-mtls`                              | backend-a      | Envoy with per-namespace mTLS certs       |
+| Pod `backend-mtls`                              | backend-b      | Envoy with per-namespace mTLS certs       |
+| Certificate `backend-a-mtls-{ca,server,client}` | backend-a      | CA chain and leaf certs for backend-a     |
+| Certificate `backend-b-mtls-{ca,server,client}` | backend-b      | CA chain and leaf certs for backend-b     |
+| Pod `netshoot-client`                           | client         | In-cluster debugging client               |
 
-- `TLS` passthrough on `9443` for two `TLSRoute`s
+## Verification
 
-Each backend uses its own CA, server certificate, and client certificate. That keeps the verification strong:
+What `verify.sh` checks:
 
-- `backend-a` only trusts the `backend-a` client certificate
-- `backend-b` only trusts the `backend-b` client certificate
+1. All pods and certificates reach Ready state
+2. Gateway `mtls-multi-namespace-gateway` is Accepted
+3. Both TLSRoutes are Accepted by the gateway
+4. Listener `mtls` reports 2 attached TLSRoutes
+5. `mtls-a.example.test:9443` accepts the correct (backend-a) client certificate
+6. `mtls-b.example.test:9443` accepts the correct (backend-b) client certificate
+7. `mtls-a.example.test:9443` rejects requests with no client certificate (proves mTLS enforcement)
+8. `mtls-b.example.test:9443` rejects backend-a's client certificate (proves cross-namespace CA isolation)
+9. TLSRoute Accepted status message is correct for both routes
 
-## Purpose
-
-This is a focused `TLSRoute` scenario in the `01–09` series. It demonstrates end-to-end mutual TLS with per-namespace PKI isolation:
-
-- The Gateway performs **TLS passthrough** — it routes by SNI hostname but does **not** terminate TLS.
-- Each backend's Envoy sidecar terminates TLS and enforces client certificate verification against its own CA.
-- Cross-namespace client certificates are rejected because each namespace has an independent CA.
-
-## Apply
-
-```sh
-mise run scenario:04:start
-mise run scenario:04:verify
-```
-
-`scenario:04:start` installs `cert-manager` first if it is not already present, then issues per-namespace CA hierarchies in `backend-a` and `backend-b`.
-
-## Manual Check
-
-The verify task extracts the right certs from the cluster and checks both success and failure cases automatically. For manual testing you can replicate the same steps.
-
-### Extract certificates from the cluster
+## Run
 
 ```sh
-TMPDIR=$(mktemp -d)
-
-# backend-a certs
-kubectl get secret backend-a-mtls-server -n backend-a -o jsonpath='{.data.ca\.crt}' | base64 -d > "$TMPDIR/a-ca.crt"
-kubectl get secret backend-a-mtls-client -n backend-a -o jsonpath='{.data.tls\.crt}' | base64 -d > "$TMPDIR/a-client.crt"
-kubectl get secret backend-a-mtls-client -n backend-a -o jsonpath='{.data.tls\.key}' | base64 -d > "$TMPDIR/a-client.key"
-
-# backend-b certs
-kubectl get secret backend-b-mtls-server -n backend-b -o jsonpath='{.data.ca\.crt}' | base64 -d > "$TMPDIR/b-ca.crt"
-kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.crt}' | base64 -d > "$TMPDIR/b-client.crt"
-kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.key}' | base64 -d > "$TMPDIR/b-client.key"
-```
-
-### Positive tests — correct client cert
-
-```sh
-# backend-a with backend-a's client cert (should succeed)
-curl --resolve "mtls-a.example.test:9443:127.0.0.1" \
-  --cacert "$TMPDIR/a-ca.crt" \
-  --cert "$TMPDIR/a-client.crt" \
-  --key "$TMPDIR/a-client.key" \
-  https://mtls-a.example.test:9443/
-
-# backend-b with backend-b's client cert (should succeed)
-curl --resolve "mtls-b.example.test:9443:127.0.0.1" \
-  --cacert "$TMPDIR/b-ca.crt" \
-  --cert "$TMPDIR/b-client.crt" \
-  --key "$TMPDIR/b-client.key" \
-  https://mtls-b.example.test:9443/
-```
-
-### Negative test — no client cert
-
-```sh
-# backend-a without any client cert (should fail — proves mTLS enforcement)
-curl --resolve "mtls-a.example.test:9443:127.0.0.1" \
-  --cacert "$TMPDIR/a-ca.crt" \
-  https://mtls-a.example.test:9443/
-```
-
-### Negative test — wrong client cert (cross-namespace)
-
-```sh
-# backend-b with backend-a's client cert (should fail — proves CA isolation)
-curl --resolve "mtls-b.example.test:9443:127.0.0.1" \
-  --cacert "$TMPDIR/b-ca.crt" \
-  --cert "$TMPDIR/a-client.crt" \
-  --key "$TMPDIR/a-client.key" \
-  https://mtls-b.example.test:9443/
-```
-
-### Clean up temp files
-
-```sh
-rm -rf "$TMPDIR"
+mise run //scenarios/01-simple/tls-passthrough:start
 ```

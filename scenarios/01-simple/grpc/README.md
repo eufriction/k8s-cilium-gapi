@@ -1,54 +1,37 @@
-# Host-Network Multi-Namespace TLS GRPCRoute
+# grpc — Multi-namespace GRPCRoute with TLS termination
 
-This scenario deploys the reusable `backend-grpc` app base twice, in `grpc-backend-a` and `grpc-backend-b`, plus one `netshoot-client` pod in `grpc-client` and a single TLS-terminating Gateway in `gateway-system`.
+A single TLS-terminating Gateway on port 443 routes gRPC traffic to two
+backend namespaces based on hostname. `grpc-a.example.test` routes to
+`grpc-backend-a` and `grpc-b.example.test` routes to `grpc-backend-b`.
+The Gateway terminates TLS using a self-signed cert-manager certificate;
+backends receive plaintext gRPC on port 9000.
 
-The Gateway listener terminates TLS on port `443`, which is exposed on your machine as `localhost:443` through kind `extraPortMappings`.
+## Resources
 
-## Purpose
+| Resource                                               | Namespace      | Purpose                                   |
+| ------------------------------------------------------ | -------------- | ----------------------------------------- |
+| Gateway `grpc-multi-namespace-gateway`                 | gateway-system | TLS-terminating listener on port 443      |
+| Certificate `grpc-multi-namespace-gateway-certificate` | gateway-system | Self-signed TLS cert for the gateway      |
+| GRPCRoute `grpc-backend-a-route`                       | grpc-backend-a | Routes `grpc-a.example.test` to backend-a |
+| GRPCRoute `grpc-backend-b-route`                       | grpc-backend-b | Routes `grpc-b.example.test` to backend-b |
+| Pod `grpc-api`                                         | grpc-backend-a | gRPC test server (reports `serverId`)     |
+| Pod `grpc-api`                                         | grpc-backend-b | gRPC test server (reports `serverId`)     |
+| Pod `netshoot-client`                                  | grpc-client    | In-cluster debugging client               |
 
-This is the fixed-port host-network variant of the gRPC setup for multi-namespace routing. It gives you one Gateway with two `GRPCRoute` objects, each selecting a different backend namespace by hostname.
+## Verification
 
-## Apply
+What `verify.sh` checks:
 
-```sh
-mise run scenario:02:start
-mise run scenario:02:verify
-```
+1. All pods and the TLS certificate reach Ready state.
+2. Gateway is Accepted.
+3. Both GRPCRoutes are Accepted by the gateway.
+4. Listener `grpcs` reports 2 attached routes.
+5. 10 consecutive gRPC requests to `grpc-a.example.test:443` all route to `grpc-backend-a`.
+6. 10 consecutive gRPC requests to `grpc-b.example.test:443` all route to `grpc-backend-b`.
+7. GRPCRoute Accepted status message is correct for both routes.
 
-`scenario:02:start` installs `cert-manager` first if it is not already present, then issues a self-signed certificate in `gateway-system`.
-
-## Manual Check
-
-Use the checked-in proto descriptor instead of relying on reflection:
-
-```sh
-grpcurl -insecure \
-  -authority grpc-a.example.test \
-  -proto apps/backend-grpc/proto/grpc/testing/testservice.proto \
-  -d '{"response_size":32,"fill_server_id":true}' \
-  localhost:443 \
-  grpc.testing.TestService/UnaryCall
-
-grpcurl -insecure \
-  -authority grpc-b.example.test \
-  -proto apps/backend-grpc/proto/grpc/testing/testservice.proto \
-  -d '{"response_size":32,"fill_server_id":true}' \
-  localhost:443 \
-  grpc.testing.TestService/UnaryCall
-```
-
-If you need direct backend checks from inside the cluster:
+## Run
 
 ```sh
-kubectl exec -n grpc-client pod/netshoot-client -- \
-  grpcurl -plaintext \
-  -d '{"response_size":32,"fill_server_id":true}' \
-  grpc-api.grpc-backend-a.svc.cluster.local:9000 \
-  grpc.testing.TestService/UnaryCall
-
-kubectl exec -n grpc-client pod/netshoot-client -- \
-  grpcurl -plaintext \
-  -d '{"response_size":32,"fill_server_id":true}' \
-  grpc-api.grpc-backend-b.svc.cluster.local:9000 \
-  grpc.testing.TestService/UnaryCall
+mise run //scenarios/01-simple/grpc:start
 ```

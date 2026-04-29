@@ -1,22 +1,18 @@
 # mixed-protocol — HTTP + HTTPS + TLS Passthrough on shared port (no explicit kinds)
 
 Three-listener Gateway with **no explicit `allowedRoutes.kinds`** on any
-listener:
+listener. Tests that implicit kind defaults (derived from listener protocol)
+are evaluated correctly per-listener when mixing HTTP, HTTPS Terminate, and
+TLS Passthrough protocols.
+
+All listeners use `allowedRoutes.namespaces.from: Same`, so routes live in
+`gateway-system` and use cross-namespace `backendRefs` with ReferenceGrants.
 
 | Listener | Protocol          | Port | Hostname            |
 | -------- | ----------------- | ---- | ------------------- |
 | `http`   | HTTP              | 80   | _(any)_             |
 | `https`  | HTTPS (Terminate) | 443  | `app.example.test`  |
 | `tls`    | TLS (Passthrough) | 443  | `mtls.example.test` |
-
-All listeners use `allowedRoutes.namespaces.from: Same`, so routes live in
-`gateway-system` and use cross-namespace `backendRefs` with ReferenceGrants.
-
-This scenario tests the bug from
-[cilium#45559](https://github.com/cilium/cilium/issues/45559) where adding a
-TLS Passthrough listener causes HTTPRoutes to be rejected with
-`NotAllowedByListeners` because `CheckGatewayRouteKindAllowed` globally
-overwrites the Accepted condition.
 
 ## Resources
 
@@ -31,9 +27,16 @@ overwrites the Accepted condition.
 | Pod `api`                        | backend-a      | go-httpbin (HTTP backend)                      |
 | Pod `backend-mtls`               | backend-b      | Envoy with per-namespace mTLS certs            |
 
-## Upstream bugs
+## Verification
 
-- [cilium#45559](https://github.com/cilium/cilium/issues/45559) — TLS Passthrough listener causes HTTPRoutes to be rejected with `NotAllowedByListeners`
+What `verify.sh` checks:
+
+1. All three routes (HTTPRoute `backend-a-app-route`, HTTPRoute `http-redirect`, TLSRoute `backend-b-mtls-route`) reach `Accepted=True`
+2. Per-listener `attachedRoutes` counts are correct (1 each for `http`, `https`, `tls`)
+3. HTTPS termination — `curl` to `app.example.test:443` succeeds
+4. HTTP → HTTPS redirect — `curl` to `app.example.test:80` returns 301
+5. TLS passthrough — mTLS `curl` to `mtls.example.test:443` succeeds
+6. Status message assertions for HTTPRoute and TLSRoute accepted messages
 
 ## Run
 

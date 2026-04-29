@@ -1,36 +1,37 @@
-# HTTP Path-Based Routing
+# http-path-match — Path prefix routing to different backends
 
 This scenario tests path prefix matching in HTTPRoute rules. Two routes on
 the same hostname route traffic to different backends based on the URL path.
+Requests to `/api/*` are routed to `backend-a`, while all other requests
+(`/*` catch-all) are routed to `backend-b`. The more specific `/api` prefix
+takes precedence over the `/` catch-all. Each route injects an
+`X-Routed-To` header via `RequestHeaderModifier` to confirm which backend
+handled the request.
 
-## What it proves
+## Resources
 
-1. Cilium correctly evaluates `matches[].path` with `type: PathPrefix`.
-2. Requests to `/api/*` are routed to `backend-a`.
-3. Requests to `/*` (catch-all) are routed to `backend-b`.
-4. The more specific `/api` prefix takes precedence over the `/` catch-all.
-5. `RequestHeaderModifier` filter correctly injects `X-Routed-To` header
-   to verify which backend received the request.
+| Resource                     | Namespace      | Purpose                                       |
+| ---------------------------- | -------------- | --------------------------------------------- |
+| Gateway `path-match-gateway` | gateway-system | Single HTTP listener on port 80               |
+| HTTPRoute `backend-a-route`  | backend-a      | Matches `PathPrefix: /api` → backend-a        |
+| HTTPRoute `backend-b-route`  | backend-b      | Matches `PathPrefix: /` catch-all → backend-b |
+| Pod `api`                    | backend-a      | go-httpbin backend                            |
+| Pod `api`                    | backend-b      | go-httpbin backend                            |
+| Pod `netshoot-client`        | client         | In-cluster debugging client                   |
+
+## Verification
+
+What `verify.sh` checks:
+
+1. All pods are Ready and the Gateway is Accepted.
+2. Both HTTPRoutes report Accepted status.
+3. Listener `http` has 2 attached routes.
+4. `/api/headers` is routed to `backend-a` (confirmed by `X-Routed-To` header).
+5. `/headers` is routed to `backend-b` (confirmed by `X-Routed-To` header).
+6. `/api/get` is routed to `backend-a`, confirming `/api` prefix takes precedence over `/` catch-all.
 
 ## Run
 
 ```sh
 mise run //scenarios/01-simple/http-path-match:start
 ```
-
-With cleanup:
-
-```sh
-mise run //scenarios/01-simple/http-path-match:start -- --delete
-```
-
-## Resources
-
-| Kind      | Name                 | Namespace      |
-| --------- | -------------------- | -------------- |
-| Gateway   | `path-match-gateway` | gateway-system |
-| HTTPRoute | `backend-a-route`    | backend-a      |
-| HTTPRoute | `backend-b-route`    | backend-b      |
-| Pod       | `api`                | backend-a      |
-| Pod       | `api`                | backend-b      |
-| Pod       | `netshoot-client`    | client         |

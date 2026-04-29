@@ -1,34 +1,41 @@
-# HTTPS Termination Baseline
+# https — HTTPS termination with multi-namespace HTTPRoutes
 
-This scenario is the HTTPS counterpart to `http`. One Gateway terminates TLS on port `443` via a self-signed cert-manager certificate, with two HTTPRoute backends in separate namespaces (`https-a.example.test`, `https-b.example.test`).
+One Gateway terminates TLS on port 443 via a self-signed cert-manager certificate,
+routing to two HTTPRoute backends in separate namespaces by hostname
+(`https-a.example.test`, `https-b.example.test`). This is the HTTPS counterpart
+to the plaintext `http` scenario and establishes the simplest possible
+TLS-termination pattern.
 
-It deploys:
+## Resources
 
-- `backend-http` into `backend-a` and `backend-b`
-- one `netshoot-client` pod in `client`
-- one TLS-terminating Gateway in `gateway-system`
-- a self-signed cert-manager Issuer and wildcard Certificate
+| Resource                                | Namespace      | Purpose                                    |
+| --------------------------------------- | -------------- | ------------------------------------------ |
+| Gateway `https-multi-namespace-gateway` | gateway-system | TLS-terminating listener on port 443       |
+| Certificate `https-gateway-certificate` | gateway-system | Self-signed wildcard TLS cert              |
+| HTTPRoute `backend-a-https-route`       | backend-a      | Routes `https-a.example.test` to backend-a |
+| HTTPRoute `backend-b-https-route`       | backend-b      | Routes `https-b.example.test` to backend-b |
+| Pod `api`                               | backend-a      | go-httpbin backend                         |
+| Pod `api`                               | backend-b      | go-httpbin backend                         |
+| Pod `netshoot-client`                   | client         | In-cluster debugging client                |
 
-## Purpose
+## Verification
 
-This fills the gap between plaintext HTTP (`http`) and the gRPC/mTLS scenarios by establishing the simplest possible TLS-termination pattern. The Gateway terminates TLS on port `443`, which is exposed on your machine as `localhost:443` through kind `extraPortMappings`.
+What `verify.sh` checks:
 
-## Apply
+1. All pods and the TLS certificate reach Ready state.
+2. Gateway is Accepted.
+3. Both HTTPRoutes are Accepted by the gateway.
+4. Listener `https` reports 2 attached routes.
+5. HTTPS request to `https-a.example.test` succeeds.
+6. HTTPS request to `https-b.example.test` succeeds.
+7. Both HTTPRoutes report `Accepted HTTPRoute` in their status message.
+
+## Related scenarios
+
+- [`http`](../http/README.md) — plaintext HTTP variant
+
+## Run
 
 ```sh
-mise run scenario:03:start
-mise run scenario:03:verify
+mise run //scenarios/01-simple/https:start
 ```
-
-`scenario:03:start` installs `cert-manager` first if it is not already present, then issues a self-signed certificate in `gateway-system`.
-
-## Manual Check
-
-```sh
-curl -k --resolve "https-a.example.test:443:127.0.0.1" https://https-a.example.test/headers
-curl -k --resolve "https-b.example.test:443:127.0.0.1" https://https-b.example.test/headers
-```
-
-The hostname determines which namespace-local backend receives the request.
-
-For the plaintext HTTP variant, see [`scenarios/01-simple/http`](../http/README.md).

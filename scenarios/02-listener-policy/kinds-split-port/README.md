@@ -1,7 +1,8 @@
-# Scenario 22 — HTTPS + gRPC with per-listener `allowedRoutes.kinds`
+# kinds-split-port — Per-listener `allowedRoutes.kinds` on separate ports
 
-Same split-port layout as [scenario 20](../../01-simple/http-grpc-split-port/README.md) but each
-Gateway listener restricts to a **single** route kind:
+Tests that per-listener `allowedRoutes.kinds` restrictions work correctly when
+each listener uses a **separate port**. The Gateway has two HTTPS listeners,
+each restricted to a single route kind:
 
 | Listener | Port  | Allowed Kind |
 | -------- | ----- | ------------ |
@@ -9,6 +10,12 @@ Gateway listener restricts to a **single** route kind:
 | `grpcs`  | 50051 | `GRPCRoute`  |
 
 This prevents cross-attachment (e.g. a GRPCRoute on the HTTPS listener).
+
+It deploys:
+
+- `backend-http` and `backend-grpc` into `backend-a`
+- `backend-http` and `backend-grpc` into `backend-b`
+- one shared Gateway in `gateway-system` with per-listener kind restrictions
 
 ## Resources
 
@@ -19,20 +26,17 @@ This prevents cross-attachment (e.g. a GRPCRoute on the HTTPS listener).
 | GRPCRoute (×2)                   | backend-a / -b | gRPC TLS termination → backend-grpc |
 | Certificate (self-signed)        | gateway-system | Shared TLS cert for both listeners  |
 | Pod `api` (×2)                   | backend-a / -b | go-httpbin (HTTP backend)           |
-| Pod `backend-grpc` (×2)          | backend-a / -b | gRPC test service                   |
+| Pod `grpc-api` (×2)              | backend-a / -b | gRPC test service                   |
 
-## Status
+## Verification
 
-⚠️ **Broken on all tested versions** — [cilium#45559](https://github.com/cilium/cilium/issues/45559)
+What `verify.sh` checks:
 
-Gateway status looks correct (each listener reports the right `supportedKinds`),
-but the CiliumEnvoyConfig collapses both ports into one Envoy listener via
-`additionalAddresses` and drops all HTTPRoute backends. HTTPS returns 404 even
-though HTTPRoutes show `Accepted: True`.
-
-Distinct from [#44824](https://github.com/cilium/cilium/issues/44824)
-(shared-port `allowedRoutes.kinds`, fixed ≥1.19.3) — the separate-port variant
-fails at the listener-merging level. See `cec-dump.broken.yaml` for evidence.
+1. All four routes (2 HTTPRoute, 2 GRPCRoute) are accepted by the gateway
+2. Per-listener `attachedRoutes` and `supportedKinds` are correct (`https` → 2 HTTPRoute, `grpcs` → 2 GRPCRoute)
+3. HTTPS traffic to `https-a.example.test` and `https-b.example.test` on port 443 succeeds
+4. gRPC affinity: `grpc-a.example.test` always routes to `backend-a`, `grpc-b.example.test` always routes to `backend-b` (10 iterations each on port 50051)
+5. Negative test: HTTP hostname returns 404 on the gRPC port (50051), confirming per-port listener isolation
 
 ## Run
 
@@ -42,5 +46,5 @@ mise run //scenarios/02-listener-policy/kinds-split-port:start
 
 ## See also
 
-- [Scenario 20](../../01-simple/http-grpc-split-port/README.md) — same layout, no kind restrictions (passes)
-- [Scenario 23](../kinds-shared-port/README.md) — shared port, both kinds on one listener
+- [`01-simple/http-grpc-split-port`](../../01-simple/http-grpc-split-port/README.md) — same layout, no kind restrictions
+- [`kinds-shared-port`](../kinds-shared-port/README.md) — shared port, both kinds on one listener

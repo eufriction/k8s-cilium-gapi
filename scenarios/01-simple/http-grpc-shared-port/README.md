@@ -1,66 +1,51 @@
-# Shared-Port HTTP + gRPC
+# http-grpc-shared-port — HTTPRoute and GRPCRoute on a single HTTPS listener
 
-This scenario serves HTTPRoute and GRPCRoute traffic on a **single HTTPS listener on port `443`** with distinct hostnames. The Gateway API spec allows this — routes with non-overlapping hostnames on the same listener are not conflicted.
+This scenario serves HTTPRoute and GRPCRoute traffic on a **single HTTPS listener
+on port 443** with distinct hostnames. The Gateway API spec allows this — routes
+with non-overlapping hostnames on the same listener are not conflicted.
 
-It deploys:
+It deploys `backend-http` and `backend-grpc` into both `backend-a` and `backend-b`,
+plus a shared Gateway in `gateway-system` with one HTTPS listener. The goal is to
+validate that Cilium can handle mixed HTTP/1.1 and gRPC (HTTP/2) traffic on the
+same HTTPS listener.
 
-- `backend-http` and `backend-grpc` into `backend-a`
-- `backend-http` and `backend-grpc` into `backend-b`
-- one `netshoot-client` pod in `client`
-- one shared Gateway in `gateway-system` with a **single** HTTPS listener on port `443`
+Compared to [`http-grpc-split-port`](../http-grpc-split-port/README.md) (which uses
+separate ports 443 and 50051), this scenario deliberately collapses everything onto
+**one port**.
 
-The Gateway exposes:
+## Resources
 
-- `HTTPS` on `443` for two `HTTPRoute`s (`backend.example.test`, `backend-b.example.test`)
-- `gRPC` on `443` for two `GRPCRoute`s (`backend-grpc.example.test`, `backend-grpc-b.example.test`)
+| Resource                                      | Namespace            | Purpose                                          |
+| --------------------------------------------- | -------------------- | ------------------------------------------------ |
+| Gateway `shared-port-gateway`                 | gateway-system       | Single HTTPS listener on port 443                |
+| Certificate `shared-port-gateway-certificate` | gateway-system       | TLS cert for the gateway                         |
+| HTTPRoute `backend-a-https-route`             | backend-a            | HTTPS → backend-a (`backend.example.test`)       |
+| HTTPRoute `backend-b-https-route`             | backend-b            | HTTPS → backend-b (`backend-b.example.test`)     |
+| GRPCRoute `backend-a-grpc-route`              | backend-a            | gRPC → backend-a (`backend-grpc.example.test`)   |
+| GRPCRoute `backend-b-grpc-route`              | backend-b            | gRPC → backend-b (`backend-grpc-b.example.test`) |
+| Pod `api`                                     | backend-a, backend-b | go-httpbin HTTP backends                         |
+| Pod `grpc-api`                                | backend-a, backend-b | gRPC test service backends                       |
 
-## Purpose
+## Verification
 
-Compared to [`http-grpc-split-port`](../http-grpc-split-port/README.md) (which uses separate ports `443` and `50051`), this scenario deliberately collapses everything onto **one port** to validate that Cilium can handle mixed HTTP/1.1 and gRPC (HTTP/2) traffic on the same HTTPS listener.
+What `verify.sh` checks:
 
-## Status
+1. All pods and the TLS certificate are ready.
+2. Gateway `shared-port-gateway` is accepted.
+3. All four routes (2 HTTPRoute, 2 GRPCRoute) are accepted.
+4. Listener `https` reports 4 attached routes.
+5. `backend-grpc.example.test` routes all gRPC requests to `backend-a` (10 iterations).
+6. `backend-grpc-b.example.test` routes all gRPC requests to `backend-b` (10 iterations).
+7. HTTPS `backend.example.test` returns a successful response on port 443.
+8. HTTPS `backend-b.example.test` returns a successful response on port 443.
 
-Verified working on **Cilium 1.19.1**. Both HTTPRoute (HTTP/1.1) and GRPCRoute (HTTP/2) traffic are correctly routed through a single shared HTTPS listener.
-
-### Historical context
-
-[cilium/cilium#43679](https://github.com/cilium/cilium/issues/43679) reported that Cilium's Envoy translator forces HTTP/2 on the upstream cluster when a GRPCRoute is present on the same listener, breaking HTTP/1.1 HTTPRoute backends. This scenario was originally created to surface that limitation. As of Cilium 1.19.1, the issue does not reproduce — both protocols work correctly on a shared port.
-
-## Apply
-
-```sh
-mise run scenario:21:start
-mise run scenario:21:verify
-```
-
-`scenario:21:start` installs `cert-manager` first if it is not already present, then issues a self-signed certificate in `gateway-system`.
-
-## Manual Check
-
-HTTPS:
-
-```sh
-curl -k --resolve "backend.example.test:443:127.0.0.1" https://backend.example.test/headers
-curl -k --resolve "backend-b.example.test:443:127.0.0.1" https://backend-b.example.test/headers
-```
-
-gRPC:
+## Run
 
 ```sh
-grpcurl -insecure \
-  -authority backend-grpc.example.test \
-  -proto apps/backend-grpc/proto/grpc/testing/testservice.proto \
-  -d '{"response_size":32,"fill_server_id":true}' \
-  localhost:443 \
-  grpc.testing.TestService/UnaryCall
-
-grpcurl -insecure \
-  -authority backend-grpc-b.example.test \
-  -proto apps/backend-grpc/proto/grpc/testing/testservice.proto \
-  -d '{"response_size":32,"fill_server_id":true}' \
-  localhost:443 \
-  grpc.testing.TestService/UnaryCall
+mise run //scenarios/01-simple/http-grpc-shared-port:start
 ```
 
-For the split-port variant, see [`scenarios/01-simple/http-grpc-split-port`](../http-grpc-split-port/README.md).
-For the shared-port variant with explicit `allowedRoutes.kinds`, see [`scenarios/02-listener-policy/kinds-shared-port`](../../02-listener-policy/kinds-shared-port/README.md).
+## See also
+
+- [`http-grpc-split-port`](../http-grpc-split-port/README.md) — separate ports for HTTP and gRPC
+- [`kinds-shared-port`](../../02-listener-policy/kinds-shared-port/README.md) — shared-port variant with explicit `allowedRoutes.kinds`
