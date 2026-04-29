@@ -110,7 +110,7 @@ fi
 [tasks."fixture:start"]
 description = "Pre-deploy shared backend pods for faster scenario runs"
 usage = 'flag "-v --verbose" env="VERBOSE"'
-depends = ["kind:load:apps{% if usage.verbose %} --verbose{% endif %}"]
+depends = ["kind:load:apps{% if usage.verbose %} --verbose{% endif %}", "cert-manager:install"]
 run = """
 set -euo pipefail
 kubectl apply -k config/fixture
