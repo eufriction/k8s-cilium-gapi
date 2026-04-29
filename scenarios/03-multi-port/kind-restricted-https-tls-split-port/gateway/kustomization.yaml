@@ -4,8 +4,6 @@ kind: Kustomization
 resources:
   - ../10-gateway-selfsigned-issuer.yaml
   - ../11-gateway-certificate.yaml
-  - ../12-backend-b-pki.yaml
-  - ../instances/backend-mtls-b
   - ../30-gateway.yaml
   - ../31-backend-a-httproute.yaml
   - ../32-backend-b-tlsroute.yaml

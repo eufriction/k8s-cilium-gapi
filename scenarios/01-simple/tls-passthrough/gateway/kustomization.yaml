@@ -2,10 +2,6 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - ../10-backend-a-pki.yaml
-  - ../11-backend-b-pki.yaml
-  - ../instances/backend-mtls-a
-  - ../instances/backend-mtls-b
   - ../30-gateway.yaml
   - ../31-backend-a-tlsroute.yaml
   - ../32-backend-b-tlsroute.yaml
