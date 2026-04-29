@@ -1,0 +1,24 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/gateway.networking.k8s.io/tlsroute_v1alpha2.json
+#
+# cilium/cilium#45559 — TLSRoute in gateway-system with explicit sectionName
+# targeting the TLS Passthrough listener. Uses a cross-namespace backendRef
+# (requires ReferenceGrant in backend-b).
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TLSRoute
+metadata:
+  name: backend-b-mtls-route
+  namespace: gateway-system
+  labels:
+    app.kubernetes.io/part-of: demo
+spec:
+  parentRefs:
+    - name: mixed-protocol-gateway
+      sectionName: tls
+  hostnames:
+    - mtls.example.test
+  rules:
+    - backendRefs:
+        - name: backend-mtls
+          namespace: backend-b
+          port: 9443

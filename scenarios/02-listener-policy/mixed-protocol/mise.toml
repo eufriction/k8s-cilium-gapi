@@ -1,0 +1,35 @@
+[env]
+SCENARIO_SKIP_VERSIONS = "1.19.1 1.19.3 1.20.0-pre.1"
+
+[tasks.start]
+extends = "scenario:start"
+description = "Deploy the mixed-protocol listener scenario"
+depends = ["//:kind:load:apps{% if usage.verbose %} --verbose{% endif %}", "//:cert-manager:install"]
+run = """
+if [ -n "${SCENARIO_SKIP_VERSIONS:-}" ]; then
+  for _v in ${SCENARIO_SKIP_VERSIONS}; do
+    if [ "$_v" = "${CILIUM_VERSION}" ]; then
+      echo "SKIP: known broken on Cilium ${CILIUM_VERSION}"
+      exit 0
+    fi
+  done
+fi
+KUSTOMIZE_DIR="."
+if [ "${FIXTURE_DEPLOYED:-}" = "true" ] && [ -d gateway ]; then
+  KUSTOMIZE_DIR="gateway"
+fi
+if [ "${X_TLSROUTE_API_VERSION:-v1alpha2}" = "v1" ]; then
+  echo "--- TLSRoute apiVersion override: v1alpha2 -> v1 ---"
+  kubectl kustomize "$KUSTOMIZE_DIR" --load-restrictor=LoadRestrictionsNone | sed 's|gateway.networking.k8s.io/v1alpha2|gateway.networking.k8s.io/v1|g' | kubectl apply -f -
+else
+  kubectl kustomize "$KUSTOMIZE_DIR" --load-restrictor=LoadRestrictionsNone | kubectl apply -f -
+fi
+mise run :verify{% if usage.delete %} --delete{% endif %}
+"""
+
+[tasks.verify]
+extends = "scenario:verify"
+description = "Verify mixed-protocol listeners with no explicit kinds"
+
+[tasks.delete]
+extends = "scenario:delete"
