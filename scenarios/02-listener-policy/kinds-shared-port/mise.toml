@@ -4,7 +4,10 @@ SCENARIO_SKIP_VERSIONS = "1.19.1"
 [tasks.start]
 extends = "scenario:start"
 description = "Deploy the shared-port + allowedRoutes.kinds scenario"
-depends = ["//:kind:load:apps{% if usage.verbose %} --verbose{% endif %}", "//:cert-manager:install"]
+depends = [
+  "//:kind:load:apps{% if usage.verbose %} --verbose{% endif %}",
+  "//:cert-manager:install",
+]
 
 [tasks.verify]
 extends = "scenario:verify"

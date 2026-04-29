@@ -12,6 +12,8 @@ hooks {
       }
       ["shellcheck"] = Builtins.shellcheck
       ["shfmt"] = Builtins.shfmt
+      ["taplo"] = Builtins.taplo
+      ["taplo-format"] = Builtins.taplo_format
       ["lint-images"] = new Step {
         check = "mise run lint:images"
       }

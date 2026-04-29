@@ -44,6 +44,7 @@ node = "latest"
 prettier = "latest"
 shellcheck = "latest"
 shfmt = "latest"
+taplo = "latest"
 vale = "latest"
 
 [hooks]
@@ -112,7 +113,10 @@ fi
 [tasks."fixture:start"]
 description = "Pre-deploy shared backend pods for faster scenario runs"
 usage = 'flag "-v --verbose" env="VERBOSE"'
-depends = ["kind:load:apps{% if usage.verbose %} --verbose{% endif %}", "cert-manager:install"]
+depends = [
+  "kind:load:apps{% if usage.verbose %} --verbose{% endif %}",
+  "cert-manager:install",
+]
 run = """
 set -euo pipefail
 kubectl apply -k config/fixture
@@ -263,7 +267,7 @@ silent = "stdout"
 run = [
   "helm repo add cilium https://helm.cilium.io/",
   "helm repo add kyverno https://kyverno.github.io/kyverno/",
-  "helm repo update"
+  "helm repo update",
 ]
 
 [tasks."kind:load:cilium"]
@@ -412,7 +416,7 @@ kubectl get crd certificates.cert-manager.io issuers.cert-manager.io clusterissu
 description = "Remove cert-manager when TLS scenarios are no longer needed"
 run = [
   "helm uninstall cert-manager --namespace cert-manager --ignore-not-found",
-  "kubectl delete namespace cert-manager --ignore-not-found=true --wait=false"
+  "kubectl delete namespace cert-manager --ignore-not-found=true --wait=false",
 ]
 
 [tasks."kyverno:install"]
@@ -446,7 +450,7 @@ kubectl wait deployment/kyverno-reports-controller -n kyverno --for=condition=Av
 description = "Remove Kyverno when policy-focused scenarios are no longer needed"
 run = [
   "helm uninstall kyverno --namespace kyverno --ignore-not-found",
-  "kubectl delete namespace kyverno --ignore-not-found=true --wait=false"
+  "kubectl delete namespace kyverno --ignore-not-found=true --wait=false",
 ]
 
 [tasks."cilium:install"]
