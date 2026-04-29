@@ -226,46 +226,46 @@ Scenarios affected by known bugs declare `SCENARIO_SKIP_VERSIONS` in their `mise
 
 #### Fixed bugs
 
-| Bug                                                                                               | Scenarios                           | Cilium issue                                            | Fix                                                   | Available since                                                                                  |
-| ------------------------------------------------------------------------------------------------- | ----------------------------------- | ------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| TLSRoute without sectionName creates duplicate FilterChains on mixed-listener Gateway             | no-sectionname                      | [#45050](https://github.com/cilium/cilium/issues/45050) | [#45371](https://github.com/cilium/cilium/pull/45371) | Merged to main (commits `24022e316a`, `22c2bfb133`); ✅ on #44889 (rebased on main) and combined |
-| `isKindAllowed` cross-counts TLSRoutes on HTTP/HTTPS listeners (implicit kinds variant of #45559) | mixed-protocol                      | [#45371](https://github.com/cilium/cilium/pull/45371)   | [#45371](https://github.com/cilium/cilium/pull/45371) | Merged to main (same fix as #45050); ✅ on #44889 (rebased on main) and combined                 |
-| `allowedRoutes.kinds` silently excludes GRPCRoute from Envoy config                               | kinds-split-port, kinds-shared-port | [#44824](https://github.com/cilium/cilium/issues/44824) | [#44826](https://github.com/cilium/cilium/pull/44826) | ≥1.19.3, ≥1.20.0                                                                                 |
-| GRPCRoute/TLSRoute status reports "Accepted HTTPRoute"                                            | grpc, tls-passthrough               | [#43881](https://github.com/cilium/cilium/issues/43881) | [#44962](https://github.com/cilium/cilium/pull/44962) | ≥1.20.0 (not backported to 1.19.x; data plane unaffected)                                        |
+| Bug                                                                                               | Scenarios                           | Cilium issue                                            | Fix                                                   | Available since                                                                                       |
+| ------------------------------------------------------------------------------------------------- | ----------------------------------- | ------------------------------------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| TLSRoute without sectionName creates duplicate FilterChains on mixed-listener Gateway             | no-sectionname                      | [#45050](https://github.com/cilium/cilium/issues/45050) | [#45371](https://github.com/cilium/cilium/pull/45371) | Merged to main (commits `24022e316a`, `22c2bfb133`); ✅ on #44889 (rebased on main) and #44889+#45693 |
+| `isKindAllowed` cross-counts TLSRoutes on HTTP/HTTPS listeners (implicit kinds variant of #45559) | mixed-protocol                      | [#45371](https://github.com/cilium/cilium/pull/45371)   | [#45371](https://github.com/cilium/cilium/pull/45371) | Merged to main (same fix as #45050); ✅ on #44889 (rebased on main) and #44889+#45693                 |
+| `allowedRoutes.kinds` silently excludes GRPCRoute from Envoy config                               | kinds-split-port, kinds-shared-port | [#44824](https://github.com/cilium/cilium/issues/44824) | [#44826](https://github.com/cilium/cilium/pull/44826) | ≥1.19.3, ≥1.20.0                                                                                      |
+| GRPCRoute/TLSRoute status reports "Accepted HTTPRoute"                                            | grpc, tls-passthrough               | [#43881](https://github.com/cilium/cilium/issues/43881) | [#44962](https://github.com/cilium/cilium/pull/44962) | ≥1.20.0 (not backported to 1.19.x; data plane unaffected)                                             |
 
 ### Test results by version
 
-| Group                | Scenario                                      | 1.19.1 | 1.19.3 | 1.20.0-pre.1 | #44889 | combined |
-| -------------------- | --------------------------------------------- | :----: | :----: | :----------: | :----: | :------: |
-| `01-simple`          | grpc                                          |   ✅   |   ✅   |      ✅      |   ✅   |    ✅    |
-| `01-simple`          | http                                          |   ✅   |   ✅   |      ✅      |   ✅   |    ✅    |
-| `01-simple`          | http-grpc-shared-port                         |   ✅   |   ✅   |      ✅      |   ✅   |    ✅    |
-| `01-simple`          | http-grpc-split-port                          |   ⏭️   |   ⏭️   |      ⏭️      |   ✅   |    ✅    |
-| `01-simple`          | http-header-match                             |   ✅   |   ✅   |      ✅      |   ✅   |    ✅    |
-| `01-simple`          | http-path-match                               |   ✅   |   ✅   |      ✅      |   ✅   |    ✅    |
-| `01-simple`          | http-redirect                                 |   ✅   |   ✅   |      ✅      |   ✅   |    ✅    |
-| `01-simple`          | http-shared-port                              |   ✅   |   ✅   |      ✅      |   ✅   |    ✅    |
-| `01-simple`          | https                                         |   ✅   |   ✅   |      ✅      |   ✅   |    ✅    |
-| `01-simple`          | https-tls-shared-port                         |   ✅   |   ✅   |      ✅      |   ✅   |    ✅    |
-| `01-simple`          | tls-passthrough                               |   ✅   |   ✅   |      ✅      |   ✅   |    ✅    |
-| `01-simple`          | tls-split-port                                |   ✅   |   ✅   |      ✅      |   ✅   |    ✅    |
-| `02-listener-policy` | kind-restricted-https-tls-shared-port         |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |    ✅    |
-| `02-listener-policy` | kinds-multi-listener                          |   ❌   |   ❌   |      ❌      |   ❌   |    ✅    |
-| `02-listener-policy` | kinds-shared-port                             |   ⏭️   |   ✅   |      ✅      |   ✅   |    ✅    |
-| `02-listener-policy` | kinds-split-port                              |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |    ✅    |
-| `02-listener-policy` | mixed-protocol                                |   ⏭️   |   ⏭️   |      ⏭️      |   ✅   |    ✅    |
-| `02-listener-policy` | namespace-restricted-shared-port              |   ✅   |   ✅   |      ✅      |   ✅   |    ✅    |
-| `02-listener-policy` | namespace-restricted-split-port               |   ✅   |   ✅   |      ✅      |   ✅   |    ✅    |
-| `02-listener-policy` | namespaces                                    |   ✅   |   ✅   |      ✅      |   ✅   |    ✅    |
-| `02-listener-policy` | no-sectionname                                |   ⏭️   |   ⏭️   |      ⏭️      |   ✅   |    ✅    |
-| `03-multi-port`      | http-grpc-same-hostname                       |   ⏭️   |   ⏭️   |      ⏭️      |   ✅   |    ✅    |
-| `03-multi-port`      | https-tls-same-hostname-split-port            |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |    ❌    |
-| `03-multi-port`      | kind-restricted-https-tls-split-port          |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |    ❌    |
-| `03-multi-port`      | namespace-restricted-same-hostname-split-port |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |    ❌    |
-| `03-multi-port`      | tls-passthrough-same-hostname                 |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |    ❌    |
+| Group                | Scenario                                      | 1.19.1 | 1.19.3 | 1.20.0-pre.1 | #44889 | #44889+#45693 |
+| -------------------- | --------------------------------------------- | :----: | :----: | :----------: | :----: | :-----------: |
+| `01-simple`          | grpc                                          |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |
+| `01-simple`          | http                                          |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |
+| `01-simple`          | http-grpc-shared-port                         |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |
+| `01-simple`          | http-grpc-split-port                          |   ⏭️   |   ⏭️   |      ⏭️      |   ✅   |      ✅       |
+| `01-simple`          | http-header-match                             |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |
+| `01-simple`          | http-path-match                               |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |
+| `01-simple`          | http-redirect                                 |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |
+| `01-simple`          | http-shared-port                              |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |
+| `01-simple`          | https                                         |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |
+| `01-simple`          | https-tls-shared-port                         |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |
+| `01-simple`          | tls-passthrough                               |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |
+| `01-simple`          | tls-split-port                                |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |
+| `02-listener-policy` | kind-restricted-https-tls-shared-port         |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |      ✅       |
+| `02-listener-policy` | kinds-multi-listener                          |   ❌   |   ❌   |      ❌      |   ❌   |      ✅       |
+| `02-listener-policy` | kinds-shared-port                             |   ⏭️   |   ✅   |      ✅      |   ✅   |      ✅       |
+| `02-listener-policy` | kinds-split-port                              |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |      ✅       |
+| `02-listener-policy` | mixed-protocol                                |   ⏭️   |   ⏭️   |      ⏭️      |   ✅   |      ✅       |
+| `02-listener-policy` | namespace-restricted-shared-port              |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |
+| `02-listener-policy` | namespace-restricted-split-port               |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |
+| `02-listener-policy` | namespaces                                    |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |
+| `02-listener-policy` | no-sectionname                                |   ⏭️   |   ⏭️   |      ⏭️      |   ✅   |      ✅       |
+| `03-multi-port`      | http-grpc-same-hostname                       |   ⏭️   |   ⏭️   |      ⏭️      |   ✅   |      ✅       |
+| `03-multi-port`      | https-tls-same-hostname-split-port            |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |      ❌       |
+| `03-multi-port`      | kind-restricted-https-tls-split-port          |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |      ❌       |
+| `03-multi-port`      | namespace-restricted-same-hostname-split-port |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |      ❌       |
+| `03-multi-port`      | tls-passthrough-same-hostname                 |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |      ❌       |
 
 ✅ = pass ❌ = fail ⏭️ = skipped (known bug) — = not yet tested.
-**combined** = `fix/combined-split-ports-allowed-routes` branch (#44889 per-port listeners + `fix/allowed-routes-main` kind/namespace fixes).
+**#44889+#45693** = `fix/combined-split-ports-allowed-routes` branch (#44889 per-port listeners + #45693 kind/namespace fixes).
 Cross-reference scenario names with the [Known Cilium bugs](#known-cilium-bugs) table for failure and skip details.
 
 ---
