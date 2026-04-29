@@ -21,6 +21,10 @@ kubectl wait grpcroute/backend-a-grpc-route -n backend-a --for='jsonpath={.statu
 kubectl wait grpcroute/backend-b-grpc-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
 wait
 
+# --- Listener status assertions ---
+assert_listener_status same-hostname-split-ports-gateway gateway-system https 2 HTTPRoute GRPCRoute
+assert_listener_status same-hostname-split-ports-gateway gateway-system grpcs 2 HTTPRoute GRPCRoute
+
 echo "--- HTTPS checks (port 443, hostname api.example.test) ---"
 retry_until 10 curl -kfsS --resolve "api.example.test:443:127.0.0.1" https://api.example.test/headers >/dev/null
 echo "PASS: HTTPS backend-a on port 443"

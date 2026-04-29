@@ -53,25 +53,9 @@ else
   exit 1
 fi
 
-# --- Verify listener attachedRoutes counts ---
-https_attached=$(kubectl get gateway/kind-restricted-https-tls-split-port-gateway -n gateway-system \
-  -o jsonpath='{.status.listeners[?(@.name=="https")].attachedRoutes}')
-tls_attached=$(kubectl get gateway/kind-restricted-https-tls-split-port-gateway -n gateway-system \
-  -o jsonpath='{.status.listeners[?(@.name=="tls")].attachedRoutes}')
-
-if [ "$https_attached" = "1" ]; then
-  echo "PASS: https listener has 1 attachedRoute (HTTPRoute only)"
-else
-  echo "FAIL: https listener has ${https_attached} attachedRoutes (expected 1)" >&2
-  exit 1
-fi
-
-if [ "$tls_attached" = "1" ]; then
-  echo "PASS: tls listener has 1 attachedRoute (TLSRoute only)"
-else
-  echo "FAIL: tls listener has ${tls_attached} attachedRoutes (expected 1)" >&2
-  exit 1
-fi
+# --- Listener status assertions ---
+assert_listener_status kind-restricted-https-tls-split-port-gateway gateway-system https 1 HTTPRoute
+assert_listener_status kind-restricted-https-tls-split-port-gateway gateway-system tls   1 TLSRoute
 
 # --- Status message checks ---
 msg=$(kubectl get tlsroute/backend-b-tls-route -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')

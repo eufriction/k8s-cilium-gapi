@@ -12,30 +12,9 @@ kubectl wait gateway/ns-shared-port-gateway -n gateway-system --for='jsonpath={.
 # Give the controller time to reconcile route status
 sleep 5
 
-# --- Check gateway listener attachedRoutes ---
-restricted=$(kubectl get gateway/ns-shared-port-gateway -n gateway-system \
-  -o jsonpath='{.status.listeners[?(@.name=="https-restricted")].attachedRoutes}')
-open=$(kubectl get gateway/ns-shared-port-gateway -n gateway-system \
-  -o jsonpath='{.status.listeners[?(@.name=="https-open")].attachedRoutes}')
-
-echo "https-restricted attachedRoutes: ${restricted}"
-echo "https-open attachedRoutes: ${open}"
-
-# https-restricted (from: Same) should NOT accept cross-namespace route
-if [ "$restricted" = "0" ]; then
-  echo "PASS: https-restricted listener correctly rejects cross-namespace route"
-else
-  echo "FAIL: https-restricted listener has attachedRoutes=${restricted} (expected 0) — cilium#42159" >&2
-  exit 1
-fi
-
-# https-open (from: All) SHOULD accept cross-namespace route
-if [ "$open" = "1" ]; then
-  echo "PASS: https-open listener correctly accepts cross-namespace route"
-else
-  echo "FAIL: https-open listener has attachedRoutes=${open} (expected 1) — cilium#42159" >&2
-  exit 1
-fi
+# --- Listener status assertions ---
+assert_listener_status ns-shared-port-gateway gateway-system https-restricted 0 HTTPRoute GRPCRoute
+assert_listener_status ns-shared-port-gateway gateway-system https-open       1 HTTPRoute GRPCRoute
 
 # --- Traffic check on open listener ---
 retry_until 10 curl -kfsS --resolve "open.example.test:443:127.0.0.1" https://open.example.test/headers >/dev/null

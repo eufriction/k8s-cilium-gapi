@@ -16,6 +16,10 @@ kubectl wait gateway/grpc-multi-namespace-gateway -n gateway-system --for='jsonp
 kubectl wait grpcroute/grpc-backend-a-route -n grpc-backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
 kubectl wait grpcroute/grpc-backend-b-route -n grpc-backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
 wait
+
+# --- Listener status assertions ---
+assert_listener_status grpc-multi-namespace-gateway gateway-system grpcs 2 HTTPRoute GRPCRoute
+
 GRPC_IMPORT_PATH="${REPO_ROOT}/apps/backend-grpc/proto"
 GRPC_PROTO=grpc/testing/testservice.proto
 GRPC_REQ='{"response_size":32,"fill_server_id":true}'

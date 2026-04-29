@@ -16,6 +16,9 @@ kubectl wait httproute/backend-a-route -n backend-a --for='jsonpath={.status.par
 kubectl wait httproute/backend-b-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
 wait
 
+# --- Listener status assertions ---
+assert_listener_status path-match-gateway gateway-system http 2 HTTPRoute GRPCRoute
+
 # Warm up the HTTP listener
 retry_until 10 curl -fsS -H 'Host: app.example.test' http://localhost/api/headers >/dev/null
 

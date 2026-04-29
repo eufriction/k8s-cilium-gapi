@@ -69,6 +69,9 @@ if [ "$route_fail" -eq 1 ]; then
   exit 1
 fi
 
+# --- Listener status assertions ---
+assert_listener_status shared-port-allowed-routes-gateway gateway-system https 4 GRPCRoute HTTPRoute
+
 GRPC_IMPORT_PATH="${REPO_ROOT}/apps/backend-grpc/proto"
 GRPC_PROTO=grpc/testing/testservice.proto
 GRPC_REQ='{"response_size":32,"fill_server_id":true}'

@@ -19,6 +19,9 @@ kubectl wait tlsroute/backend-a-mtls-route -n backend-a --for='jsonpath={.status
 kubectl wait tlsroute/backend-b-mtls-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
 wait
 
+# --- Listener status assertions ---
+assert_listener_status mtls-multi-namespace-gateway gateway-system mtls 2 TLSRoute
+
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
 

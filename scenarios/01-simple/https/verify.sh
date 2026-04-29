@@ -13,6 +13,10 @@ kubectl wait gateway/https-multi-namespace-gateway -n gateway-system --for='json
 kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
 kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
 wait
+
+# --- Listener status assertions ---
+assert_listener_status https-multi-namespace-gateway gateway-system https 2 HTTPRoute GRPCRoute
+
 retry_until 10 curl -kfsS --resolve "https-a.example.test:443:127.0.0.1" https://https-a.example.test/headers >/dev/null
 echo "PASS: https-a.example.test"
 curl -kfsS --resolve "https-b.example.test:443:127.0.0.1" https://https-b.example.test/headers >/dev/null

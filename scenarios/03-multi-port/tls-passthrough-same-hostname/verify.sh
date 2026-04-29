@@ -23,6 +23,10 @@ kubectl wait tlsroute/backend-a-tls-route -n backend-a --for='jsonpath={.status.
 kubectl wait tlsroute/backend-b-tls-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
 wait
 
+# --- Listener status assertions ---
+assert_listener_status tls-passthrough-split-ports-gateway gateway-system tls-443  1 TLSRoute
+assert_listener_status tls-passthrough-split-ports-gateway gateway-system tls-9443 1 TLSRoute
+
 # --- Extract certs ---
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT

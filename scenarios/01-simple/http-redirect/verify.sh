@@ -16,6 +16,10 @@ kubectl wait httproute/http-redirect -n gateway-system --for='jsonpath={.status.
 kubectl wait httproute/backend-a-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
 wait
 
+# --- Listener status assertions ---
+assert_listener_status redirect-gateway gateway-system http  1 HTTPRoute GRPCRoute
+assert_listener_status redirect-gateway gateway-system https 1 HTTPRoute GRPCRoute
+
 # Warm up the HTTP listener before testing
 retry_until 10 curl -fsS -o /dev/null -H 'Host: redirect.example.test' http://localhost/
 

@@ -18,6 +18,11 @@ kubectl wait httproute/backend-a-web-route -n backend-a --for='jsonpath={.status
 kubectl wait tlsroute/backend-b-mtls-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
 wait
 
+# --- Listener status assertions ---
+assert_listener_status mixed-listener-gateway gateway-system http  1 HTTPRoute GRPCRoute
+assert_listener_status mixed-listener-gateway gateway-system https 1 HTTPRoute GRPCRoute
+assert_listener_status mixed-listener-gateway gateway-system tls   1 TLSRoute
+
 # --- HTTPS termination (web.example.test on port 443) ---
 retry_until 10 curl -kfsS --resolve "web.example.test:443:127.0.0.1" https://web.example.test/headers >/dev/null
 echo "PASS: HTTPS termination — web.example.test on port 443"

@@ -15,6 +15,11 @@ kubectl wait gateway/http-shared-port-gateway -n gateway-system --for='jsonpath=
 kubectl wait httproute/backend-a-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
 kubectl wait httproute/backend-b-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
 wait
+
+# --- Listener status assertions ---
+assert_listener_status http-shared-port-gateway gateway-system http-a 1 HTTPRoute GRPCRoute
+assert_listener_status http-shared-port-gateway gateway-system http-b 1 HTTPRoute GRPCRoute
+
 retry_until 10 curl -fsS -H 'Host: api-a.example.test' http://localhost/headers >/dev/null
 echo "PASS: api-a HTTP"
 curl -fsS -H 'Host: api-b.example.test' http://localhost/headers >/dev/null
