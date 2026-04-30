@@ -306,9 +306,21 @@ done
 
 # Add locally-built images to the load list (already in Docker daemon)
 if [ -n "${CILIUM_AGENT_IMAGE}" ]; then
+  if ! docker image inspect "${CILIUM_AGENT_IMAGE}" >/dev/null 2>&1; then
+    echo "ERROR: CILIUM_AGENT_IMAGE '${CILIUM_AGENT_IMAGE}' not found in Docker daemon" >&2
+    echo "  Available cilium images:" >&2
+    docker images --filter "reference=*cilium*" --format "    {% raw %}{{.Repository}}:{{.Tag}}{% endraw %}" >&2
+    exit 1
+  fi
   images+=("${CILIUM_AGENT_IMAGE}")
 fi
 if [ -n "${CILIUM_OPERATOR_IMAGE}" ]; then
+  if ! docker image inspect "${CILIUM_OPERATOR_IMAGE}" >/dev/null 2>&1; then
+    echo "ERROR: CILIUM_OPERATOR_IMAGE '${CILIUM_OPERATOR_IMAGE}' not found in Docker daemon" >&2
+    echo "  Available operator images:" >&2
+    docker images --filter "reference=*operator*" --format "    {% raw %}{{.Repository}}:{{.Tag}}{% endraw %}" >&2
+    exit 1
+  fi
   images+=("${CILIUM_OPERATOR_IMAGE}")
 fi
 
@@ -350,6 +362,10 @@ set -euo pipefail
 err() { echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2; }
 
 docker build{% if not usage.verbose %} --quiet{% endif %} -t backend-grpc:${BACKEND_GRPC_VERSION} apps/backend-grpc/image
+if ! docker image inspect "backend-grpc:${BACKEND_GRPC_VERSION}" >/dev/null 2>&1; then
+  echo "ERROR: backend-grpc:${BACKEND_GRPC_VERSION} build failed — image not found in Docker daemon" >&2
+  exit 1
+fi
 
 remote_images=(
   "nicolaka/netshoot:${NETSHOOT_VERSION}"
