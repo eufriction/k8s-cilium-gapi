@@ -59,11 +59,18 @@ retry() {
 # The final attempt after the deadline runs with stderr to surface errors.
 # Prefer this over `retry` when you want a hard cap on wall-clock time.
 #
+# The deadline can be overridden globally via LISTENER_READY_TIMEOUT env var.
+# When set, the env var acts as a floor — the effective deadline is the larger
+# of the passed value and LISTENER_READY_TIMEOUT.
+#
 # Example:
 #   retry_until 5 curl -kfsS --resolve "host:443:127.0.0.1" https://host/path >/dev/null
 retry_until() {
   local deadline=$1
   shift
+  # Allow env var to raise the floor (useful after cilium-agent restarts)
+  local floor="${LISTENER_READY_TIMEOUT:-0}"
+  if ((floor > deadline)); then deadline=$floor; fi
   local end=$((SECONDS + deadline))
   while ((SECONDS < end)); do
     if "$@" 2>/dev/null; then return 0; fi
