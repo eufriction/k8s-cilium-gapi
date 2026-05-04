@@ -28,6 +28,7 @@ X_TLSROUTE_ACCEPTED_MSG = "Accepted HTTPRoute"
 X_TLSROUTE_API_VERSION = "v1alpha2"
 SCENARIO_SKIP_VERSIONS = ""
 POST_DELETE_SLEEP = "10"
+LISTENER_READY_TIMEOUT = "30"
 
 [tools]
 "aqua:betterleaks/betterleaks" = "latest"
@@ -103,8 +104,27 @@ usage = 'flag "-d --delete"'
 run = """
 if [ "${usage_delete:-false}" = "true" ]; then
   echo "--- Deleting scenario resources ---"
+
+  # Pre-delete: ensure cilium is stable before teardown to avoid crashing
+  # the agent mid-reconciliation (statedb panic on rapid create/delete cycles).
+  if ! kubectl rollout status daemonset/cilium -n kube-system --timeout=15s >/dev/null 2>&1; then
+    echo "  ⚠ Cilium not stable — waiting for recovery before delete..."
+    kubectl rollout status daemonset/cilium -n kube-system --timeout=90s >/dev/null
+    sleep 5
+  fi
+
   if [ "${FIXTURE_DEPLOYED:-}" = "true" ] && [ -d gateway ]; then
-    kubectl kustomize gateway/ --load-restrictor=LoadRestrictionsNone | kubectl delete --ignore-not-found -f -
+    # Ordered deletion: remove routes first, then gateway + certs.
+    # This reduces reconciliation pressure on the cilium-agent and operator
+    # by letting them process route removal before the gateway disappears.
+    MANIFESTS=$(kubectl kustomize gateway/ --load-restrictor=LoadRestrictionsNone)
+    ROUTES=$(echo "$MANIFESTS" | kubectl get -f - -o name 2>/dev/null | grep -E "httproute|grpcroute|tlsroute" || true)
+    if [ -n "$ROUTES" ]; then
+      echo "$ROUTES" | xargs kubectl delete --ignore-not-found
+      sleep 2
+    fi
+    # Now delete the remaining resources (gateway, certificates, issuers)
+    echo "$MANIFESTS" | kubectl delete --ignore-not-found -f -
   else
     kubectl delete -k . --ignore-not-found
   fi
