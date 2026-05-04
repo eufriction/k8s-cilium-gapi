@@ -1,0 +1,14 @@
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization.json
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - 00-gateway-system-namespace.yaml
+  - 00-backend-a-namespace.yaml
+  - 00-backend-b-namespace.yaml
+  - instances/backend-http-a
+  - instances/backend-http-b
+  - 30-gateway.yaml
+  - 31-route-catch-all.yaml
+  - 32-route-wildcard-example.yaml
+  - 33-route-wildcard-foo.yaml
+  - 34-route-exact-abc-foo.yaml
