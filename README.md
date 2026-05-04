@@ -236,37 +236,40 @@ Scenarios affected by known bugs declare `SCENARIO_SKIP_VERSIONS` in their `mise
 
 ### Test results by version
 
-| Group                | Scenario                            | 1.19.1 | 1.19.3 | 1.20.0-pre.1 | #44889 | #44889+#45693 |
-| -------------------- | ----------------------------------- | :----: | :----: | :----------: | :----: | :-----------: |
-| `01-basic`           | grpc                                |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |
-| `01-basic`           | http                                |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |
-| `01-basic`           | https                               |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |
-| `01-basic`           | tls-passthrough                     |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |
-| `02-http-routing`    | header-match                        |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |
-| `02-http-routing`    | path-match                          |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |
-| `02-http-routing`    | redirect                            |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |
-| `03-multi-listener`  | http-grpc-same-hostname             |   ⏭️   |   ⏭️   |      ⏭️      |   ✅   |      ✅       |
-| `03-multi-listener`  | http-grpc-shared-port               |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |
-| `03-multi-listener`  | http-grpc-split-port                |   ⏭️   |   ⏭️   |      ⏭️      |   ✅   |      ✅       |
-| `03-multi-listener`  | http-shared-port                    |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |
-| `03-multi-listener`  | https-tls-same-hostname             |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |      ❌       |
-| `03-multi-listener`  | https-tls-shared-port               |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |
-| `03-multi-listener`  | tls-passthrough-same-hostname       |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |      ❌       |
-| `03-multi-listener`  | tls-split-port                      |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |
-| `04-route-admission` | http-https-tls-implicit-kinds       |   ⏭️   |   ⏭️   |      ⏭️      |   ✅   |      ✅       |
-| `04-route-admission` | http-ns-allowed                     |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |
-| `04-route-admission` | http-ns-restricted-split-port       |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |
-| `04-route-admission` | https-grpc-kinds-shared-port        |   ⏭️   |   ✅   |      ✅      |   ✅   |      ✅       |
-| `04-route-admission` | https-grpc-kinds-split-port         |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |      ✅       |
-| `04-route-admission` | https-ns-restricted-same-hostname   |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |      ❌       |
-| `04-route-admission` | https-ns-restricted-shared-port     |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |
-| `04-route-admission` | https-tls-kinds-same-hostname       |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |      ❌       |
-| `04-route-admission` | https-tls-kinds-shared-port         |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |      ✅       |
-| `04-route-admission` | multi-protocol-kinds-multi-listener |   ❌   |   ❌   |      ❌      |   ❌   |      ✅       |
-| `04-route-admission` | tls-no-sectionname-multi-listener   |   ⏭️   |   ⏭️   |      ⏭️      |   ✅   |      ✅       |
+| Group                | Scenario                            | 1.19.1 | 1.19.3 | 1.20.0-pre.1 | #44889 | #44889+#45693 | #44889-tls-local | #44889-tls-local+#45693 |
+| -------------------- | ----------------------------------- | :----: | :----: | :----------: | :----: | :-----------: | :--------------: | :---------------------: |
+| `01-basic`           | grpc                                |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |        ✅        |           ✅            |
+| `01-basic`           | http                                |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |        ✅        |           ✅            |
+| `01-basic`           | https                               |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |        ✅        |           ✅            |
+| `01-basic`           | tls-passthrough                     |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |        ✅        |           ✅            |
+| `02-http-routing`    | header-match                        |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |        ✅        |           ✅            |
+| `02-http-routing`    | path-match                          |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |        ✅        |           ✅            |
+| `02-http-routing`    | redirect                            |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |        ✅        |           ✅            |
+| `03-multi-listener`  | http-grpc-same-hostname             |   ⏭️   |   ⏭️   |      ⏭️      |   ✅   |      ✅       |        ✅        |           ✅            |
+| `03-multi-listener`  | http-grpc-shared-port               |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |        ✅        |           ✅            |
+| `03-multi-listener`  | http-grpc-split-port                |   ⏭️   |   ⏭️   |      ⏭️      |   ✅   |      ✅       |        ✅        |           ✅            |
+| `03-multi-listener`  | http-listener-isolation             |   —    |   —    |      —       |   —    |       —       |        ✅        |           ✅            |
+| `03-multi-listener`  | http-shared-port                    |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |        ✅        |           ✅            |
+| `03-multi-listener`  | https-tls-same-hostname             |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |      ❌       |        ✅        |           ✅            |
+| `03-multi-listener`  | https-tls-shared-port               |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |        ✅        |           ✅            |
+| `03-multi-listener`  | tls-passthrough-same-hostname       |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |      ❌       |        ✅        |           ✅            |
+| `03-multi-listener`  | tls-split-port                      |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |        ✅        |           ✅            |
+| `04-route-admission` | http-https-tls-implicit-kinds       |   ⏭️   |   ⏭️   |      ⏭️      |   ✅   |      ✅       |        ✅        |           ✅            |
+| `04-route-admission` | http-ns-allowed                     |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |        ✅        |           ✅            |
+| `04-route-admission` | http-ns-restricted-split-port       |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |        ✅        |           ✅            |
+| `04-route-admission` | https-grpc-kinds-shared-port        |   ⏭️   |   ✅   |      ✅      |   ✅   |      ✅       |        ✅        |           ✅            |
+| `04-route-admission` | https-grpc-kinds-split-port         |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |      ✅       |        ❌        |           ✅            |
+| `04-route-admission` | https-ns-restricted-same-hostname   |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |      ❌       |        ✅        |           ✅            |
+| `04-route-admission` | https-ns-restricted-shared-port     |   ✅   |   ✅   |      ✅      |   ✅   |      ✅       |        ✅        |           ✅            |
+| `04-route-admission` | https-tls-kinds-same-hostname       |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |      ❌       |        ❌        |           ❌            |
+| `04-route-admission` | https-tls-kinds-shared-port         |   ⏭️   |   ⏭️   |      ⏭️      |   ❌   |      ✅       |        ❌        |           ✅            |
+| `04-route-admission` | multi-protocol-kinds-multi-listener |   ❌   |   ❌   |      ❌      |   ❌   |      ✅       |        ❌        |           ✅            |
+| `04-route-admission` | tls-no-sectionname-multi-listener   |   ⏭️   |   ⏭️   |      ⏭️      |   ✅   |      ✅       |        ✅        |           ✅            |
 
 ✅ = pass ❌ = fail ⏭️ = skipped (known bug) — = not yet tested.
 **#44889+#45693** = `fix/combined-split-ports-allowed-routes` branch (#44889 per-port listeners + #45693 kind/namespace fixes).
+**#44889-tls-local** = `fix/gateway-api-same-hostname-split-ports` branch (#44889 + per-port TLS passthrough listeners for [#42898](https://github.com/cilium/cilium/issues/42898)); does not include #45693 kind/namespace fixes.
+**#44889-tls-local+#45693** = `fix/split-ports-with-allowed-routes` branch (#44889-tls-local + #45693 kind/namespace cherry-picks); best combined result (24/27).
 Cross-reference scenario names with the [Known Cilium bugs](#known-cilium-bugs) table for failure and skip details.
 
 ---
