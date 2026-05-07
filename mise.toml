@@ -587,14 +587,14 @@ description = "Bootstrap the full cluster: kind + Cilium in order"
 usage = 'flag "-v --verbose" env="VERBOSE" help="Enable verbose output for image pulls and builds"'
 depends = ["kind:start"]
 depends_post = ["cluster:verify"]
-run = "mise run cilium:install{% if usage.verbose %} --verbose{% endif %}"
+run = "mise run cilium:install{% if usage.verbose %} --verbose{% endif %} && mise run kind:load:apps{% if usage.verbose %} --verbose{% endif %}"
 
 [tasks."cluster:start:lb"]
 description = "Bootstrap the load-balancer comparison cluster: kind + Cilium load-balancer mode"
 usage = 'flag "-v --verbose" env="VERBOSE" help="Enable verbose output for image pulls and builds"'
 depends = ["kind:start:lb"]
 depends_post = ["cluster:verify"]
-run = "mise run cilium:install:lb{% if usage.verbose %} --verbose{% endif %}"
+run = "mise run cilium:install:lb{% if usage.verbose %} --verbose{% endif %} && mise run kind:load:apps{% if usage.verbose %} --verbose{% endif %}"
 
 [tasks."cluster:verify"]
 description = "Verify the cluster is healthy: Cilium status ready"
