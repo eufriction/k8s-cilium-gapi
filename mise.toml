@@ -397,10 +397,27 @@ for img in "${remote_images[@]}"; do
   docker pull{% if not usage.verbose %} --quiet{% endif %} "${img}" || err "WARN: pull failed for ${img}, using local image"
 done
 
+all_images=("backend-grpc:${BACKEND_GRPC_VERSION}" "${remote_images[@]}")
 kind load docker-image {% if not usage.verbose %}--quiet {% endif %}\\
-  "backend-grpc:${BACKEND_GRPC_VERSION}" \\
-  "${remote_images[@]}" \\
+  "${all_images[@]}" \\
   --name "${KIND_CLUSTER_NAME}"
+
+# Verify images are actually present on at least one worker node
+worker_node="${KIND_CLUSTER_NAME}-worker"
+echo "--- Image load verification ---"
+load_ok=true
+for img in "${all_images[@]}"; do
+  if docker exec "$worker_node" crictl images -o json 2>/dev/null | grep -q "${img}"; then
+    echo "  ✅ $img"
+  else
+    echo "  ❌ $img — NOT FOUND on $worker_node" >&2
+    load_ok=false
+  fi
+done
+if [ "$load_ok" != true ]; then
+  echo "ERROR: one or more images failed to load — pods will get ErrImagePull" >&2
+  exit 1
+fi
 """
 
 [tasks."cilium:uninstall"]
