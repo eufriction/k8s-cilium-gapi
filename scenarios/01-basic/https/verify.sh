@@ -2,24 +2,25 @@
 set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
+gateway_ports https-multi-namespace-gateway gateway-system 443
 # Tier 1: pods + certs in parallel
 wait_parallel \
-  "pod/api -n backend-a --for=condition=Ready --timeout=5s" \
-  "pod/api -n backend-b --for=condition=Ready --timeout=5s" \
+  "pod/api -n backend-a --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \
+  "pod/api -n backend-b --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \
   "certificate/https-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s"
 # Tier 2: gateway
-kubectl wait gateway/https-multi-namespace-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=5s
+kubectl wait gateway/https-multi-namespace-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
 # Tier 3: routes in parallel
-kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
-kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
+kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
+kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
 wait
 
 # --- Listener status assertions ---
 assert_listener_status https-multi-namespace-gateway gateway-system https 2 HTTPRoute GRPCRoute
 
-retry_until 10 curl -kfsS --resolve "https-a.example.test:443:127.0.0.1" https://https-a.example.test/headers >/dev/null
+retry_until 10 curl -kfsS --resolve "https-a.example.test:${PORT_443}:127.0.0.1" https://https-a.example.test:"${PORT_443}"/headers >/dev/null
 echo "PASS: https-a.example.test"
-curl -kfsS --resolve "https-b.example.test:443:127.0.0.1" https://https-b.example.test/headers >/dev/null
+curl -kfsS --resolve "https-b.example.test:${PORT_443}:127.0.0.1" https://https-b.example.test:"${PORT_443}"/headers >/dev/null
 echo "PASS: https-b.example.test"
 
 # cilium/cilium#43881

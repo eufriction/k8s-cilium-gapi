@@ -3,22 +3,23 @@ set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
 skip_on_versions "1.19.1 1.19.3 1.20.0-pre.1" "same-hostname split-port gRPC bug — not yet fixed upstream"
+gateway_ports same-hostname-split-ports-gateway gateway-system 443 50051
 # Tier 1 — pods & certificates (parallel)
 wait_parallel \
-  "pod/api -n backend-a --for=condition=Ready --timeout=5s" \
-  "pod/api -n backend-b --for=condition=Ready --timeout=5s" \
-  "pod/grpc-api -n backend-a --for=condition=Ready --timeout=5s" \
-  "pod/grpc-api -n backend-b --for=condition=Ready --timeout=5s" \
+  "pod/api -n backend-a --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \
+  "pod/api -n backend-b --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \
+  "pod/grpc-api -n backend-a --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \
+  "pod/grpc-api -n backend-b --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \
   "certificate/same-hostname-split-ports-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s"
 
 # Tier 2 — gateway
-kubectl wait gateway/same-hostname-split-ports-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=5s
+kubectl wait gateway/same-hostname-split-ports-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
 
 # Tier 3 — routes (parallel, manual & + wait)
-kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
-kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
-kubectl wait grpcroute/backend-a-grpc-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
-kubectl wait grpcroute/backend-b-grpc-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
+kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
+kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
+kubectl wait grpcroute/backend-a-grpc-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
+kubectl wait grpcroute/backend-b-grpc-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
 wait
 
 # --- Listener status assertions ---
@@ -26,9 +27,9 @@ assert_listener_status same-hostname-split-ports-gateway gateway-system https 2 
 assert_listener_status same-hostname-split-ports-gateway gateway-system grpcs 2 HTTPRoute GRPCRoute
 
 echo "--- HTTPS checks (port 443, hostname api.example.test) ---"
-retry_until 10 curl -kfsS --resolve "api.example.test:443:127.0.0.1" https://api.example.test/headers >/dev/null
+retry_until 10 curl -kfsS --resolve "api.example.test:${PORT_443}:127.0.0.1" https://api.example.test:"${PORT_443}"/headers >/dev/null
 echo "PASS: HTTPS backend-a on port 443"
-curl -kfsS --resolve "api.example.test:443:127.0.0.1" https://api.example.test/b/headers >/dev/null
+curl -kfsS --resolve "api.example.test:${PORT_443}:127.0.0.1" https://api.example.test:"${PORT_443}"/b/headers >/dev/null
 echo "PASS: HTTPS backend-b on port 443 (path /b)"
 
 GRPC_IMPORT_PATH="${REPO_ROOT}/apps/backend-grpc/proto"
@@ -45,7 +46,7 @@ retry_until 10 grpcurl -insecure \
   -import-path "$GRPC_IMPORT_PATH" \
   -proto "$GRPC_PROTO" \
   -d "$GRPC_REQ" \
-  localhost:50051 \
+  localhost:"${PORT_50051}" \
   "$GRPC_METHOD" >/dev/null
 echo "gRPC listener warm-up complete"
 
@@ -57,7 +58,7 @@ for i in $(seq 1 $ITERATIONS); do
     -import-path "$GRPC_IMPORT_PATH" \
     -proto "$GRPC_PROTO" \
     -d "$GRPC_REQ" \
-    localhost:50051 \
+    localhost:"${PORT_50051}" \
     "$GRPC_METHOD" | jq -r '.serverId')
   case "$server_id" in
   backend-a) seen_a=$((seen_a + 1)) ;;
@@ -87,7 +88,7 @@ echo "PASS: gRPC traffic distributed across both backends ($seen_a/$seen_b split
 #         non-gRPC content-type (proves HTTPRoute /b did NOT leak)
 #   200 = FAIL — the HTTP backend served the request, meaning the HTTPRoute
 #         leaked from port 443 to port 50051 (listener collapse)
-http_status=$(curl -kso /dev/null -w '%{http_code}' --resolve "api.example.test:50051:127.0.0.1" https://api.example.test:50051/b/headers || true)
+http_status=$(curl -kso /dev/null -w '%{http_code}' --resolve "api.example.test:${PORT_50051}:127.0.0.1" https://api.example.test:"${PORT_50051}"/b/headers || true)
 if [ "$http_status" = "404" ] || [ "$http_status" = "415" ]; then
   echo "PASS: HTTP path /b returned ${http_status} on gRPC port (per-port isolation — HTTPRoute did not leak)"
 elif [ "$http_status" = "200" ]; then

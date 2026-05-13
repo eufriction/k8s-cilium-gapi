@@ -27,7 +27,12 @@ X_GRPCROUTE_ACCEPTED_MSG = "Accepted HTTPRoute"
 X_TLSROUTE_ACCEPTED_MSG = "Accepted HTTPRoute"
 X_TLSROUTE_API_VERSION = "v1alpha2"
 SCENARIO_SKIP_VERSIONS = ""
-POST_DELETE_SLEEP = "10"
+POD_READY_TIMEOUT = "10"
+MTLS_POD_READY_TIMEOUT = "60"
+GW_READY_TIMEOUT = "30"
+ROUTE_READY_TIMEOUT = "30"
+PRE_DELETE_SLEEP = "15"
+POST_DELETE_SLEEP = "15"
 LISTENER_READY_TIMEOUT = "30"
 
 [tools]
@@ -105,8 +110,26 @@ run = """
 if [ "${usage_delete:-false}" = "true" ]; then
   echo "--- Deleting scenario resources ---"
 
-  # Pre-delete: ensure cilium is stable before teardown to avoid crashing
-  # the agent mid-reconciliation (statedb panic on rapid create/delete cycles).
+  # Pre-delete: ensure cilium has fully reconciled the scenario's resources.
+  # The statedb panic ("delete did not find old object") is triggered when the
+  # K8s reflector processes a delete event for an object whose index entry
+  # hasn't been fully written yet. We use two gates:
+  #
+  # 1. Wait for Gateway Programmed=True — the strongest external signal that
+  #    the data plane (Envoy + BPF LB) has been fully configured.
+  # 2. A small settle buffer for statedb internal indexing to quiesce.
+  #
+  # Together these give the agent time to finish before we hit it with deletes.
+  if [ "${FIXTURE_DEPLOYED:-}" = "true" ] && [ -d gateway ]; then
+    # In gateway-only mode, wait for all gateways to be Programmed
+    for gw in $(kubectl get gateway -n gateway-system -o name 2>/dev/null); do
+      kubectl wait "$gw" -n gateway-system \
+        --for='jsonpath={.status.conditions[?(@.type=="Programmed")].status}=True' \
+        --timeout=30s 2>/dev/null || true
+    done
+  fi
+  sleep "${PRE_DELETE_SLEEP:-5}"
+
   if ! kubectl rollout status daemonset/cilium -n kube-system --timeout=15s >/dev/null 2>&1; then
     echo "  ⚠ Cilium not stable — waiting for recovery before delete..."
     kubectl rollout status daemonset/cilium -n kube-system --timeout=90s >/dev/null
@@ -131,6 +154,18 @@ if [ "${usage_delete:-false}" = "true" ]; then
   if [ "${POST_DELETE_SLEEP:-0}" -gt 0 ]; then
     echo "Sleeping ${POST_DELETE_SLEEP}s after delete (POST_DELETE_SLEEP)..."
     sleep "$POST_DELETE_SLEEP"
+  fi
+
+  # Post-delete: wait for Cilium to be stable after deletion.
+  # The statedb panic ("delete did not find old object") is triggered by the
+  # K8s reflector processing delete events. The crash happens DURING deletion,
+  # so the pre-delete check above passes fine. We must verify the agent
+  # survived the delete before proceeding to the next scenario.
+  if ! kubectl rollout status daemonset/cilium -n kube-system --timeout=5s >/dev/null 2>&1; then
+    echo "  ⚠ Cilium crashed during delete — waiting for recovery..."
+    kubectl rollout status daemonset/cilium -n kube-system --timeout=120s >/dev/null
+    echo "  ✓ Cilium recovered — waiting ${LISTENER_READY_TIMEOUT:-45}s for Envoy re-init..."
+    sleep "${LISTENER_READY_TIMEOUT:-45}"
   fi
 else
   echo "--- SKIPPED Deleting scenario resources ---"
@@ -307,24 +342,7 @@ set -euo pipefail
 
 err() { echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2; }
 
-if [ -n "${CILIUM_CHART_DIR}" ]; then
-  chart_ref="${CILIUM_CHART_DIR}"
-else
-  chart_ref="cilium/cilium --version ${CILIUM_VERSION}"
-fi
-
-images=()
-while IFS= read -r img; do
-  images+=("${img}")
-done < <(helm images get ${chart_ref} --values config/values.cilium.yaml 2>/dev/null \\
-  | sed 's/@sha256:.*//' \\
-  | sort -u)
-
-for img in "${images[@]}"; do
-  docker pull{% if not usage.verbose %} --quiet{% endif %} "${img}" || err "WARN: pull failed for ${img}, using local image"
-done
-
-# Add locally-built images to the load list (already in Docker daemon)
+# ── 1. Validate override images exist in Docker (fail fast) ──
 if [ -n "${CILIUM_AGENT_IMAGE}" ]; then
   if ! docker image inspect "${CILIUM_AGENT_IMAGE}" >/dev/null 2>&1; then
     echo "ERROR: CILIUM_AGENT_IMAGE '${CILIUM_AGENT_IMAGE}' not found in Docker daemon" >&2
@@ -332,7 +350,7 @@ if [ -n "${CILIUM_AGENT_IMAGE}" ]; then
     docker images --filter "reference=*cilium*" --format "    {% raw %}{{.Repository}}:{{.Tag}}{% endraw %}" >&2
     exit 1
   fi
-  images+=("${CILIUM_AGENT_IMAGE}")
+  echo "  ✓ CILIUM_AGENT_IMAGE: ${CILIUM_AGENT_IMAGE}"
 fi
 if [ -n "${CILIUM_OPERATOR_IMAGE}" ]; then
   if ! docker image inspect "${CILIUM_OPERATOR_IMAGE}" >/dev/null 2>&1; then
@@ -341,9 +359,48 @@ if [ -n "${CILIUM_OPERATOR_IMAGE}" ]; then
     docker images --filter "reference=*operator*" --format "    {% raw %}{{.Repository}}:{{.Tag}}{% endraw %}" >&2
     exit 1
   fi
-  images+=("${CILIUM_OPERATOR_IMAGE}")
+  echo "  ✓ CILIUM_OPERATOR_IMAGE: ${CILIUM_OPERATOR_IMAGE}"
 fi
 
+# ── 2. Discover images via helm images get ──
+# Pass the same --set overrides used by cilium:install so the chart
+# resolves to the ACTUAL images that will run.  Without this, the chart
+# returns its default agent/operator refs and docker pull clobbers any
+# locally-built image that shares the same tag.
+helm_get_args=()
+if [ -n "${CILIUM_CHART_DIR}" ]; then
+  helm_get_args+=("${CILIUM_CHART_DIR}")
+else
+  helm_get_args+=(cilium/cilium --version "${CILIUM_VERSION}")
+fi
+helm_get_args+=(--values config/values.cilium.yaml)
+if [ -n "${CILIUM_AGENT_IMAGE}" ]; then
+  helm_get_args+=(--set "image.override=${CILIUM_AGENT_IMAGE}")
+fi
+if [ -n "${CILIUM_OPERATOR_IMAGE}" ]; then
+  helm_get_args+=(--set "operator.image.override=${CILIUM_OPERATOR_IMAGE}")
+fi
+
+images=()
+while IFS= read -r img; do
+  images+=("${img}")
+done < <(helm images get "${helm_get_args[@]}" 2>/dev/null \\
+  | sed 's/@sha256:.*//' \\
+  | sort -u)
+
+# ── 3. Pull remote images; skip those already in Docker daemon ──
+# Locally-built override images are already present and must NOT be
+# pulled — docker pull would either clobber them with an upstream
+# image or fail for local-only tags like localhost:5000/….
+for img in "${images[@]}"; do
+  if docker image inspect "${img}" >/dev/null 2>&1; then
+    echo "  ⊙ ${img} (local — skip pull)"
+  else
+    docker pull{% if not usage.verbose %} --quiet{% endif %} "${img}" || err "WARN: pull failed for ${img}"
+  fi
+done
+
+# ── 4. Load all images into kind ──
 kind load{% if not usage.verbose %} --quiet{% endif %} docker-image "${images[@]}" --name "${KIND_CLUSTER_NAME}"
 """
 
@@ -444,7 +501,7 @@ GOBIN=$PWD/.bin go install sigs.k8s.io/cloud-provider-kind@v$CLOUD_PROVIDER_KIND
 [tasks."cloud-provider-kind:start"]
 description = "Start cloud-provider-kind in a dedicated terminal for load-balancer scenarios"
 depends = ["cloud-provider-kind:install"]
-run = "sudo --preserve-env=KUBECONFIG ./.bin/cloud-provider-kind -enable-lb-port-mapping"
+run = "sudo --preserve-env=KUBECONFIG ./.bin/cloud-provider-kind --enable-lb-port-mapping --gateway-channel disabled"
 
 [tasks."cert-manager:install"]
 description = "Install cert-manager for TLS-focused scenarios"

@@ -2,25 +2,26 @@
 set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
+gateway_ports http-listener-isolation-gateway gateway-system 80
 
 # Tier 1: pods in parallel
 wait_parallel \
-  "pod/api -n backend-a --for=condition=Ready --timeout=5s" \
-  "pod/api -n backend-b --for=condition=Ready --timeout=5s"
+  "pod/api -n backend-a --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \
+  "pod/api -n backend-b --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s"
 
 # Tier 2: gateway
 kubectl wait gateway/http-listener-isolation-gateway -n gateway-system \
-  --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=5s
+  --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
 
 # Tier 3: routes accepted in parallel
 kubectl wait httproute/route-catch-all -n backend-a \
-  --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
+  --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
 kubectl wait httproute/route-wildcard-example -n backend-a \
-  --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
+  --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
 kubectl wait httproute/route-wildcard-foo -n backend-b \
-  --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
+  --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
 kubectl wait httproute/route-exact-abc-foo -n backend-b \
-  --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
+  --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
 wait
 
 # --- Listener status assertions ---
@@ -38,7 +39,7 @@ assert_listener_status http-listener-isolation-gateway gateway-system exact-abc-
 assert_listener() {
   local host="$1" expected="$2" label="$3"
   local actual
-  actual=$(curl -sS -H "Host: ${host}" http://localhost/get -o /dev/null -w '%header{x-listener}')
+  actual=$(curl -sS -H "Host: ${host}" http://localhost:"${PORT_80}"/get -o /dev/null -w '%header{x-listener}')
   if [ "$actual" != "$expected" ]; then
     echo "FAIL: ${label} — X-Listener='${actual}' (expected '${expected}')" >&2
     exit 1
@@ -47,7 +48,7 @@ assert_listener() {
 }
 
 # Wait for the listener to become ready
-retry_until 10 curl -fsS -H 'Host: abc.foo.example.test' http://localhost/get >/dev/null
+retry_until 10 curl -fsS -H 'Host: abc.foo.example.test' http://localhost:"${PORT_80}"/get >/dev/null
 
 # Test 1: Most specific — exact hostname abc.foo.example.test → exact-abc-foo listener
 assert_listener "abc.foo.example.test" "exact-abc-foo" \

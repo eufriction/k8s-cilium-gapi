@@ -158,6 +158,109 @@ assert_listener_status() {
   return 0
 }
 
+# gateway_ports <gateway-name> <namespace> <port> [<port> ...]
+#
+# Resolves host-mapped ports for a gateway and sets PORT_<n> variables in the
+# caller's scope.  Does ONE kubectl + docker lookup per call regardless of how
+# many ports are requested.
+#
+# In hostNetwork mode (no kindccm proxy), ports map 1:1 so PORT_<n>=<n>.
+# In LB mode (cloud-provider-kind running), looks up the kindccm Docker
+# container for the gateway's LB IP and extracts the host-mapped port for each
+# requested service port.
+#
+# Example:
+#   gateway_ports my-gw gateway-system 80 443 50051
+#   curl http://localhost:${PORT_80}/headers
+#   curl --resolve "host:${PORT_443}:127.0.0.1" https://host:${PORT_443}/path
+#   grpcurl -insecure localhost:${PORT_50051} ...
+gateway_ports() {
+  local gw="$1" ns="$2"
+  shift 2
+  local svc_name="cilium-gateway-${gw}"
+
+  # Wait for the service to exist and check its type.
+  # In LB mode the service is type LoadBalancer and we must wait for
+  # cloud-provider-kind to assign an external IP + create a kindccm container.
+  local lb_ip="" svc_type=""
+  local deadline=$((SECONDS + ${GATEWAY_PORTS_TIMEOUT:-60}))
+
+  while ((SECONDS < deadline)); do
+    svc_type=$(kubectl get svc "${svc_name}" -n "${ns}" \
+      -o jsonpath='{.spec.type}' 2>/dev/null)
+    if [ -z "$svc_type" ]; then
+      # Service doesn't exist yet — Cilium hasn't reconciled the Gateway
+      sleep 1
+      continue
+    fi
+    if [ "$svc_type" != "LoadBalancer" ]; then
+      # Not LB mode — hostNetwork fallback (ports map 1:1)
+      for p in "$@"; do
+        printf -v "PORT_${p}" '%s' "${p}"
+      done
+      return
+    fi
+    # Service is LoadBalancer — wait for ingress IP
+    lb_ip=$(kubectl get svc "${svc_name}" -n "${ns}" \
+      -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
+    if [ -n "$lb_ip" ]; then
+      break
+    fi
+    sleep 1
+  done
+
+  if [ -z "$lb_ip" ]; then
+    echo "WARNING: gateway_ports — no LB IP for ${svc_name} after ${GATEWAY_PORTS_TIMEOUT:-60}s, falling back to 1:1" >&2
+    for p in "$@"; do
+      printf -v "PORT_${p}" '%s' "${p}"
+    done
+    return
+  fi
+
+  # Find the kindccm container whose IP matches the LB IP.
+  # cloud-provider-kind may still be spinning up the container, so retry.
+  local cid=""
+  local cid_deadline=$((SECONDS + 15))
+  while ((SECONDS < cid_deadline)); do
+    while IFS= read -r id; do
+      local ip
+      ip=$(docker inspect "$id" \
+        --format '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' 2>/dev/null)
+      if echo "$ip" | grep -qw "$lb_ip"; then
+        cid="$id"
+        break
+      fi
+    done < <(docker ps --filter "name=kindccm" --format '{{.ID}}' 2>/dev/null)
+    [ -n "$cid" ] && break
+    sleep 1
+  done
+
+  if [ -z "$cid" ]; then
+    echo "WARNING: gateway_ports — no kindccm container for LB IP ${lb_ip}, falling back to 1:1" >&2
+    for p in "$@"; do
+      printf -v "PORT_${p}" '%s' "${p}"
+    done
+    return
+  fi
+
+  # Look up each port from the container's port mappings.
+  # The port mapping may not be published yet even though the container exists,
+  # so retry each lookup for up to 10s.
+  for p in "$@"; do
+    local mapped="" port_deadline=$((SECONDS + 10))
+    while ((SECONDS < port_deadline)); do
+      mapped=$(docker port "$cid" "${p}/tcp" 2>/dev/null | head -1 | cut -d: -f2)
+      if [ -n "$mapped" ]; then break; fi
+      sleep 1
+    done
+    if [ -z "$mapped" ]; then
+      echo "WARNING: gateway_ports — docker port ${p}/tcp not mapped for container ${cid}, falling back to ${p}" >&2
+      mapped="$p"
+    fi
+    printf -v "PORT_${p}" '%s' "$mapped"
+  done
+}
+
 # skip_on_versions <versions> [message]
 #
 # If CILIUM_VERSION matches any version in the space-separated list,

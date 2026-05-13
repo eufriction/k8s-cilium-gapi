@@ -2,19 +2,20 @@
 set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
+gateway_ports grpc-multi-namespace-gateway gateway-system 443
 
 # Tier 1: pods + certs in parallel
 wait_parallel \
-  "pod/grpc-api -n grpc-backend-a --for=condition=Ready --timeout=5s" \
-  "pod/grpc-api -n grpc-backend-b --for=condition=Ready --timeout=5s" \
+  "pod/grpc-api -n grpc-backend-a --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \
+  "pod/grpc-api -n grpc-backend-b --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \
   "certificate/grpc-multi-namespace-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s"
 
 # Tier 2: gateway
-kubectl wait gateway/grpc-multi-namespace-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=5s
+kubectl wait gateway/grpc-multi-namespace-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
 
 # Tier 3: routes in parallel
-kubectl wait grpcroute/grpc-backend-a-route -n grpc-backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
-kubectl wait grpcroute/grpc-backend-b-route -n grpc-backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
+kubectl wait grpcroute/grpc-backend-a-route -n grpc-backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
+kubectl wait grpcroute/grpc-backend-b-route -n grpc-backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
 wait
 
 # --- Listener status assertions ---
@@ -32,7 +33,7 @@ retry_until 10 grpcurl -insecure \
   -import-path "$GRPC_IMPORT_PATH" \
   -proto "$GRPC_PROTO" \
   -d "$GRPC_REQ" \
-  localhost:443 \
+  localhost:"${PORT_443}" \
   "$GRPC_METHOD" >/dev/null
 echo "gRPC listener warm-up complete"
 
@@ -43,7 +44,7 @@ for i in $(seq 1 $ITERATIONS); do
     -import-path "$GRPC_IMPORT_PATH" \
     -proto "$GRPC_PROTO" \
     -d "$GRPC_REQ" \
-    localhost:443 \
+    localhost:"${PORT_443}" \
     "$GRPC_METHOD" | jq -r '.serverId')
   if [ "$server_id" != "grpc-backend-a" ]; then
     echo "  iteration $i: grpc-a routed to '$server_id' (expected grpc-backend-a)" >&2
@@ -63,7 +64,7 @@ for i in $(seq 1 $ITERATIONS); do
     -import-path "$GRPC_IMPORT_PATH" \
     -proto "$GRPC_PROTO" \
     -d "$GRPC_REQ" \
-    localhost:443 \
+    localhost:"${PORT_443}" \
     "$GRPC_METHOD" | jq -r '.serverId')
   if [ "$server_id" != "grpc-backend-b" ]; then
     echo "  iteration $i: grpc-b routed to '$server_id' (expected grpc-backend-b)" >&2

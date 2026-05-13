@@ -2,20 +2,21 @@
 set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
+gateway_ports https-grpc-multi-namespace-gateway gateway-system 443 50051
 # Tier 1: pods + certs in parallel
 wait_parallel \
-  "pod/api -n backend-a --for=condition=Ready --timeout=5s" \
-  "pod/api -n backend-b --for=condition=Ready --timeout=5s" \
-  "pod/grpc-api -n backend-a --for=condition=Ready --timeout=5s" \
-  "pod/grpc-api -n backend-b --for=condition=Ready --timeout=5s" \
+  "pod/api -n backend-a --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \
+  "pod/api -n backend-b --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \
+  "pod/grpc-api -n backend-a --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \
+  "pod/grpc-api -n backend-b --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \
   "certificate/https-grpc-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s"
 # Tier 2: gateway
-kubectl wait gateway/https-grpc-multi-namespace-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=5s
+kubectl wait gateway/https-grpc-multi-namespace-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
 # Tier 3: routes in parallel
-kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
-kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
-kubectl wait grpcroute/backend-a-grpc-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
-kubectl wait grpcroute/backend-b-grpc-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
+kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
+kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
+kubectl wait grpcroute/backend-a-grpc-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
+kubectl wait grpcroute/backend-b-grpc-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
 wait
 
 # --- Listener status assertions ---
@@ -23,9 +24,9 @@ assert_listener_status https-grpc-multi-namespace-gateway gateway-system https 2
 assert_listener_status https-grpc-multi-namespace-gateway gateway-system grpcs 2 HTTPRoute GRPCRoute
 
 echo "--- HTTPS smoke checks (port 443) ---"
-retry_until 10 curl -kfsS --resolve "https-a.example.test:443:127.0.0.1" https://https-a.example.test/headers >/dev/null
+retry_until 10 curl -kfsS --resolve "https-a.example.test:${PORT_443}:127.0.0.1" https://https-a.example.test:"${PORT_443}"/headers >/dev/null
 echo "PASS: HTTPS backend-a on port 443"
-curl -kfsS --resolve "https-b.example.test:443:127.0.0.1" https://https-b.example.test/headers >/dev/null
+curl -kfsS --resolve "https-b.example.test:${PORT_443}:127.0.0.1" https://https-b.example.test:"${PORT_443}"/headers >/dev/null
 echo "PASS: HTTPS backend-b on port 443"
 
 GRPC_IMPORT_PATH="${REPO_ROOT}/apps/backend-grpc/proto"
@@ -40,7 +41,7 @@ retry_until 10 grpcurl -insecure \
   -import-path "$GRPC_IMPORT_PATH" \
   -proto "$GRPC_PROTO" \
   -d "$GRPC_REQ" \
-  localhost:50051 \
+  localhost:"${PORT_50051}" \
   "$GRPC_METHOD" >/dev/null
 echo "gRPC listener warm-up complete"
 
@@ -52,7 +53,7 @@ for i in $(seq 1 $ITERATIONS); do
     -import-path "$GRPC_IMPORT_PATH" \
     -proto "$GRPC_PROTO" \
     -d "$GRPC_REQ" \
-    localhost:50051 \
+    localhost:"${PORT_50051}" \
     "$GRPC_METHOD" | jq -r '.serverId')
   if [ "$server_id" != "backend-a" ]; then
     echo "  iteration $i: grpc-a.example.test routed to '$server_id' (expected backend-a)" >&2
@@ -73,7 +74,7 @@ for i in $(seq 1 $ITERATIONS); do
     -import-path "$GRPC_IMPORT_PATH" \
     -proto "$GRPC_PROTO" \
     -d "$GRPC_REQ" \
-    localhost:50051 \
+    localhost:"${PORT_50051}" \
     "$GRPC_METHOD" | jq -r '.serverId')
   if [ "$server_id" != "backend-b" ]; then
     echo "  iteration $i: grpc-b.example.test routed to '$server_id' (expected backend-b)" >&2
@@ -90,7 +91,7 @@ echo "PASS: grpc-b.example.test — all $ITERATIONS requests routed to backend-b
 # HTTP hostnames (sectionName: https, port 443) must NOT be accessible on
 # the gRPC port (50051).  When Cilium collapses multi-port HTTPS listeners
 # into a single envoy listener, routes leak across ports.
-http_status=$(curl -kso /dev/null -w '%{http_code}' --resolve "https-a.example.test:50051:127.0.0.1" https://https-a.example.test:50051/headers || true)
+http_status=$(curl -kso /dev/null -w '%{http_code}' --resolve "https-a.example.test:${PORT_50051}:127.0.0.1" https://https-a.example.test:"${PORT_50051}"/headers || true)
 if [ "$http_status" = "404" ]; then
   echo "PASS: HTTP hostname correctly returns 404 on gRPC port (per-port isolation)"
 else

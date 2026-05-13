@@ -3,19 +3,20 @@ set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
 skip_on_versions "1.19.1 1.19.3 1.20.0-pre.1" "TLSRoute no-sectionName bug — duplicate FilterChains on mixed-listener Gateway (cilium#45050)"
+gateway_ports mixed-listener-gateway gateway-system 80 443
 
 # --- Wait for resources ---
 wait_parallel \
-  "pod/api -n backend-a --for=condition=Ready --timeout=5s" \
-  "pod/backend-mtls -n backend-b --for=condition=Ready --timeout=5s" \
+  "pod/api -n backend-a --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \
+  "pod/backend-mtls -n backend-b --for=condition=Ready --timeout=${MTLS_POD_READY_TIMEOUT:-60}s" \
   "certificate/no-sectionname-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s" \
   "certificate/backend-b-mtls-ca -n backend-b --for=condition=Ready --timeout=10s" \
   "certificate/backend-b-mtls-server -n backend-b --for=condition=Ready --timeout=10s" \
   "certificate/backend-b-mtls-client -n backend-b --for=condition=Ready --timeout=10s"
-kubectl wait gateway/mixed-listener-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=5s
-kubectl wait httproute/backend-a-web-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
-kubectl wait httproute/backend-a-web-route -n backend-a --for='jsonpath={.status.parents[1].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
-kubectl wait tlsroute/backend-b-mtls-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s &
+kubectl wait gateway/mixed-listener-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
+kubectl wait httproute/backend-a-web-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
+kubectl wait httproute/backend-a-web-route -n backend-a --for='jsonpath={.status.parents[1].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
+kubectl wait tlsroute/backend-b-mtls-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
 wait
 
 # --- Listener status assertions ---
@@ -24,7 +25,7 @@ assert_listener_status mixed-listener-gateway gateway-system https 1 HTTPRoute G
 assert_listener_status mixed-listener-gateway gateway-system tls 1 TLSRoute
 
 # --- HTTPS termination (web.example.test on port 443) ---
-retry_until 10 curl -kfsS --resolve "web.example.test:443:127.0.0.1" https://web.example.test/headers >/dev/null
+retry_until 10 curl -kfsS --resolve "web.example.test:${PORT_443}:127.0.0.1" https://web.example.test:"${PORT_443}"/headers >/dev/null
 echo "PASS: HTTPS termination — web.example.test on port 443"
 
 # --- TLS passthrough with mTLS (mtls.example.test on port 443) ---
@@ -35,13 +36,13 @@ kubectl get secret backend-b-mtls-server -n backend-b -o jsonpath='{.data.ca\.cr
 kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.crt}' | base64 -d >"$TMPDIR/b-client.crt"
 kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.key}' | base64 -d >"$TMPDIR/b-client.key"
 
-curl -fsS --resolve "mtls.example.test:443:127.0.0.1" \
+curl -fsS --resolve "mtls.example.test:${PORT_443}:127.0.0.1" \
   --cacert "$TMPDIR/b-ca.crt" --cert "$TMPDIR/b-client.crt" --key "$TMPDIR/b-client.key" \
-  https://mtls.example.test:443/ >/dev/null
+  https://mtls.example.test:"${PORT_443}"/ >/dev/null
 echo "PASS: TLS passthrough — mtls.example.test mTLS on port 443"
 
 # --- HTTP listener (port 80) ---
-retry_until 10 curl -fsS -H 'Host: web.example.test' http://localhost/headers >/dev/null
+retry_until 10 curl -fsS -H 'Host: web.example.test' http://localhost:"${PORT_80}"/headers >/dev/null
 echo "PASS: HTTP — web.example.test on port 80"
 
 # --- TLSRoute parent count assertion ---

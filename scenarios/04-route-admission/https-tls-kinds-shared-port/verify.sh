@@ -3,21 +3,22 @@ set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
 skip_on_versions "1.19.1 1.19.3 1.20.0-pre.1" "per-listener allowedRoutes.kinds broken — CheckGatewayRouteKindAllowed global overwrite (cilium#45559)"
+gateway_ports kind-https-tls-gateway gateway-system 443
 
 # --- Wait for resources ---
 wait_parallel \
-  "pod/api -n backend-a --for=condition=Ready --timeout=5s" \
-  "pod/backend-mtls -n backend-b --for=condition=Ready --timeout=5s" \
+  "pod/api -n backend-a --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \
+  "pod/backend-mtls -n backend-b --for=condition=Ready --timeout=${MTLS_POD_READY_TIMEOUT:-60}s" \
   "certificate/kind-https-tls-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s" \
   "certificate/backend-b-mtls-ca -n backend-b --for=condition=Ready --timeout=10s" \
   "certificate/backend-b-mtls-server -n backend-b --for=condition=Ready --timeout=10s" \
   "certificate/backend-b-mtls-client -n backend-b --for=condition=Ready --timeout=10s"
-kubectl wait gateway/kind-https-tls-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=5s
+kubectl wait gateway/kind-https-tls-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
 
 echo "--- Checking route acceptance ---"
 route_fail=0
 
-if ! kubectl wait httproute/backend-a-web-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s 2>/dev/null; then
+if ! kubectl wait httproute/backend-a-web-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" 2>/dev/null; then
   echo "FAIL: HTTPRoute backend-a-web-route NOT accepted by https listener"
   echo "  reason: $(kubectl get httproute backend-a-web-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].reason}')"
   echo "  message: $(kubectl get httproute backend-a-web-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')"
@@ -26,7 +27,7 @@ else
   echo "PASS: HTTPRoute backend-a-web-route accepted by https listener"
 fi
 
-if ! kubectl wait tlsroute/backend-b-mtls-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s 2>/dev/null; then
+if ! kubectl wait tlsroute/backend-b-mtls-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" 2>/dev/null; then
   echo "FAIL: TLSRoute backend-b-mtls-route NOT accepted by tls listener"
   echo "  reason: $(kubectl get tlsroute backend-b-mtls-route -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].reason}')"
   echo "  message: $(kubectl get tlsroute backend-b-mtls-route -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')"
@@ -54,7 +55,7 @@ assert_listener_status kind-https-tls-gateway gateway-system tls 1 TLSRoute
 echo "PASS: Per-listener attachedRoutes and supportedKinds correct"
 
 # --- HTTPS termination (web.example.test on port 443) ---
-retry_until 10 curl -kfsS --resolve "web.example.test:443:127.0.0.1" https://web.example.test/headers >/dev/null
+retry_until 10 curl -kfsS --resolve "web.example.test:${PORT_443}:127.0.0.1" https://web.example.test:"${PORT_443}"/headers >/dev/null
 echo "PASS: HTTPS termination — web.example.test on port 443"
 
 # --- TLS passthrough with mTLS (mtls-b.example.test on port 443) ---
@@ -65,9 +66,9 @@ kubectl get secret backend-b-mtls-server -n backend-b -o jsonpath='{.data.ca\.cr
 kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.crt}' | base64 -d >"$TMPDIR/b-client.crt"
 kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.key}' | base64 -d >"$TMPDIR/b-client.key"
 
-curl -fsS --resolve "mtls-b.example.test:443:127.0.0.1" \
+curl -fsS --resolve "mtls-b.example.test:${PORT_443}:127.0.0.1" \
   --cacert "$TMPDIR/b-ca.crt" --cert "$TMPDIR/b-client.crt" --key "$TMPDIR/b-client.key" \
-  https://mtls-b.example.test:443/ >/dev/null
+  https://mtls-b.example.test:"${PORT_443}"/ >/dev/null
 echo "PASS: TLS passthrough — mtls-b.example.test mTLS on port 443"
 
 # --- Status message checks ---

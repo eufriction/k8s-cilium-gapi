@@ -2,23 +2,24 @@
 set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
+gateway_ports kind-restricted-gateway gateway-system 80 443
 wait_parallel \
-  "pod/api -n backend-a --for=condition=Ready --timeout=5s" \
-  "pod/api -n backend-b --for=condition=Ready --timeout=5s" \
-  "pod/grpc-api -n backend-a --for=condition=Ready --timeout=5s" \
-  "pod/grpc-api -n backend-b --for=condition=Ready --timeout=5s" \
-  "pod/backend-mtls -n backend-a --for=condition=Ready --timeout=5s" \
+  "pod/api -n backend-a --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \
+  "pod/api -n backend-b --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \
+  "pod/grpc-api -n backend-a --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \
+  "pod/grpc-api -n backend-b --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \
+  "pod/backend-mtls -n backend-a --for=condition=Ready --timeout=${MTLS_POD_READY_TIMEOUT:-60}s" \
   "certificate/kind-restricted-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s" \
   "certificate/backend-a-mtls-ca -n backend-a --for=condition=Ready --timeout=10s" \
   "certificate/backend-a-mtls-server -n backend-a --for=condition=Ready --timeout=10s" \
   "certificate/backend-a-mtls-client -n backend-a --for=condition=Ready --timeout=10s"
-kubectl wait gateway/kind-restricted-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout=5s
+kubectl wait gateway/kind-restricted-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
 
 echo "--- Checking route acceptance (4 listeners, per-listener kind restrictions) ---"
 
 route_fail=0
 
-if ! kubectl wait httproute/http-redirect -n gateway-system --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s 2>/dev/null; then
+if ! kubectl wait httproute/http-redirect -n gateway-system --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" 2>/dev/null; then
   echo "FAIL: HTTPRoute http-redirect NOT accepted by http listener"
   echo "  reason: $(kubectl get httproute http-redirect -n gateway-system -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].reason}')"
   echo "  message: $(kubectl get httproute http-redirect -n gateway-system -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')"
@@ -27,7 +28,7 @@ else
   echo "PASS: HTTPRoute http-redirect accepted by http listener"
 fi
 
-if ! kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s 2>/dev/null; then
+if ! kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" 2>/dev/null; then
   echo "FAIL: HTTPRoute backend-a NOT accepted by https listener"
   echo "  reason: $(kubectl get httproute backend-a-https-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].reason}')"
   echo "  message: $(kubectl get httproute backend-a-https-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')"
@@ -36,7 +37,7 @@ else
   echo "PASS: HTTPRoute backend-a accepted by https listener"
 fi
 
-if ! kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s 2>/dev/null; then
+if ! kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" 2>/dev/null; then
   echo "FAIL: HTTPRoute backend-b NOT accepted by https listener"
   echo "  reason: $(kubectl get httproute backend-b-https-route -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].reason}')"
   echo "  message: $(kubectl get httproute backend-b-https-route -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')"
@@ -45,7 +46,7 @@ else
   echo "PASS: HTTPRoute backend-b accepted by https listener"
 fi
 
-if ! kubectl wait grpcroute/backend-a-grpc-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s 2>/dev/null; then
+if ! kubectl wait grpcroute/backend-a-grpc-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" 2>/dev/null; then
   echo "FAIL: GRPCRoute backend-a NOT accepted by grpcs listener"
   echo "  reason: $(kubectl get grpcroute backend-a-grpc-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].reason}')"
   echo "  message: $(kubectl get grpcroute backend-a-grpc-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')"
@@ -54,7 +55,7 @@ else
   echo "PASS: GRPCRoute backend-a accepted by grpcs listener"
 fi
 
-if ! kubectl wait grpcroute/backend-b-grpc-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s 2>/dev/null; then
+if ! kubectl wait grpcroute/backend-b-grpc-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" 2>/dev/null; then
   echo "FAIL: GRPCRoute backend-b NOT accepted by grpcs listener"
   echo "  reason: $(kubectl get grpcroute backend-b-grpc-route -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].reason}')"
   echo "  message: $(kubectl get grpcroute backend-b-grpc-route -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')"
@@ -63,7 +64,7 @@ else
   echo "PASS: GRPCRoute backend-b accepted by grpcs listener"
 fi
 
-if ! kubectl wait tlsroute/backend-a-tls-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout=5s 2>/dev/null; then
+if ! kubectl wait tlsroute/backend-a-tls-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" 2>/dev/null; then
   echo "FAIL: TLSRoute backend-a NOT accepted by tls-passthrough listener"
   echo "  reason: $(kubectl get tlsroute backend-a-tls-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].reason}')"
   echo "  message: $(kubectl get tlsroute backend-a-tls-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')"
@@ -96,9 +97,9 @@ assert_listener_status kind-restricted-gateway gateway-system tls-passthrough 1 
 echo "PASS: Per-listener attachedRoutes and supportedKinds correct"
 
 echo "--- HTTPS checks (port 443, https listener — HTTPRoute only) ---"
-retry_until 10 curl -kfsS --resolve "http-a.http.example.test:443:127.0.0.1" https://http-a.http.example.test/headers >/dev/null
+retry_until 10 curl -kfsS --resolve "http-a.http.example.test:${PORT_443}:127.0.0.1" https://http-a.http.example.test:"${PORT_443}"/headers >/dev/null
 echo "PASS: HTTPS backend-a on port 443"
-curl -kfsS --resolve "http-b.http.example.test:443:127.0.0.1" https://http-b.http.example.test/headers >/dev/null
+curl -kfsS --resolve "http-b.http.example.test:${PORT_443}:127.0.0.1" https://http-b.http.example.test:"${PORT_443}"/headers >/dev/null
 echo "PASS: HTTPS backend-b on port 443"
 
 GRPC_IMPORT_PATH="${REPO_ROOT}/apps/backend-grpc/proto"
@@ -113,7 +114,7 @@ retry_until 10 grpcurl -insecure \
   -import-path "$GRPC_IMPORT_PATH" \
   -proto "$GRPC_PROTO" \
   -d "$GRPC_REQ" \
-  localhost:443 \
+  localhost:"${PORT_443}" \
   "$GRPC_METHOD" >/dev/null
 echo "gRPC listener warm-up complete"
 
@@ -125,7 +126,7 @@ for i in $(seq 1 $ITERATIONS); do
     -import-path "$GRPC_IMPORT_PATH" \
     -proto "$GRPC_PROTO" \
     -d "$GRPC_REQ" \
-    localhost:443 \
+    localhost:"${PORT_443}" \
     "$GRPC_METHOD" | jq -r '.serverId')
   if [ "$server_id" != "backend-a" ]; then
     echo "  iteration $i: grpc-a.grpc.example.test routed to '$server_id' (expected backend-a)" >&2
@@ -146,7 +147,7 @@ for i in $(seq 1 $ITERATIONS); do
     -import-path "$GRPC_IMPORT_PATH" \
     -proto "$GRPC_PROTO" \
     -d "$GRPC_REQ" \
-    localhost:443 \
+    localhost:"${PORT_443}" \
     "$GRPC_METHOD" | jq -r '.serverId')
   if [ "$server_id" != "backend-b" ]; then
     echo "  iteration $i: grpc-b.grpc.example.test routed to '$server_id' (expected backend-b)" >&2
@@ -160,7 +161,12 @@ fi
 echo "PASS: grpc-b.grpc.example.test — all $ITERATIONS requests routed to backend-b"
 
 echo "--- HTTP redirect checks (port 80, http listener — no explicit kinds) ---"
-http_code=$(retry_until 10 curl -o /dev/null -s -w "%{http_code}" --resolve "http-a.http.example.test:80:127.0.0.1" http://http-a.http.example.test/headers)
+# In LB mode PORT_80 is a random mapped port (e.g. 63568).  curl's --resolve
+# sends Host: http-a.http.example.test:<PORT_80>, and Envoy's domain wildcard
+# *.http.example.test doesn't match the non-standard port suffix.
+# Use an explicit -H Host header without port so the VirtualHost matches.
+retry_until 10 curl -f -o /dev/null -s -H 'Host: http-a.http.example.test' http://localhost:"${PORT_80}"/headers
+http_code=$(curl -o /dev/null -s -w "%{http_code}" -H 'Host: http-a.http.example.test' http://localhost:"${PORT_80}"/headers)
 if [ "$http_code" != "301" ]; then
   echo "FAIL: HTTP redirect expected 301, got $http_code" >&2
   exit 1
@@ -175,7 +181,7 @@ kubectl get secret backend-a-mtls-server -n backend-a -o jsonpath='{.data.ca\.cr
 kubectl get secret backend-a-mtls-client -n backend-a -o jsonpath='{.data.tls\.crt}' | base64 -d >"$TMPDIR/a-client.crt"
 kubectl get secret backend-a-mtls-client -n backend-a -o jsonpath='{.data.tls\.key}' | base64 -d >"$TMPDIR/a-client.key"
 
-curl -fsS --resolve "tls-a.tls.example.test:443:127.0.0.1" \
+curl -fsS --resolve "tls-a.tls.example.test:${PORT_443}:127.0.0.1" \
   --cacert "$TMPDIR/a-ca.crt" --cert "$TMPDIR/a-client.crt" --key "$TMPDIR/a-client.key" \
-  https://tls-a.tls.example.test:443/ >/dev/null
+  https://tls-a.tls.example.test:"${PORT_443}"/ >/dev/null
 echo "PASS: TLS passthrough — tls-a.tls.example.test mTLS on port 443"
