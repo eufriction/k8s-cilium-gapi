@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coraza-waf-rules
+  labels:
+    app: coraza-waf-extproc
+    app.kubernetes.io/name: coraza-waf-extproc
+    app.kubernetes.io/part-of: demo
+data:
+  rules.conf: |
+    SecRuleEngine On
+    SecRule ARGS|ARGS_NAMES "@rx (?i)(?:union\s+select|select\s+.*\s+from|insert\s+into|delete\s+from|drop\s+table|update\s+.*\s+set)" \
+      "id:1001,phase:1,deny,status:403,msg:'SQL Injection Detected'"
+    SecRule ARGS|ARGS_NAMES "@rx (?i)(?:<script|javascript:|on\w+\s*=)" \
+      "id:1002,phase:1,deny,status:403,msg:'XSS Detected'"
+    SecRule REQUEST_URI "@rx (?:\.\./|\.\.\\\\)" \
+      "id:1003,phase:1,deny,status:403,msg:'Path Traversal Detected'"

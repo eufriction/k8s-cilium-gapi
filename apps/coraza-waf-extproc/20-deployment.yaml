@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coraza-waf-extproc
+  labels:
+    app: coraza-waf-extproc
+    app.kubernetes.io/name: coraza-waf-extproc
+    app.kubernetes.io/part-of: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: coraza-waf-extproc
+  template:
+    metadata:
+      labels:
+        app: coraza-waf-extproc
+        app.kubernetes.io/name: coraza-waf-extproc
+        app.kubernetes.io/part-of: demo
+    spec:
+      containers:
+        - name: coraza-waf
+          image: coraza-waf-extproc:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: grpc
+              containerPort: 4317
+          env:
+            - name: CORAZA_RULES_FILE
+              value: /etc/coraza/rules.conf
+          volumeMounts:
+            - name: rules
+              mountPath: /etc/coraza
+      volumes:
+        - name: rules
+          configMap:
+            name: coraza-waf-rules

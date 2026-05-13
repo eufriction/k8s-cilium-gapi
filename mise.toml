@@ -12,6 +12,7 @@ NETSHOOT_VERSION = "v0.15"
 HTTPBIN_VERSION = "2.22.1"
 ENVOY_VERSION = "1.33.2"
 BACKEND_GRPC_VERSION = "0.1.1"
+CORAZA_WAF_EXTPROC_VERSION = "0.1.0"
 CILIUM_VERSION = "1.19.3"
 CILIUM_CHART_DIR = ""
 CILIUM_AGENT_IMAGE = ""
@@ -284,6 +285,7 @@ check NETSHOOT_VERSION     apps/netshoot-client/10-pod.yaml "nicolaka/netshoot:"
 check HTTPBIN_VERSION      apps/backend-http/10-pod.yaml    "mccutchen/go-httpbin:"
 check ENVOY_VERSION        apps/backend-mtls/20-pod.yaml    "envoyproxy/envoy:v"
 check BACKEND_GRPC_VERSION apps/backend-grpc/10-pod.yaml    "backend-grpc:"
+check CORAZA_WAF_EXTPROC_VERSION apps/coraza-waf-extproc/20-deployment.yaml "coraza-waf-extproc:"
 
 if [[ ${rc} -eq 0 ]]; then
   echo "lint:images: all image versions match"
@@ -444,6 +446,12 @@ if ! docker image inspect "backend-grpc:${BACKEND_GRPC_VERSION}" >/dev/null 2>&1
   exit 1
 fi
 
+docker build{% if not usage.verbose %} --quiet{% endif %} -t coraza-waf-extproc:${CORAZA_WAF_EXTPROC_VERSION} apps/coraza-waf-extproc/image
+if ! docker image inspect "coraza-waf-extproc:${CORAZA_WAF_EXTPROC_VERSION}" >/dev/null 2>&1; then
+  echo "ERROR: coraza-waf-extproc:${CORAZA_WAF_EXTPROC_VERSION} build failed — image not found in Docker daemon" >&2
+  exit 1
+fi
+
 remote_images=(
   "nicolaka/netshoot:${NETSHOOT_VERSION}"
   "mccutchen/go-httpbin:${HTTPBIN_VERSION}"
@@ -454,7 +462,7 @@ for img in "${remote_images[@]}"; do
   docker pull{% if not usage.verbose %} --quiet{% endif %} "${img}" || err "WARN: pull failed for ${img}, using local image"
 done
 
-all_images=("backend-grpc:${BACKEND_GRPC_VERSION}" "${remote_images[@]}")
+all_images=("backend-grpc:${BACKEND_GRPC_VERSION}" "coraza-waf-extproc:${CORAZA_WAF_EXTPROC_VERSION}" "${remote_images[@]}")
 kind load docker-image {% if not usage.verbose %}--quiet {% endif %}\\
   "${all_images[@]}" \\
   --name "${KIND_CLUSTER_NAME}"

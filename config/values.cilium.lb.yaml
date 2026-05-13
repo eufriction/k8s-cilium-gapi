@@ -1,6 +1,10 @@
 # Cilium Helm values for kube-proxy-free mode in load-balancer Gateway mode.
 # Version is pinned via CILIUM_VERSION in mise.toml and passed to helm install --version.
 
+debug:
+  enabled: false
+  verbose: ""
+
 kubeProxyReplacement: true
 
 gatewayAPI:
