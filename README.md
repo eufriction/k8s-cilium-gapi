@@ -106,13 +106,13 @@ rm mise.local.toml
 
 Available profiles in `versions/`:
 
-| File                | Cilium       | Gateway API | Notes                                 |
-| ------------------- | ------------ | ----------- | ------------------------------------- |
-| `1.19.1.toml`       | 1.19.1       | 1.4.1       | Oldest patch, regression baseline     |
-| `1.19.3.toml`       | 1.19.3       | 1.4.1       | Matches `mise.toml` defaults          |
-| `1.20.0-pre.1.toml` | 1.20.0-pre.1 | 1.5.1       | Pre-release                           |
-| `1.20.0-pre.2.toml` | 1.20.0-pre.2 | 1.5.1       | Latest pre-release                    |
-| `branch.toml`       | local build  | 1.5.1       | Set `CILIUM_CHART_DIR` and image vars |
+| File                | Cilium       | Gateway API | Notes                             |
+| ------------------- | ------------ | ----------- | --------------------------------- |
+| `1.19.1.toml`       | 1.19.1       | 1.4.1       | Oldest patch, regression baseline |
+| `1.19.3.toml`       | 1.19.3       | 1.4.1       | Matches `mise.toml` defaults      |
+| `1.20.0-pre.1.toml` | 1.20.0-pre.1 | 1.5.1       | Pre-release                       |
+| `1.20.0-pre.2.toml` | 1.20.0-pre.2 | 1.5.1       | Latest pre-release                |
+| `branch.toml`       | local build  | 1.5.1       | Uses `make dev-docker-*` output   |
 
 Each profile sets `CILIUM_VERSION`, `GATEWAY_API_VERSION`, and `X_*` env vars that control version-conditional verify behavior (expected status messages, TLSRoute API version).
 
@@ -125,27 +125,35 @@ Scenarios that are known to be broken on specific Cilium releases declare a `SCE
 SCENARIO_SKIP_VERSIONS = "1.19.1 1.19.3 1.20.0-pre.1"
 ```
 
-Before deploying, the `scenario:start` template compares `CILIUM_VERSION` against this space-separated list. If it matches, the scenario is skipped with exit 0. The same check runs inside `verify.sh` via `skip_on_versions` as a safety net for standalone invocation.
+Before deploying, the `scenario:start` template compares `CILIUM_VERSION` against this space-separated list. If it matches, the scenario is skipped with exit 0. The same validation runs inside `verify.sh` via `skip_on_versions` as a safety net for standalone invocation.
 
-Branch builds set `CILIUM_VERSION = "branch"`, which never matches a release version — so branch builds run every scenario and report real pass/fail results.
+Branch builds set `CILIUM_VERSION = "branch"`, which never matches a release version, so branch builds run every scenario and report real pass/fail results.
 
 ### Branch builds
 
-To test a locally-built Cilium branch, copy `branch.toml` and fill in the three path/image vars:
+To test a locally-built Cilium branch, first build the images in the Cilium repo:
+
+```sh
+cd ../cilium
+make dev-docker-image
+make dev-docker-operator-generic-image
+```
+
+Then copy `branch.toml` and adjust `CILIUM_CHART_DIR` if needed:
 
 ```sh
 cp versions/branch.toml mise.local.toml
 ```
 
-Edit `mise.local.toml` and set:
+The defaults in `branch.toml` match the standard `make` output:
 
-| Variable                | Description                                 | Example                                      |
-| ----------------------- | ------------------------------------------- | -------------------------------------------- |
-| `CILIUM_CHART_DIR`      | Path to the local Helm chart directory      | `/home/you/cilium/install/kubernetes/cilium` |
-| `CILIUM_AGENT_IMAGE`    | Locally-built agent image ref (optional)    | `quay.io/cilium/cilium-dev:local`            |
-| `CILIUM_OPERATOR_IMAGE` | Locally-built operator image ref (optional) | `quay.io/cilium/operator-generic:local`      |
+| Variable                | Description                                                  | Default                                  |
+| ----------------------- | ------------------------------------------------------------ | ---------------------------------------- |
+| `CILIUM_CHART_DIR`      | Path to the local Helm chart directory                       | `../cilium/install/kubernetes/cilium`    |
+| `CILIUM_AGENT_IMAGE`    | Agent image from `make dev-docker-image`                     | `quay.io/cilium/cilium-dev:latest`       |
+| `CILIUM_OPERATOR_IMAGE` | Operator image from `make dev-docker-operator-generic-image` | `quay.io/cilium/operator-generic:latest` |
 
-Then run the standard workflow — `cluster:start` handles image loading and Helm install automatically:
+Then run the standard workflow - `cluster:start` handles image loading and Helm install automatically:
 
 ```sh
 mise run cluster:restart
@@ -154,7 +162,13 @@ mise run cluster:delete
 rm mise.local.toml
 ```
 
-When `CILIUM_CHART_DIR` is set, the install tasks use the local chart path instead of `cilium/cilium --version`. When the image vars are set, they are passed as `--set image.override=…` / `--set operator.image.override=…` to Helm and pre-loaded into kind.
+To reload after rebuilding images without recreating the cluster:
+
+```sh
+mise run cilium:reload
+```
+
+When `CILIUM_CHART_DIR` is set, the install tasks use the local chart path instead of `cilium/cilium --version`. The image vars are passed as `--set image.override=…` / `--set operator.image.override=…` to Helm and pre-loaded into kind.
 
 ---
 
@@ -166,7 +180,7 @@ Read each scenario README for the scenario-specific test flow.
 
 | Group directory       | Category              | Contents                                                               |
 | --------------------- | --------------------- | ---------------------------------------------------------------------- |
-| `01-basic/`           | Basic connectivity    | Single protocol, single listener — the happy-path scenarios            |
+| `01-basic/`           | Basic connectivity    | Single protocol, single listener. The happy-path scenarios             |
 | `02-http-routing/`    | HTTP routing features | Header match, path match, redirect, canary                             |
 | `03-multi-listener/`  | Multi-listener        | Multiple listeners / route types on one gateway, shared or split ports |
 | `04-route-admission/` | Route admission       | `allowedRoutes.kinds`, `allowedRoutes.namespaces`, sectionName         |
@@ -214,71 +228,71 @@ See the [Known Cilium bugs](#known-cilium-bugs) table for failure details, and [
 
 ### Known Cilium bugs
 
-Scenarios affected by known bugs declare `SCENARIO_SKIP_VERSIONS` in their `mise.toml` to skip broken Cilium releases automatically. The verify scripts also call `skip_on_versions` as a safety net. See [Skip logic](#skip-logic) above.
+Scenarios affected by known bugs declare `SCENARIO_SKIP_VERSIONS` in their `mise.toml` to skip broken Cilium releases automatically. The verify scripts also call `skip_on_versions` as a safety net. See the preceding [Skip logic](#skip-logic) section.
 
 #### Open bugs
 
-No open bugs — all scenarios pass on `#44889`.
+No open bugs. All scenarios pass on `#44889`.
 
 #### Fixed bugs
 
-| Bug                                                                                               | Scenarios                                                                                     | Cilium issue                                                                                                      | Fix                                                                                                           | Available since                                           |
-| ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| `CheckGatewayAllowedForNamespace` doesn't enforce per-listener namespace restrictions             | https-ns-restricted-same-hostname                                                             | [#42159](https://github.com/cilium/cilium/issues/42159)                                                           | [#45693](https://github.com/cilium/cilium/pull/45693)                                                         | Merged to main; ✅ on #44889                              |
-| TLS passthrough split-port same-hostname Envoy wiring failure                                     | tls-passthrough-same-hostname, https-tls-same-hostname                                        | [#42898](https://github.com/cilium/cilium/issues/42898)                                                           | [#44889](https://github.com/cilium/cilium/pull/44889)                                                         | ✅ on #44889 (per-port TLS passthrough listeners)         |
-| Multi-port HTTPS listener collapse — routes leak across ports (different hostnames)               | http-grpc-split-port, https-grpc-kinds-split-port                                             | [#42159](https://github.com/cilium/cilium/issues/42159)                                                           | [#44889](https://github.com/cilium/cilium/pull/44889)                                                         | ✅ on #44889 (per-port Envoy listeners)                   |
-| Multi-port HTTPS same-hostname — per-port route config doesn't respect `allowedRoutes.namespaces` | https-ns-restricted-same-hostname                                                             | [#42159](https://github.com/cilium/cilium/issues/42159)                                                           | [#44889](https://github.com/cilium/cilium/pull/44889)                                                         | ✅ on #44889                                              |
-| Same-hostname GRPCRoutes on split ports return 404                                                | http-grpc-same-hostname, https-ns-restricted-same-hostname                                    | [#44877](https://github.com/cilium/cilium/issues/44877)                                                           | [#44889](https://github.com/cilium/cilium/pull/44889)                                                         | ✅ on #44889                                              |
-| TLSRoute without sectionName creates duplicate FilterChains on mixed-listener Gateway             | tls-no-sectionname-multi-listener                                                             | [#45050](https://github.com/cilium/cilium/issues/45050)                                                           | [#45371](https://github.com/cilium/cilium/pull/45371)                                                         | Merged to main; ✅ on #44889 (rebased on main)            |
-| `isKindAllowed` cross-counts TLSRoutes on HTTP/HTTPS listeners (implicit kinds variant of #45559) | http-https-tls-implicit-kinds                                                                 | [#45371](https://github.com/cilium/cilium/pull/45371)                                                             | [#45371](https://github.com/cilium/cilium/pull/45371)                                                         | Merged to main; ✅ on #44889 (rebased on main)            |
-| `CheckGatewayRouteKindAllowed` overwrites Accepted condition across listeners                     | https-grpc-kinds-split-port, multi-protocol-kinds-multi-listener, https-tls-kinds-shared-port | [#45559](https://github.com/cilium/cilium/issues/45559)                                                           | [#45693](https://github.com/cilium/cilium/pull/45693)                                                         | Merged to main; ✅ on #44889 (operator rebuild required)  |
-| `https-tls-kinds-same-hostname` — combined #42898 + #45559 interaction                            | https-tls-kinds-same-hostname                                                                 | [#45559](https://github.com/cilium/cilium/issues/45559) + [#42898](https://github.com/cilium/cilium/issues/42898) | [#45693](https://github.com/cilium/cilium/pull/45693) + [#44889](https://github.com/cilium/cilium/pull/44889) | ✅ on #44889 (both fixes present after operator rebuild)  |
-| `allowedRoutes.kinds` silently excludes GRPCRoute from Envoy config                               | https-grpc-kinds-split-port, https-grpc-kinds-shared-port                                     | [#44824](https://github.com/cilium/cilium/issues/44824)                                                           | [#44826](https://github.com/cilium/cilium/pull/44826)                                                         | ≥1.19.3, ≥1.20.0                                          |
-| GRPCRoute/TLSRoute status reports "Accepted HTTPRoute"                                            | grpc, tls-passthrough                                                                         | [#43881](https://github.com/cilium/cilium/issues/43881)                                                           | [#44962](https://github.com/cilium/cilium/pull/44962)                                                         | ≥1.20.0 (not backported to 1.19.x; data plane unaffected) |
+| Bug                                                                                               | Scenarios                                                                                           | Cilium issue                                                                                                      | Fix                                                                                                           | Available since                                           |
+| ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `CheckGatewayAllowedForNamespace` doesn't enforce per-listener namespace restrictions             | `https-ns-restricted-same-hostname`                                                                 | [#42159](https://github.com/cilium/cilium/issues/42159)                                                           | [#45693](https://github.com/cilium/cilium/pull/45693)                                                         | Merged to main; ✅ on #44889                              |
+| TLS passthrough split-port same-hostname Envoy wiring failure                                     | `tls-passthrough-same-hostname`, `https-tls-same-hostname`                                          | [#42898](https://github.com/cilium/cilium/issues/42898)                                                           | [#44889](https://github.com/cilium/cilium/pull/44889)                                                         | ✅ on #44889 (per-port TLS passthrough listeners)         |
+| Multi-port HTTPS listener collapse: routes leak across ports (different hostnames)                | `http-grpc-split-port`, `https-grpc-kinds-split-port`                                               | [#42159](https://github.com/cilium/cilium/issues/42159)                                                           | [#44889](https://github.com/cilium/cilium/pull/44889)                                                         | ✅ on #44889 (per-port Envoy listeners)                   |
+| Multi-port HTTPS same-hostname: per-port route config doesn't respect `allowedRoutes.namespaces`  | `https-ns-restricted-same-hostname`                                                                 | [#42159](https://github.com/cilium/cilium/issues/42159)                                                           | [#44889](https://github.com/cilium/cilium/pull/44889)                                                         | ✅ on #44889                                              |
+| Same-hostname GRPCRoutes on split ports return 404                                                | `http-grpc-same-hostname`, `https-ns-restricted-same-hostname`                                      | [#44877](https://github.com/cilium/cilium/issues/44877)                                                           | [#44889](https://github.com/cilium/cilium/pull/44889)                                                         | ✅ on #44889                                              |
+| TLSRoute without sectionName creates duplicate FilterChains on mixed-listener Gateway             | `tls-no-sectionname-multi-listener`                                                                 | [#45050](https://github.com/cilium/cilium/issues/45050)                                                           | [#45371](https://github.com/cilium/cilium/pull/45371)                                                         | Merged to main; ✅ on #44889 (rebased on main)            |
+| `isKindAllowed` cross-counts TLSRoutes on HTTP/HTTPS listeners (implicit kinds variant of #45559) | `http-https-tls-implicit-kinds`                                                                     | [#45371](https://github.com/cilium/cilium/pull/45371)                                                             | [#45371](https://github.com/cilium/cilium/pull/45371)                                                         | Merged to main; ✅ on #44889 (rebased on main)            |
+| `CheckGatewayRouteKindAllowed` overwrites Accepted condition across listeners                     | `https-grpc-kinds-split-port`, `multi-protocol-kinds-multi-listener`, `https-tls-kinds-shared-port` | [#45559](https://github.com/cilium/cilium/issues/45559)                                                           | [#45693](https://github.com/cilium/cilium/pull/45693)                                                         | Merged to main; ✅ on #44889 (operator rebuild required)  |
+| `https-tls-kinds-same-hostname`: combined #42898 + #45559 interaction                             | `https-tls-kinds-same-hostname`                                                                     | [#45559](https://github.com/cilium/cilium/issues/45559) + [#42898](https://github.com/cilium/cilium/issues/42898) | [#45693](https://github.com/cilium/cilium/pull/45693) + [#44889](https://github.com/cilium/cilium/pull/44889) | ✅ on #44889 (both fixes present after operator rebuild)  |
+| `allowedRoutes.kinds` silently excludes GRPCRoute from Envoy config                               | `https-grpc-kinds-split-port`, `https-grpc-kinds-shared-port`                                       | [#44824](https://github.com/cilium/cilium/issues/44824)                                                           | [#44826](https://github.com/cilium/cilium/pull/44826)                                                         | ≥1.19.3, ≥1.20.0                                          |
+| GRPCRoute/TLSRoute status reports "Accepted HTTPRoute"                                            | `grpc`, `tls-passthrough`                                                                           | [#43881](https://github.com/cilium/cilium/issues/43881)                                                           | [#44962](https://github.com/cilium/cilium/pull/44962)                                                         | ≥1.20.0 (not backported to 1.19.x; data plane unaffected) |
 
 ### Test results by version
 
-| Group                | Scenario                            | 1.19.1 | 1.19.3 | 1.20.0-pre.1 | 1.20.0-pre.2 | #44889 |
-| -------------------- | ----------------------------------- | :----: | :----: | :----------: | :----------: | :----: |
-| `01-basic`           | grpc                                |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |
-| `01-basic`           | http                                |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |
-| `01-basic`           | https                               |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |
-| `01-basic`           | tls-passthrough                     |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |
-| `02-http-routing`    | header-match                        |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |
-| `02-http-routing`    | path-match                          |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |
-| `02-http-routing`    | redirect                            |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |
-| `03-multi-listener`  | http-grpc-same-hostname             |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |
-| `03-multi-listener`  | http-grpc-shared-port               |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |
-| `03-multi-listener`  | http-grpc-split-port                |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |
-| `03-multi-listener`  | http-listener-isolation             |   —    |   —    |      —       |      ✅      |   ✅   |
-| `03-multi-listener`  | http-shared-port                    |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |
-| `03-multi-listener`  | https-tls-same-hostname             |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |
-| `03-multi-listener`  | https-tls-shared-port               |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |
-| `03-multi-listener`  | tls-passthrough-same-hostname       |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |
-| `03-multi-listener`  | tls-split-port                      |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |
-| `04-route-admission` | http-https-tls-implicit-kinds       |   ⏭️   |   ⏭️   |      ⏭️      |      ✅      |   ✅   |
-| `04-route-admission` | http-ns-allowed                     |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |
-| `04-route-admission` | http-ns-restricted-split-port       |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |
-| `04-route-admission` | https-grpc-kinds-shared-port        |   ⏭️   |   ✅   |      ✅      |      ✅      |   ✅   |
-| `04-route-admission` | https-grpc-kinds-split-port         |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |
-| `04-route-admission` | https-ns-restricted-same-hostname   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |
-| `04-route-admission` | https-ns-restricted-shared-port     |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |
-| `04-route-admission` | https-tls-kinds-same-hostname       |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |
-| `04-route-admission` | https-tls-kinds-shared-port         |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |
-| `04-route-admission` | multi-protocol-kinds-multi-listener |   ❌   |   ❌   |      ❌      |      ❌      |   ✅   |
-| `04-route-admission` | tls-no-sectionname-multi-listener   |   ⏭️   |   ⏭️   |      ⏭️      |      ✅      |   ✅   |
+| Group                | Scenario                              | 1.19.1 | 1.19.3 | 1.20.0-pre.1 | 1.20.0-pre.2 | #44889 |
+| -------------------- | ------------------------------------- | :----: | :----: | :----------: | :----------: | :----: |
+| `01-basic`           | `grpc`                                |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |
+| `01-basic`           | `http`                                |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |
+| `01-basic`           | `https`                               |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |
+| `01-basic`           | `tls-passthrough`                     |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |
+| `02-http-routing`    | `header-match`                        |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |
+| `02-http-routing`    | `path-match`                          |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |
+| `02-http-routing`    | `redirect`                            |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |
+| `03-multi-listener`  | `http-grpc-same-hostname`             |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |
+| `03-multi-listener`  | `http-grpc-shared-port`               |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |
+| `03-multi-listener`  | `http-grpc-split-port`                |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |
+| `03-multi-listener`  | `http-listener-isolation`             |   ·    |   ·    |      ·       |      ✅      |   ✅   |
+| `03-multi-listener`  | `http-shared-port`                    |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |
+| `03-multi-listener`  | `https-tls-same-hostname`             |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |
+| `03-multi-listener`  | `https-tls-shared-port`               |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |
+| `03-multi-listener`  | `tls-passthrough-same-hostname`       |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |
+| `03-multi-listener`  | `tls-split-port`                      |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |
+| `04-route-admission` | `http-https-tls-implicit-kinds`       |   ⏭️   |   ⏭️   |      ⏭️      |      ✅      |   ✅   |
+| `04-route-admission` | `http-ns-allowed`                     |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |
+| `04-route-admission` | `http-ns-restricted-split-port`       |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |
+| `04-route-admission` | `https-grpc-kinds-shared-port`        |   ⏭️   |   ✅   |      ✅      |      ✅      |   ✅   |
+| `04-route-admission` | `https-grpc-kinds-split-port`         |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |
+| `04-route-admission` | `https-ns-restricted-same-hostname`   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |
+| `04-route-admission` | `https-ns-restricted-shared-port`     |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |
+| `04-route-admission` | `https-tls-kinds-same-hostname`       |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |
+| `04-route-admission` | `https-tls-kinds-shared-port`         |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |
+| `04-route-admission` | `multi-protocol-kinds-multi-listener` |   ❌   |   ❌   |      ❌      |      ❌      |   ✅   |
+| `04-route-admission` | `tls-no-sectionname-multi-listener`   |   ⏭️   |   ⏭️   |      ⏭️      |      ✅      |   ✅   |
 
-**Legend:** ✅ = pass, ❌ = fail, ⏭️ = skipped (known bug), — = not yet tested.
+**Legend:** ✅ = pass, ❌ = fail, ⏭️ = skipped (known bug), · = not yet tested.
 Cross-reference scenario names with the [Known Cilium bugs](#known-cilium-bugs) table for failure and skip details.
 
 ---
 
 ## Repo model
 
-- `apps/` — reusable, namespace-agnostic app bases ([`apps/README.md`](apps/README.md))
-- `scenarios/` — each scenario is a [mise monorepo config root](https://mise.jdx.dev/tasks/monorepo.html) with its own `mise.toml` + `verify.sh`
-- `versions/` — version profiles for multi-version testing (copy to `mise.local.toml`)
-- `lib/` — shared bash helpers sourced by verify scripts
+- `apps/`: reusable, namespace-agnostic app bases ([`apps/README.md`](apps/README.md))
+- `scenarios/`: each scenario is a [mise monorepo config root](https://mise.jdx.dev/tasks/monorepo.html) with its own `mise.toml` + `verify.sh`
+- `versions/`: version profiles for multi-version testing (copy to `mise.local.toml`)
+- `lib/`: shared bash helpers sourced by verify scripts
 
 ## TLS foundation
 

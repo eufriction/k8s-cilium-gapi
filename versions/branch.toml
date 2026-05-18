@@ -1,13 +1,12 @@
 [settings]
 env_shell_expand = true
-# Cilium branch build — local chart + images
-# Set CILIUM_CHART_DIR to your local cilium/install/kubernetes/cilium
-# Set CILIUM_AGENT_IMAGE / CILIUM_OPERATOR_IMAGE to locally-built image refs
+# Cilium branch build — local chart + images from `make dev-docker-image`
+# and `make dev-docker-operator-generic-image` in the cilium repo.
 [env]
 CILIUM_VERSION = "branch"
 CILIUM_CHART_DIR = "../cilium/install/kubernetes/cilium"
-CILIUM_AGENT_IMAGE = ""
-CILIUM_OPERATOR_IMAGE = "localhost:5000/cilium/operator-generic:local"
+CILIUM_AGENT_IMAGE = "quay.io/cilium/cilium-dev:latest"
+CILIUM_OPERATOR_IMAGE = "quay.io/cilium/operator-generic:latest"
 GATEWAY_API_VERSION = "1.5.1"
 X_GRPCROUTE_ACCEPTED_MSG = "Accepted GRPCRoute"
 X_TLSROUTE_ACCEPTED_MSG = "Accepted TLSRoute"

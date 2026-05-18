@@ -402,8 +402,27 @@ for img in "${images[@]}"; do
   fi
 done
 
-# ── 4. Load all images into kind ──
-kind load{% if not usage.verbose %} --quiet{% endif %} docker-image "${images[@]}" --name "${KIND_CLUSTER_NAME}"
+# ── 4. Verify all images are available locally ──
+ready=()
+missing=()
+for img in "${images[@]}"; do
+  if docker image inspect "${img}" >/dev/null 2>&1; then
+    ready+=("${img}")
+  else
+    missing+=("${img}")
+  fi
+done
+if [ "${missing[*]:-}" != "" ]; then
+  echo "WARNING: image(s) not available locally (skipping):" >&2
+  printf '  \u2717 %s\n' "${missing[@]}" >&2
+fi
+if [ "${ready[*]:-}" = "" ]; then
+  echo "ERROR: No images available to load into kind" >&2
+  exit 1
+fi
+
+# ── 5. Load verified images into kind ──
+kind load{% if not usage.verbose %} --quiet{% endif %} docker-image "${ready[@]}" --name "${KIND_CLUSTER_NAME}"
 """
 
 [tasks."kind:load:kyverno"]
@@ -488,6 +507,54 @@ fi
 [tasks."cilium:uninstall"]
 description = "Uninstall Cilium from the cluster using Helm"
 run = "helm uninstall cilium --namespace kube-system"
+
+[tasks."cilium:reload"]
+description = "Load locally-built Cilium images into kind and restart the agent + operator"
+run = """
+set -euo pipefail
+
+if [ -z "${CILIUM_AGENT_IMAGE}" ] && [ -z "${CILIUM_OPERATOR_IMAGE}" ]; then
+  echo "ERROR: Neither CILIUM_AGENT_IMAGE nor CILIUM_OPERATOR_IMAGE is set." >&2
+  echo "  Copy versions/branch.toml to mise.local.toml for branch builds." >&2
+  exit 1
+fi
+
+images=()
+if [ -n "${CILIUM_AGENT_IMAGE}" ]; then
+  if ! docker image inspect "${CILIUM_AGENT_IMAGE}" >/dev/null 2>&1; then
+    echo "ERROR: CILIUM_AGENT_IMAGE '${CILIUM_AGENT_IMAGE}' not found in Docker daemon" >&2
+    echo "  Run 'make dev-docker-image' in the cilium repo first." >&2
+    exit 1
+  fi
+  images+=("${CILIUM_AGENT_IMAGE}")
+  echo "  ✓ agent:    ${CILIUM_AGENT_IMAGE}"
+fi
+if [ -n "${CILIUM_OPERATOR_IMAGE}" ]; then
+  if ! docker image inspect "${CILIUM_OPERATOR_IMAGE}" >/dev/null 2>&1; then
+    echo "ERROR: CILIUM_OPERATOR_IMAGE '${CILIUM_OPERATOR_IMAGE}' not found in Docker daemon" >&2
+    echo "  Run 'make dev-docker-operator-generic-image' in the cilium repo first." >&2
+    exit 1
+  fi
+  images+=("${CILIUM_OPERATOR_IMAGE}")
+  echo "  ✓ operator: ${CILIUM_OPERATOR_IMAGE}"
+fi
+
+echo "Loading images into kind cluster '${KIND_CLUSTER_NAME}'..."
+kind load docker-image "${images[@]}" --name "${KIND_CLUSTER_NAME}"
+
+echo "Restarting Cilium..."
+if [ -n "${CILIUM_AGENT_IMAGE}" ]; then
+  kubectl rollout restart daemonset/cilium -n kube-system
+fi
+if [ -n "${CILIUM_OPERATOR_IMAGE}" ]; then
+  kubectl rollout restart deployment/cilium-operator -n kube-system
+fi
+
+echo "Waiting for rollout..."
+kubectl rollout status daemonset/cilium -n kube-system --timeout=120s
+kubectl rollout status deployment/cilium-operator -n kube-system --timeout=60s
+echo "✓ Cilium reloaded successfully"
+"""
 
 [tasks."gateway-api:install"]
 description = "Install Gateway API experimental CRDs before enabling Cilium Gateway API support"
