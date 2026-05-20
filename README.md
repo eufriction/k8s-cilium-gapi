@@ -110,6 +110,7 @@ Available profiles in `versions/`:
 | ------------------- | ------------ | ----------- | --------------------------------- |
 | `1.19.1.toml`       | 1.19.1       | 1.4.1       | Oldest patch, regression baseline |
 | `1.19.3.toml`       | 1.19.3       | 1.4.1       | Matches `mise.toml` defaults      |
+| `1.19.4.toml`       | 1.19.4       | 1.4.1       | Latest stable patch               |
 | `1.20.0-pre.1.toml` | 1.20.0-pre.1 | 1.5.1       | Pre-release                       |
 | `1.20.0-pre.2.toml` | 1.20.0-pre.2 | 1.5.1       | Latest pre-release                |
 | `branch.toml`       | local build  | 1.5.1       | Uses `make dev-docker-*` output   |
@@ -253,35 +254,35 @@ No open bugs. All scenarios pass on `#45949 + #44889`.
 
 ### Test results by version
 
-| Group                | Scenario                              | 1.19.1 | 1.19.3 | 1.20.0-pre.1 | 1.20.0-pre.2 | #44889 | #45949 + #44889 |
-| -------------------- | ------------------------------------- | :----: | :----: | :----------: | :----------: | :----: | :-------------: |
-| `01-basic`           | `grpc`                                |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |       ✅        |
-| `01-basic`           | `http`                                |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |       ✅        |
-| `01-basic`           | `https`                               |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |       ✅        |
-| `01-basic`           | `tls-passthrough`                     |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |       ✅        |
-| `02-http-routing`    | `header-match`                        |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |       ✅        |
-| `02-http-routing`    | `path-match`                          |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |       ✅        |
-| `02-http-routing`    | `redirect`                            |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |       ✅        |
-| `03-multi-listener`  | `http-grpc-same-hostname`             |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |       ✅        |
-| `03-multi-listener`  | `http-grpc-shared-port`               |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |       ✅        |
-| `03-multi-listener`  | `http-grpc-split-port`                |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |       ✅        |
-| `03-multi-listener`  | `http-listener-isolation`             |   ·    |   ·    |      ·       |      ✅      |   ✅   |       ✅        |
-| `03-multi-listener`  | `http-shared-port`                    |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |       ✅        |
-| `03-multi-listener`  | `https-tls-same-hostname`             |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |       ✅        |
-| `03-multi-listener`  | `https-tls-shared-port`               |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |       ✅        |
-| `03-multi-listener`  | `tls-passthrough-same-hostname`       |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |       ✅        |
-| `03-multi-listener`  | `tls-split-port`                      |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |       ✅        |
-| `04-route-admission` | `http-https-tls-implicit-kinds`       |   ⏭️   |   ⏭️   |      ⏭️      |      ✅      |   ✅   |       ✅        |
-| `04-route-admission` | `http-ns-allowed`                     |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |       ✅        |
-| `04-route-admission` | `http-ns-restricted-split-port`       |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |       ✅        |
-| `04-route-admission` | `https-grpc-kinds-shared-port`        |   ⏭️   |   ✅   |      ✅      |      ✅      |   ✅   |       ✅        |
-| `04-route-admission` | `https-grpc-kinds-split-port`         |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |       ✅        |
-| `04-route-admission` | `https-ns-restricted-same-hostname`   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |       ✅        |
-| `04-route-admission` | `https-ns-restricted-shared-port`     |   ✅   |   ✅   |      ✅      |      ✅      |   ✅   |       ✅        |
-| `04-route-admission` | `https-tls-kinds-same-hostname`       |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |       ✅        |
-| `04-route-admission` | `https-tls-kinds-shared-port`         |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |       ✅        |
-| `04-route-admission` | `multi-protocol-kinds-multi-listener` |   ❌   |   ❌   |      ❌      |      ❌      |   ✅   |       ✅        |
-| `04-route-admission` | `tls-no-sectionname-multi-listener`   |   ⏭️   |   ⏭️   |      ⏭️      |      ✅      |   ✅   |       ✅        |
+| Group                | Scenario                              | 1.19.1 | 1.19.3 | 1.19.4 | 1.20.0-pre.1 | 1.20.0-pre.2 | #44889 | #45949 + #44889 |
+| -------------------- | ------------------------------------- | :----: | :----: | :----: | :----------: | :----------: | :----: | :-------------: |
+| `01-basic`           | `grpc`                                |   ✅   |   ✅   |   ·    |      ✅      |      ✅      |   ✅   |       ✅        |
+| `01-basic`           | `http`                                |   ✅   |   ✅   |   ·    |      ✅      |      ✅      |   ✅   |       ✅        |
+| `01-basic`           | `https`                               |   ✅   |   ✅   |   ·    |      ✅      |      ✅      |   ✅   |       ✅        |
+| `01-basic`           | `tls-passthrough`                     |   ✅   |   ✅   |   ·    |      ✅      |      ✅      |   ✅   |       ✅        |
+| `02-http-routing`    | `header-match`                        |   ✅   |   ✅   |   ·    |      ✅      |      ✅      |   ✅   |       ✅        |
+| `02-http-routing`    | `path-match`                          |   ✅   |   ✅   |   ·    |      ✅      |      ✅      |   ✅   |       ✅        |
+| `02-http-routing`    | `redirect`                            |   ✅   |   ✅   |   ·    |      ✅      |      ✅      |   ✅   |       ✅        |
+| `03-multi-listener`  | `http-grpc-same-hostname`             |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |       ✅        |
+| `03-multi-listener`  | `http-grpc-shared-port`               |   ✅   |   ✅   |   ·    |      ✅      |      ✅      |   ✅   |       ✅        |
+| `03-multi-listener`  | `http-grpc-split-port`                |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |       ✅        |
+| `03-multi-listener`  | `http-listener-isolation`             |   ·    |   ·    |   ·    |      ·       |      ✅      |   ✅   |       ✅        |
+| `03-multi-listener`  | `http-shared-port`                    |   ✅   |   ✅   |   ·    |      ✅      |      ✅      |   ✅   |       ✅        |
+| `03-multi-listener`  | `https-tls-same-hostname`             |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |       ✅        |
+| `03-multi-listener`  | `https-tls-shared-port`               |   ✅   |   ✅   |   ·    |      ✅      |      ✅      |   ✅   |       ✅        |
+| `03-multi-listener`  | `tls-passthrough-same-hostname`       |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |       ✅        |
+| `03-multi-listener`  | `tls-split-port`                      |   ✅   |   ✅   |   ·    |      ✅      |      ✅      |   ✅   |       ✅        |
+| `04-route-admission` | `http-https-tls-implicit-kinds`       |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ✅      |   ✅   |       ✅        |
+| `04-route-admission` | `http-ns-allowed`                     |   ✅   |   ✅   |   ·    |      ✅      |      ✅      |   ✅   |       ✅        |
+| `04-route-admission` | `http-ns-restricted-split-port`       |   ✅   |   ✅   |   ·    |      ✅      |      ✅      |   ✅   |       ✅        |
+| `04-route-admission` | `https-grpc-kinds-shared-port`        |   ⏭️   |   ✅   |   ·    |      ✅      |      ✅      |   ✅   |       ✅        |
+| `04-route-admission` | `https-grpc-kinds-split-port`         |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |       ✅        |
+| `04-route-admission` | `https-ns-restricted-same-hostname`   |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |       ✅        |
+| `04-route-admission` | `https-ns-restricted-shared-port`     |   ✅   |   ✅   |   ·    |      ✅      |      ✅      |   ✅   |       ✅        |
+| `04-route-admission` | `https-tls-kinds-same-hostname`       |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |       ✅        |
+| `04-route-admission` | `https-tls-kinds-shared-port`         |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |   ✅   |       ✅        |
+| `04-route-admission` | `multi-protocol-kinds-multi-listener` |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ⏭️      |   ✅   |       ✅        |
+| `04-route-admission` | `tls-no-sectionname-multi-listener`   |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ✅      |   ✅   |       ✅        |
 
 **Legend:** ✅ = pass, ❌ = fail, ⏭️ = skipped (known bug), · = not yet tested.
 Cross-reference scenario names with the [Known Cilium bugs](#known-cilium-bugs) table for failure and skip details.
