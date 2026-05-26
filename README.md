@@ -261,18 +261,18 @@ Scenarios affected by known bugs declare `SCENARIO_SKIP_VERSIONS` in their `mise
 | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- | -------------------- |
 | Multi-port HTTPS listener collapse: single Envoy listener for multiple HTTPS ports causes NACK or route leakage | `http-grpc-split-port`, `http-grpc-same-hostname`, `https-grpc-kinds-split-port`, `https-ns-restricted-same-hostname`, `https-tls-kinds-same-hostname` | [#42898](https://github.com/cilium/cilium/issues/42898), [#44877](https://github.com/cilium/cilium/issues/44877), [#42159](https://github.com/cilium/cilium/issues/42159) | [#44889](https://github.com/cilium/cilium/pull/44889) | Draft PR, not merged |
 | TLS passthrough split-port same-hostname Envoy wiring failure                                                   | `tls-passthrough-same-hostname`, `https-tls-same-hostname`                                                                                             | [#42898](https://github.com/cilium/cilium/issues/42898)                                                                                                                   | [#44889](https://github.com/cilium/cilium/pull/44889) | Draft PR, not merged |
-| Statedb panic: "delete did not find old object" on CEC deletion with multi-listener Gateways                    | All multi-listener scenarios (create/delete cycles)                                                                                                    | [#45758](https://github.com/cilium/cilium/issues/45758)                                                                                                                   | [#45949](https://github.com/cilium/cilium/pull/45949) | Open PR, not merged  |
 
-All scenarios pass on a branch build that includes both #45949 and #44889.
+All scenarios pass on a branch build of `main` + #44889 (LB mode, 177 PASS, 1 FAIL `http-ext-proc-waf` due to missing CRD).
 
 #### Fixed (merged, not yet released in 1.19.x)
 
-| Bug                                                                                   | Scenarios                                                                                           | Cilium issue                                            | Fix                                                   | Status                                                |
-| ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------- | ----------------------------------------------------- |
-| `CheckGatewayRouteKindAllowed` overwrites Accepted condition across listeners         | `https-grpc-kinds-split-port`, `multi-protocol-kinds-multi-listener`, `https-tls-kinds-shared-port` | [#45559](https://github.com/cilium/cilium/issues/45559) | [#45693](https://github.com/cilium/cilium/pull/45693) | Merged to main, backported, not in any 1.19.x release |
-| `CheckGatewayAllowedForNamespace` doesn't enforce per-listener namespace restrictions | `https-ns-restricted-same-hostname`                                                                 | [#42159](https://github.com/cilium/cilium/issues/42159) | [#45693](https://github.com/cilium/cilium/pull/45693) | Merged to main, backported, not in any 1.19.x release |
-| TLSRoute without sectionName creates duplicate FilterChains on mixed-listener Gateway | `tls-no-sectionname-multi-listener`                                                                 | [#45050](https://github.com/cilium/cilium/issues/45050) | [#45371](https://github.com/cilium/cilium/pull/45371) | Merged to main, not backported to 1.19.x              |
-| `isKindAllowed` cross-counts TLSRoutes on HTTP/HTTPS listeners                        | `http-https-tls-implicit-kinds`                                                                     | [#45050](https://github.com/cilium/cilium/issues/45050) | [#45371](https://github.com/cilium/cilium/pull/45371) | Merged to main, not backported to 1.19.x              |
+| Bug                                                                                          | Scenarios                                                                                           | Cilium issue                                            | Fix                                                   | Status                                                |
+| -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------- | ----------------------------------------------------- |
+| Statedb panic: "delete did not find old object" on CEC deletion with multi-listener Gateways | All multi-listener scenarios (create/delete cycles)                                                 | [#45758](https://github.com/cilium/cilium/issues/45758) | [#45949](https://github.com/cilium/cilium/pull/45949) | Merged to main, not backported to 1.19.x              |
+| `CheckGatewayRouteKindAllowed` overwrites Accepted condition across listeners                | `https-grpc-kinds-split-port`, `multi-protocol-kinds-multi-listener`, `https-tls-kinds-shared-port` | [#45559](https://github.com/cilium/cilium/issues/45559) | [#45693](https://github.com/cilium/cilium/pull/45693) | Merged to main, backported, not in any 1.19.x release |
+| `CheckGatewayAllowedForNamespace` doesn't enforce per-listener namespace restrictions        | `https-ns-restricted-same-hostname`                                                                 | [#42159](https://github.com/cilium/cilium/issues/42159) | [#45693](https://github.com/cilium/cilium/pull/45693) | Merged to main, backported, not in any 1.19.x release |
+| TLSRoute without sectionName creates duplicate FilterChains on mixed-listener Gateway        | `tls-no-sectionname-multi-listener`                                                                 | [#45050](https://github.com/cilium/cilium/issues/45050) | [#45371](https://github.com/cilium/cilium/pull/45371) | Merged to main, not backported to 1.19.x              |
+| `isKindAllowed` cross-counts TLSRoutes on HTTP/HTTPS listeners                               | `http-https-tls-implicit-kinds`                                                                     | [#45050](https://github.com/cilium/cilium/issues/45050) | [#45371](https://github.com/cilium/cilium/pull/45371) | Merged to main, not backported to 1.19.x              |
 
 #### Fixed (released)
 
@@ -283,35 +283,35 @@ All scenarios pass on a branch build that includes both #45949 and #44889.
 
 ### Test results by version
 
-| Group                | Scenario                              | 1.19.1 | 1.19.3 | 1.19.4 | 1.20.0-pre.1 | 1.20.0-pre.2 | #45949 + #44889 |
-| -------------------- | ------------------------------------- | :----: | :----: | :----: | :----------: | :----------: | :-------------: |
-| `01-basic`           | `grpc`                                |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |       ✅        |
-| `01-basic`           | `http`                                |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |       ✅        |
-| `01-basic`           | `https`                               |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |       ✅        |
-| `01-basic`           | `tls-passthrough`                     |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |       ✅        |
-| `02-http-routing`    | `header-match`                        |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |       ✅        |
-| `02-http-routing`    | `path-match`                          |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |       ✅        |
-| `02-http-routing`    | `redirect`                            |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |       ✅        |
-| `03-multi-listener`  | `http-grpc-same-hostname`             |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |       ✅        |
-| `03-multi-listener`  | `http-grpc-shared-port`               |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |       ✅        |
-| `03-multi-listener`  | `http-grpc-split-port`                |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |       ✅        |
-| `03-multi-listener`  | `http-listener-isolation`             |   ·    |   ·    |   ✅   |      ·       |      ✅      |       ✅        |
-| `03-multi-listener`  | `http-shared-port`                    |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |       ✅        |
-| `03-multi-listener`  | `https-tls-same-hostname`             |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |       ✅        |
-| `03-multi-listener`  | `https-tls-shared-port`               |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |       ✅        |
-| `03-multi-listener`  | `tls-passthrough-same-hostname`       |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |       ✅        |
-| `03-multi-listener`  | `tls-split-port`                      |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |       ✅        |
-| `04-route-admission` | `http-https-tls-implicit-kinds`       |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ✅      |       ✅        |
-| `04-route-admission` | `http-ns-allowed`                     |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |       ✅        |
-| `04-route-admission` | `http-ns-restricted-split-port`       |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |       ✅        |
-| `04-route-admission` | `https-grpc-kinds-shared-port`        |   ⏭️   |   ✅   |   ✅   |      ✅      |      ✅      |       ✅        |
-| `04-route-admission` | `https-grpc-kinds-split-port`         |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |       ✅        |
-| `04-route-admission` | `https-ns-restricted-same-hostname`   |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |       ✅        |
-| `04-route-admission` | `https-ns-restricted-shared-port`     |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |       ✅        |
-| `04-route-admission` | `https-tls-kinds-same-hostname`       |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |       ✅        |
-| `04-route-admission` | `https-tls-kinds-shared-port`         |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |       ✅        |
-| `04-route-admission` | `multi-protocol-kinds-multi-listener` |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ⏭️      |       ✅        |
-| `04-route-admission` | `tls-no-sectionname-multi-listener`   |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ✅      |       ✅        |
+| Group                | Scenario                              | 1.19.1 | 1.19.3 | 1.19.4 | 1.20.0-pre.1 | 1.20.0-pre.2 | main + #44889 |
+| -------------------- | ------------------------------------- | :----: | :----: | :----: | :----------: | :----------: | :-----------: |
+| `01-basic`           | `grpc`                                |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |      ✅       |
+| `01-basic`           | `http`                                |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |      ✅       |
+| `01-basic`           | `https`                               |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |      ✅       |
+| `01-basic`           | `tls-passthrough`                     |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |      ✅       |
+| `02-http-routing`    | `header-match`                        |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |      ✅       |
+| `02-http-routing`    | `path-match`                          |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |      ✅       |
+| `02-http-routing`    | `redirect`                            |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |      ✅       |
+| `03-multi-listener`  | `http-grpc-same-hostname`             |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |      ✅       |
+| `03-multi-listener`  | `http-grpc-shared-port`               |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |      ✅       |
+| `03-multi-listener`  | `http-grpc-split-port`                |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |      ✅       |
+| `03-multi-listener`  | `http-listener-isolation`             |   ·    |   ·    |   ✅   |      ·       |      ✅      |      ✅       |
+| `03-multi-listener`  | `http-shared-port`                    |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |      ✅       |
+| `03-multi-listener`  | `https-tls-same-hostname`             |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |      ✅       |
+| `03-multi-listener`  | `https-tls-shared-port`               |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |      ✅       |
+| `03-multi-listener`  | `tls-passthrough-same-hostname`       |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |      ✅       |
+| `03-multi-listener`  | `tls-split-port`                      |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |      ✅       |
+| `04-route-admission` | `http-https-tls-implicit-kinds`       |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ✅      |      ✅       |
+| `04-route-admission` | `http-ns-allowed`                     |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |      ✅       |
+| `04-route-admission` | `http-ns-restricted-split-port`       |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |      ✅       |
+| `04-route-admission` | `https-grpc-kinds-shared-port`        |   ⏭️   |   ✅   |   ✅   |      ✅      |      ✅      |      ✅       |
+| `04-route-admission` | `https-grpc-kinds-split-port`         |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |      ✅       |
+| `04-route-admission` | `https-ns-restricted-same-hostname`   |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |      ✅       |
+| `04-route-admission` | `https-ns-restricted-shared-port`     |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |      ✅       |
+| `04-route-admission` | `https-tls-kinds-same-hostname`       |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |      ✅       |
+| `04-route-admission` | `https-tls-kinds-shared-port`         |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |      ✅       |
+| `04-route-admission` | `multi-protocol-kinds-multi-listener` |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ⏭️      |      ✅       |
+| `04-route-admission` | `tls-no-sectionname-multi-listener`   |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ✅      |      ✅       |
 
 **Legend:** ✅ = pass, ❌ = fail, ⏭️ = skipped (known bug), · = not yet tested.
 Results for released versions use LB mode (`cluster:start:lb` + `cloud-provider-kind`). Cross-reference scenario names with the [Known Cilium bugs](#known-cilium-bugs) table for failure and skip details.
