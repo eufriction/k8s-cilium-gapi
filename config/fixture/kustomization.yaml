@@ -5,11 +5,13 @@ resources:
   - 00-gateway-system-namespace.yaml
   - 00-backend-a-namespace.yaml
   - 00-backend-b-namespace.yaml
+  - 00-auth-namespace.yaml
   - 12-backend-a-pki.yaml
   - 12-backend-b-pki.yaml
   - instances/backend-http-a
   - instances/backend-http-b
   - instances/backend-grpc-a
   - instances/backend-grpc-b
+  - instances/external-authz
   - instances/backend-mtls-a
   - instances/backend-mtls-b

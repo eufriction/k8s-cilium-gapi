@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: external-authz
+  labels:
+    app: external-authz
+    app.kubernetes.io/name: external-authz
+    app.kubernetes.io/part-of: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: external-authz
+  template:
+    metadata:
+      labels:
+        app: external-authz
+        app.kubernetes.io/name: external-authz
+        app.kubernetes.io/part-of: demo
+    spec:
+      containers:
+        - name: external-authz
+          image: external-authz:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: grpc
+              containerPort: 9000
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http

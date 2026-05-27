@@ -1,15 +1,16 @@
-# App Bases
+# App bases
 
 `apps/` contains reusable, namespace-agnostic app bases.
 
 ## Bases
 
-| Directory          | Image                          | Purpose                                                                                                                                                                                                                                                                                                     |
-| ------------------ | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `backend-grpc/`    | `backend-grpc` (locally built) | gRPC test server implementing `grpc.testing.TestService`. Source in `image/`, proto fixtures in `proto/`.                                                                                                                                                                                                   |
-| `backend-http/`    | `mccutchen/go-httpbin`         | HTTP echo server (go-httpbin). Returns request headers, method, etc.                                                                                                                                                                                                                                        |
-| `backend-mtls/`    | `envoyproxy/envoy`             | Envoy proxy configured for mutual TLS. Requires a `Secret` with `tls.crt`, `tls.key`, and `ca.crt`. The pod volume uses `secretName: replace-me` — scenario overlays **must** patch this to the real cert-manager Secret name. Listens on port `9443` and returns a static `200 "backend-mtls\n"` response. |
-| `netshoot-client/` | `nicolaka/netshoot`            | Disposable client pod (`sleep infinity`) with curl, dig, nmap, and other network debugging tools pre-installed.                                                                                                                                                                                             |
+| Directory          | Image                            | Purpose                                                                                                                                                                                                                                                                                                   |
+| ------------------ | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `backend-grpc/`    | `backend-grpc` (locally built)   | gRPC test server implementing `grpc.testing.TestService`. Source in `image/`, proto fixtures in `proto/`.                                                                                                                                                                                                 |
+| `backend-http/`    | `mccutchen/go-httpbin`           | HTTP echo server (go-httpbin). Returns request headers, method, etc.                                                                                                                                                                                                                                      |
+| `backend-mtls/`    | `envoyproxy/envoy`               | Envoy proxy configured for mutual TLS. Requires a `Secret` with `tls.crt`, `tls.key`, and `ca.crt`. The pod volume uses `secretName: replace-me`—scenario overlays **must** patch this to the real cert-manager Secret name. Listens on port `9443` and returns a static `200 "backend-mtls\n"` response. |
+| `external-authz/`  | `external-authz` (locally built) | HTTP and gRPC Envoy ext_authz test service for Gateway API `ExternalAuth` scenarios.                                                                                                                                                                                                                      |
+| `netshoot-client/` | `nicolaka/netshoot`              | Disposable client pod (`sleep infinity`) with curl, dig, nmap, and other network debugging tools pre-installed.                                                                                                                                                                                           |
 
 ## Rules
 
@@ -17,7 +18,7 @@
 - No `Namespace` resources in `apps/`.
 - No Gateway API resources in `apps/`.
 - No hardcoded `metadata.namespace` in app manifests.
-- Number files in dependency order starting at `10`, incrementing by `10`. The suffix describes the resource type (e.g. `10-configmap.yaml`, `20-pod.yaml`, `30-service.yaml`).
+- Number files in dependency order starting at `10`, incrementing by `10`. The suffix describes the resource type (for example `10-configmap.yaml`, `20-pod.yaml`, `30-service.yaml`).
 - `kustomization.yaml` in every app base.
 
 ## Conventions
