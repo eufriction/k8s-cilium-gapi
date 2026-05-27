@@ -209,6 +209,7 @@ Read each scenario README for the scenario-specific test flow.
 | `02-http-routing/`    | HTTP routing features | Header match, path match, redirect, canary                             |
 | `03-multi-listener/`  | Multi-listener        | Multiple listeners / route types on one gateway, shared or split ports |
 | `04-route-admission/` | Route admission       | `allowedRoutes.kinds`, `allowedRoutes.namespaces`, sectionName         |
+| `06-extensions/`      | Extensions            | External processing, ExternalAuth, and other implementation extensions |
 
 ### Scenario table
 
@@ -244,9 +245,9 @@ Read each scenario README for the scenario-specific test flow.
 | `05-multi-gateway`   | `grpc`                                                                                                              | Two gateways, each serving gRPC                                                                             | Planned                    |
 | `05-multi-gateway`   | `multi-protocol`                                                                                                    | Two gateways, mixed protocols                                                                               | Planned                    |
 | `06-extensions`      | [`http-ext-proc-waf`](scenarios/06-extensions/http-ext-proc-waf/README.md)                                          | All traffic through Coraza WAF ext_proc via `CiliumEnvoyExtProcFilter` ExtensionRef                         | Branch only                |
+| `06-extensions`      | [`https-ext-auth-http`](scenarios/06-extensions/https-ext-auth-http/README.md)                                      | HTTPS HTTPRoute with Gateway API `ExternalAuth` using an HTTP ext_authz backend                             | Branch only                |
 | `06-extensions`      | `kyverno-route-governance`                                                                                          | Mutating + validating policies for Gateway API route hygiene                                                | Planned                    |
 | `06-extensions`      | `http-rate-limit`                                                                                                   | HTTPRoute with Envoy rate-limit filter                                                                      | Planned                    |
-| `06-extensions`      | `http-ext-auth`                                                                                                     | HTTPRoute with OIDC / external authorization                                                                | Planned                    |
 | `07-clustermesh`     | `grpc`                                                                                                              | Cross-cluster gRPC with Cilium ClusterMesh                                                                  | Planned                    |
 
 See the [Known Cilium bugs](#known-cilium-bugs) table for failure details, and [Test results by version](#test-results-by-version) for the full pass/fail/skip grid.
@@ -312,6 +313,7 @@ All scenarios pass on a branch build of `main` + #44889 (LB mode, 177 PASS, 1 FA
 | `04-route-admission` | `https-tls-kinds-shared-port`         |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |      ✅       |
 | `04-route-admission` | `multi-protocol-kinds-multi-listener` |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ⏭️      |      ✅       |
 | `04-route-admission` | `tls-no-sectionname-multi-listener`   |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ✅      |      ✅       |
+| `06-extensions`      | `https-ext-auth-http`                 |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ⏭️      |       ·       |
 
 **Legend:** ✅ = pass, ❌ = fail, ⏭️ = skipped (known bug), · = not yet tested.
 Results for released versions use LB mode (`cluster:start:lb` + `cloud-provider-kind`). Cross-reference scenario names with the [Known Cilium bugs](#known-cilium-bugs) table for failure and skip details.
