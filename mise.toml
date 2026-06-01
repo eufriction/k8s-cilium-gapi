@@ -517,6 +517,16 @@ fi
 description = "Uninstall Cilium from the cluster using Helm"
 run = "helm uninstall cilium --namespace kube-system"
 
+[tasks."cilium:reinstall"]
+description = "Uninstall and install Cilium again in kube-proxy-free mode"
+usage = 'flag "-v --verbose" env="VERBOSE" help="Enable verbose output for image pulls and builds"'
+run = "mise run cilium:uninstall && mise run cilium:install{% if usage.verbose %} --verbose{% endif %}"
+
+[tasks."cilium:reinstall:lb"]
+description = "Uninstall and install Cilium again in load-balancer mode"
+usage = 'flag "-v --verbose" env="VERBOSE" help="Enable verbose output for image pulls and builds"'
+run = "mise run cilium:uninstall && mise run cilium:install:lb{% if usage.verbose %} --verbose{% endif %}"
+
 [tasks."cilium:reload"]
 description = "Load locally-built Cilium images into kind and restart the agent + operator"
 run = """
