@@ -16,6 +16,7 @@ kubectl wait gateway/waf-gateway -n gateway-system --for='jsonpath={.status.cond
 
 # Tier 3: route
 kubectl wait httproute/waf-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s"
+kubectl wait httproute/waf-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="ResolvedRefs")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s"
 
 # --- Listener status assertions ---
 assert_listener_status waf-gateway gateway-system http 1 HTTPRoute GRPCRoute

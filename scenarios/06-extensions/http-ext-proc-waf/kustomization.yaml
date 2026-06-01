@@ -6,6 +6,7 @@ resources:
   - 00-backend-a-namespace.yaml
   - instances/backend-http-a
   - instances/coraza-waf-extproc
+  - 20-ext-proc-referencegrant.yaml
   - 30-gateway.yaml
   - 31-ext-proc-filter.yaml
   - 32-httproute.yaml
