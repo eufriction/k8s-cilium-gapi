@@ -229,6 +229,7 @@ Read each scenario README for the scenario-specific test flow.
 | `03-multi-listener`  | [`http-shared-port`](scenarios/03-multi-listener/http-shared-port/README.md)                                        | Two HTTP/80 listeners, hostname-based routing via `sectionName`                                                     | ✅ Pass                    |
 | `03-multi-listener`  | [`https-tls-same-hostname`](scenarios/03-multi-listener/https-tls-same-hostname/README.md)                          | HTTPS termination + TLS passthrough, same hostname, different ports                                                 | ⚠️ Broken on some versions |
 | `03-multi-listener`  | [`https-tls-catch-all`](scenarios/03-multi-listener/https-tls-catch-all/README.md)                                  | Catch-all HTTPS termination + TLS passthrough, different ports                                                      | ⚠️ Broken on some versions |
+| `03-multi-listener`  | [`https-tls-catch-all-multi-tls-ports`](scenarios/03-multi-listener/https-tls-catch-all-multi-tls-ports/README.md)  | Catch-all HTTPS termination + multi-port TLS passthrough                                                            | ⚠️ Broken on some versions |
 | `03-multi-listener`  | [`https-tls-shared-port`](scenarios/03-multi-listener/https-tls-shared-port/README.md)                              | HTTPS termination + TLS passthrough on same port 443, disjoint hostnames                                            | ✅ Pass                    |
 | `03-multi-listener`  | [`tls-passthrough-same-hostname`](scenarios/03-multi-listener/tls-passthrough-same-hostname/README.md)              | TLS passthrough same hostname on different ports                                                                    | ⚠️ Broken on some versions |
 | `03-multi-listener`  | [`tls-split-port`](scenarios/03-multi-listener/tls-split-port/README.md)                                            | Two TLS passthrough listeners on split ports (9443 / 50051), per-namespace mTLS                                     | ✅ Pass                    |
@@ -300,6 +301,8 @@ All scenarios pass on a branch build of `main` + #44889 (LB mode, 177 PASS, 1 FA
 | `03-multi-listener`  | `http-listener-isolation`             |   ·    |   ·    |   ✅   |      ·       |      ✅      |      ✅       |
 | `03-multi-listener`  | `http-shared-port`                    |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |      ✅       |
 | `03-multi-listener`  | `https-tls-same-hostname`             |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |      ✅       |
+| `03-multi-listener`  | `https-tls-catch-all`                 |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |      ✅       |
+| `03-multi-listener`  | `https-tls-catch-all-multi-tls-ports` |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |      ✅       |
 | `03-multi-listener`  | `https-tls-shared-port`               |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |      ✅       |
 | `03-multi-listener`  | `tls-passthrough-same-hostname`       |   ⏭️   |   ⏭️   |   ⏭️   |      ⏭️      |      ❌      |      ✅       |
 | `03-multi-listener`  | `tls-split-port`                      |   ✅   |   ✅   |   ✅   |      ✅      |      ✅      |      ✅       |

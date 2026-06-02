@@ -1,0 +1,40 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/gateway.networking.k8s.io/tlsroute_v1alpha2.json
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TLSRoute
+metadata:
+  name: backend-b-tls-route-50051
+  namespace: backend-b
+  labels:
+    app.kubernetes.io/part-of: demo
+spec:
+  parentRefs:
+    - name: https-tls-multi-tls-port-gateway
+      namespace: gateway-system
+      sectionName: tls-50051
+  hostnames:
+    - api.example.test
+  rules:
+    - backendRefs:
+        - name: backend-mtls
+          port: 9443
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/gateway.networking.k8s.io/tlsroute_v1alpha2.json
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TLSRoute
+metadata:
+  name: backend-b-tls-route-9443
+  namespace: backend-b
+  labels:
+    app.kubernetes.io/part-of: demo
+spec:
+  parentRefs:
+    - name: https-tls-multi-tls-port-gateway
+      namespace: gateway-system
+      sectionName: tls-9443
+  hostnames:
+    - api.example.test
+  rules:
+    - backendRefs:
+        - name: backend-mtls
+          port: 9443
