@@ -1,0 +1,9 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: https-tls-same-port-same-hostname-selfsigned
+  namespace: gateway-system
+  labels:
+    app.kubernetes.io/part-of: demo
+spec:
+  selfSigned: {}
