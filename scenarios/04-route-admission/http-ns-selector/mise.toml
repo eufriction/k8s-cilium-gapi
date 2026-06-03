@@ -1,0 +1,11 @@
+[tasks.start]
+extends = "scenario:start"
+description = "Deploy the allowedRoutes.namespaces Selector scenario"
+depends = ["//:kind:load:apps{% if usage.verbose %} --verbose{% endif %}"]
+
+[tasks.verify]
+extends = "scenario:verify"
+description = "Verify allowedRoutes.namespaces Selector filters routes by namespace labels"
+
+[tasks.delete]
+extends = "scenario:delete"
