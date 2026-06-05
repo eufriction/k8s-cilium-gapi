@@ -1,0 +1,18 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: selector-conflict-route
+  namespace: backend-a
+  labels:
+    app.kubernetes.io/part-of: demo
+spec:
+  parentRefs:
+    - name: selector-listener-conflict-gateway
+      namespace: gateway-system
+  hostnames:
+    - selected.example.test
+    - unselected.example.test
+  rules:
+    - backendRefs:
+        - name: api
+          port: 80

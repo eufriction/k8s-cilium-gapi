@@ -1,0 +1,31 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: selector-listener-conflict-gateway
+  namespace: gateway-system
+  labels:
+    app.kubernetes.io/part-of: demo
+spec:
+  gatewayClassName: cilium
+  listeners:
+    - name: http-selected
+      protocol: HTTP
+      port: 80
+      hostname: selected.example.test
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              expose: "true"
+    - name: http-unselected
+      protocol: HTTP
+      port: 80
+      hostname: unselected.example.test
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchExpressions:
+              - key: expose
+                operator: DoesNotExist
