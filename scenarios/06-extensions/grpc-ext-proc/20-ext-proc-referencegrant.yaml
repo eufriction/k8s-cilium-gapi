@@ -1,0 +1,14 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: ReferenceGrant
+metadata:
+  name: allow-grpc-backend-a-ext-proc-filter-to-coraza-waf
+  namespace: gateway-system
+spec:
+  from:
+    - group: cilium.io
+      kind: CiliumEnvoyExtProcFilter
+      namespace: grpc-backend-a
+  to:
+    - group: ""
+      kind: Service
+      name: coraza-waf-extproc

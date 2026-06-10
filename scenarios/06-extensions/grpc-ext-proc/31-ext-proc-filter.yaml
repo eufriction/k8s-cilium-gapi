@@ -1,0 +1,16 @@
+apiVersion: cilium.io/v2alpha1
+kind: CiliumEnvoyExtProcFilter
+metadata:
+  name: grpc-coraza-waf
+  namespace: grpc-backend-a
+spec:
+  backendRef:
+    name: coraza-waf-extproc
+    namespace: gateway-system
+    port: 4317
+  failureModeAllow: false
+  processingMode:
+    requestHeaderMode: SEND
+    responseHeaderMode: SKIP
+    requestBodyMode: NONE
+    responseBodyMode: NONE

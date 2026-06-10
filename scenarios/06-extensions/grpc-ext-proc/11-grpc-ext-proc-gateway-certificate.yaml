@@ -1,0 +1,17 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: grpc-ext-proc-gateway-certificate
+  namespace: gateway-system
+spec:
+  secretName: grpc-ext-proc-gateway-tls
+  commonName: grpc-ext-proc.example.test
+  dnsNames:
+    - "*.example.test"
+    - grpc-ext-proc.example.test
+    - localhost
+  ipAddresses:
+    - 127.0.0.1
+  issuerRef:
+    kind: Issuer
+    name: grpc-ext-proc-selfsigned

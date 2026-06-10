@@ -1,0 +1,14 @@
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization.json
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - 00-gateway-system-namespace.yaml
+  - 00-grpc-backend-a-namespace.yaml
+  - 10-grpc-ext-proc-selfsigned-issuer.yaml
+  - 11-grpc-ext-proc-gateway-certificate.yaml
+  - instances/backend-grpc-a
+  - instances/coraza-waf-extproc
+  - 20-ext-proc-referencegrant.yaml
+  - 30-gateway.yaml
+  - 31-ext-proc-filter.yaml
+  - 32-grpcroute.yaml
