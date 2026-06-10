@@ -11,6 +11,8 @@ gatewayAPI:
   enabled: true
   # Required for TLS-terminated gRPC listeners so clients can negotiate HTTP/2.
   enableAlpn: true
+  # Required for CiliumEnvoyExtProcFilter ExtensionRef on HTTPRoute/GRPCRoute.
+  enableExtensionRefFilters: true
 
 ingressController:
   enabled: false
