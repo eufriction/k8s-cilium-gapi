@@ -100,7 +100,12 @@ Temporary Items
 # Agent working files
 ###############################################################################
 
-.agents/
+.agents/*
+!.agents/skills/
+.agents/skills/*
+!.agents/skills/update-scenario-results/
+!.agents/skills/update-scenario-results/**
+.agents/plans/
 
 ###############################################################################
 # mise
