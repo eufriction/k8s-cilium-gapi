@@ -24,6 +24,62 @@ assert_listener_status waf-gateway gateway-system http 1 HTTPRoute GRPCRoute
 # Warm up the HTTP listener
 retry_until 10 curl -fsS -H 'Host: app.example.test' http://localhost:"${PORT_80}"/headers >/dev/null
 
+metric_name="envoy_http_ext_proc_ceepf_backend_a_coraza_waf_streams_started"
+metric_re="^${metric_name}\\{[^}]*envoy_http_conn_manager_prefix=\"listener-insecure\"[^}]*\\} [0-9]+(\\.[0-9]+)?$"
+metrics_timeout="${ENVOY_METRICS_READY_TIMEOUT:-30}"
+metrics=""
+
+scrape_ext_proc_metric_sum() {
+  local metrics_probe matches
+  metrics_probe="ext-proc-metrics-probe-${RANDOM}"
+  # shellcheck disable=SC2016 # ENVOY_IPS is expanded inside the probe pod.
+  metrics=$(kubectl run "$metrics_probe" -n gateway-system --rm -i --restart=Never \
+    --image="nicolaka/netshoot:${NETSHOOT_VERSION:-v0.15}" \
+    --env="ENVOY_IPS=${envoy_ips}" \
+    --command -- sh -eu -c '
+      for ip in ${ENVOY_IPS}; do
+        curl -fsS --connect-timeout 2 --max-time 5 "http://${ip}:9964/metrics" || true
+      done
+    ' 2>/dev/null || true)
+
+  matches=$(echo "$metrics" | grep -E "$metric_re" || true)
+  if [ -z "$matches" ]; then
+    return 0
+  fi
+  echo "$matches" | awk '{sum += $2} END {printf "%d\n", sum}'
+}
+
+wait_for_ext_proc_metric_sum() {
+  local deadline metric_sum
+  deadline=$((SECONDS + metrics_timeout))
+  while ((SECONDS < deadline)); do
+    metric_sum=$(scrape_ext_proc_metric_sum)
+    if [ -n "$metric_sum" ]; then
+      echo "$metric_sum"
+      return 0
+    fi
+    echo "  ext_proc Envoy metric not ready, retrying in 1s..." >&2
+    sleep 1
+  done
+  return 1
+}
+
+# Capture a baseline after the listener is ready. The warm-up request may or may
+# not have reached the same Envoy instance before metrics are scraped, so only
+# the before/after delta from the remaining test traffic is asserted below.
+envoy_ips=$(kubectl get pods -n kube-system -l app.kubernetes.io/name=cilium-envoy -o jsonpath='{range .items[*]}{.status.podIP}{" "}{end}')
+if [ -z "$envoy_ips" ]; then
+  echo "FAIL: no cilium-envoy pod IPs found for metrics scrape" >&2
+  exit 1
+fi
+
+baseline_metric=$(wait_for_ext_proc_metric_sum) || {
+  echo "FAIL: ext_proc Envoy metric ${metric_name} is missing after ${metrics_timeout}s" >&2
+  echo "$metrics" | grep -E 'ceepf_backend_a_coraza_waf|ext_proc' >&2 || true
+  exit 1
+}
+echo "PASS: ext_proc Envoy metrics expose ceepf.backend_a.coraza_waf stats"
+
 # Test 1: Clean request passes through WAF
 body=$(curl -fsS -H 'Host: app.example.test' http://localhost:"${PORT_80}"/headers)
 if ! echo "$body" | grep -qi 'x-waf-result'; then
@@ -65,3 +121,27 @@ if ! echo "$body" | grep -qi 'x-waf-result'; then
   exit 1
 fi
 echo "PASS: legitimate request with query params passes WAF"
+
+# Test 6: Envoy ext_proc metrics increase after WAF traffic.
+metrics_settle_sleep="${ENVOY_METRICS_SETTLE_SLEEP:-30}"
+echo "Waiting ${metrics_settle_sleep}s for Envoy metrics to settle..."
+sleep "$metrics_settle_sleep"
+
+metrics_deadline=$((SECONDS + metrics_timeout))
+after_metric=""
+while ((SECONDS < metrics_deadline)); do
+  after_metric=$(scrape_ext_proc_metric_sum)
+  if [ -n "$after_metric" ] && [ "$after_metric" -gt "$baseline_metric" ]; then
+    echo "PASS: ext_proc Envoy metrics increased after WAF traffic (${baseline_metric} -> ${after_metric})"
+    break
+  fi
+
+  echo "  ext_proc Envoy metric has not increased yet, retrying in 1s..." >&2
+  sleep 1
+done
+
+if [ -z "$after_metric" ] || [ "$after_metric" -le "$baseline_metric" ]; then
+  echo "FAIL: ext_proc Envoy metric ${metric_name} did not increase after WAF traffic (${baseline_metric} -> ${after_metric:-missing})" >&2
+  echo "$metrics" | grep -E 'ceepf_backend_a_coraza_waf|ext_proc' >&2 || true
+  exit 1
+fi

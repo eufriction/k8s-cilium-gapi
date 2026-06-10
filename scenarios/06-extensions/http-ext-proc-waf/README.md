@@ -33,6 +33,9 @@ What `verify.sh` checks:
 7. XSS attempt (`?q=<script>alert(1)</script>`) returns HTTP 403.
 8. Path traversal attempt (`/../../etc/passwd`) returns HTTP 403.
 9. Legitimate request with query parameters passes the WAF.
+10. Cilium Envoy exposes per-filter `ext_proc` metrics for the generated
+    `ceepf.backend_a.coraza_waf` stat prefix, and the counter increases after
+    WAF traffic.
 
 ## Prerequisites
 
