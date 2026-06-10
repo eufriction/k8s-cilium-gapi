@@ -1,0 +1,17 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: https-ext-proc-waf-gateway-certificate
+  namespace: gateway-system
+spec:
+  secretName: https-ext-proc-waf-gateway-tls
+  commonName: app.example.test
+  dnsNames:
+    - "*.example.test"
+    - app.example.test
+    - localhost
+  ipAddresses:
+    - 127.0.0.1
+  issuerRef:
+    kind: Issuer
+    name: https-ext-proc-waf-selfsigned
