@@ -1,167 +1,117 @@
 ---
 name: update-scenario-results
-description: Update Gateway API scenario status and README test-result tables after running LB or hostNetwork scenario tests, including log capture, Cilium branch SHA handling, known bug updates, and extension-ref configuration checks.
+description: Updates Gateway API scenario results in k8s-cilium-gapi after LB or hostNetwork test runs, including README tables, known-bug notes, branch-build columns, and extension-ref validation.
 ---
 
 # Update scenario results
 
-<!-- vale Vale.Terms = NO -->
+Update `k8s-cilium-gapi` scenario status after a test run.
 
-Use this skill when updating `k8s-cilium-gapi` scenario status after a test run, especially when the user asks to update `README.md`, record results for a Cilium branch build, validate a failed scenario, or refresh the Known Cilium bugs section.
+Prefer LB mode for results-table updates unless the user explicitly asks for `hostNetwork` mode.
 
-## Source files
+Copyable progress tracker:
 
-- Main status document: `k8s-cilium-gapi/README.md`
-- Default Helm values: `k8s-cilium-gapi/config/values.cilium.yaml`
-- LB-mode Helm values: `k8s-cilium-gapi/config/values.cilium.lb.yaml`
-- Branch-build profile: `k8s-cilium-gapi/mise.local.toml`
-- Scenario logs: `k8s-cilium-gapi/logs/`
-- Scenario tasks/manifests: `k8s-cilium-gapi/scenarios/<group>/<scenario>/`
+```md
+Results update progress:
 
-## Before running tests
+- [ ] Confirm branch and repo context
+- [ ] Verify extension-ref settings if relevant
+- [ ] Collect logs from the scenario run
+- [ ] Parse PASS / FAIL / SKIP results
+- [ ] Update README sections together
+- [ ] Run formatting and diff checks
+- [ ] Fix any validation issues and re-run checks
+```
 
-1. Confirm the active Cilium source SHA when recording a branch-build result:
+## 1. Confirm repo context
 
-   ```sh
-   git --no-pager rev-parse --short origin/main
-   git --no-pager merge-base --short HEAD origin/main
-   git --no-pager log -1 --pretty='%h %s'
-   ```
+Run `git --no-pager status --short` in `k8s-cilium-gapi` before editing `README.md`.
 
-   Use the Cilium `origin/main` or merge-base SHA for a column labeled like `main (<sha>)` when the test result represents a branch build based on main.
+If the result comes from local Cilium branch images, gather the base SHA from the `cilium` repo, not from `k8s-cilium-gapi`:
 
-2. Verify the `k8s-cilium-gapi` branch and current changes:
+```sh
+git --no-pager rev-parse --short origin/main
+git --no-pager merge-base --short HEAD origin/main
+git --no-pager log -1 --pretty='%h %s'
+```
 
-   ```sh
-   git --no-pager status --short
-   ```
+Use the `origin/main` or merge-base SHA for a branch column like `main (<sha>)`, for example `main (a1b2c3d)`.
 
-3. For LB-mode runs that include ExtensionRef/ext_proc scenarios, ensure `config/values.cilium.lb.yaml` contains:
+## 2. Verify extension-ref settings when relevant
 
-   ```yaml
-   gatewayAPI:
-     enableExtensionRefFilters: true
-   ```
+If the run includes ExtensionRef or `ext_proc` scenarios, verify:
 
-   HostNetwork mode already uses `config/values.cilium.yaml`, which should also contain this setting.
+- `config/values.cilium.yaml`
+- `config/values.cilium.lb.yaml`
 
-4. If validating an existing cluster, confirm the live Helm/ConfigMap state:
+Both should contain:
 
-   ```sh
-   helm get values cilium -n kube-system --all -o yaml | grep -n 'gatewayAPI\|enableExtensionRefFilters\|enableAlpn'
-   kubectl -n kube-system get cm cilium-config -o yaml | grep -n 'enable-gateway-api-extension-ref-filters'
-   ```
+```yaml
+gatewayAPI:
+  enableExtensionRefFilters: true
+```
 
-   If `enable-gateway-api-extension-ref-filters` changes from `false` to `true`, restart `cilium-operator` after `helm upgrade` because the operator may keep the old value in memory:
+If you are validating an existing cluster, also check live values:
 
-   ```sh
-   kubectl rollout restart deployment/cilium-operator -n kube-system
-   kubectl rollout status deployment/cilium-operator -n kube-system --timeout=180s
-   ```
+```sh
+helm get values cilium -n kube-system --all -o yaml | grep -n 'gatewayAPI\|enableExtensionRefFilters\|enableAlpn'
+kubectl -n kube-system get cm cilium-config -o yaml | grep -n 'enable-gateway-api-extension-ref-filters'
+```
 
-## Running scenarios with logs
+If `enable-gateway-api-extension-ref-filters` changed from `false` to `true`, restart the operator after `helm upgrade`:
 
-Prefer LB mode for results table updates unless the user explicitly requests hostNetwork:
+```sh
+kubectl rollout restart deployment/cilium-operator -n kube-system
+kubectl rollout status deployment/cilium-operator -n kube-system --timeout=180s
+```
+
+## 3. Collect logs
+
+Typical LB-mode startup:
 
 ```sh
 mise run cluster:start:lb 2>&1 | tee logs/cluster-start-lb-<label>.log
-# cloud-provider-kind must be running in another terminal:
-mise run cloud-provider-kind:start
 ```
 
-Verify health before running scenarios:
+Remind the user that `mise run cloud-provider-kind:start` must be running in another terminal.
 
-```sh
-kubectl get nodes -o wide
-cilium status --wait-duration 10s --interactive=false
-```
-
-Run all scenarios without the shared fixture when validating scenarios that deploy extra per-scenario resources such as `http-ext-proc-waf`:
+For full results updates, prefer the fixtureless run when scenarios need per-scenario dependencies, for example `http-ext-proc-waf`:
 
 ```sh
 mise run --continue-on-error --jobs 1 '//scenarios/...:start' --delete 2>&1 | tee logs/run-all-<label>.log
 ```
 
-The shared fixture task is faster, but can be invalid for scenarios whose dependencies are not part of the fixture. For example, `http-ext-proc-waf` needs its own `coraza-waf-extproc` deployment, so a fixture-only run can produce a false failure.
-
 For a focused rerun:
 
 ```sh
-mise run //scenarios/<group>/<scenario>:start --delete 2>&1 | tee logs/run-<scenario>-<label>.log
+mise run //scenarios/06-extensions/http-ext-proc-waf:start --delete 2>&1 | tee logs/run-http-ext-proc-waf-<label>.log
 ```
 
-## Parsing results
+## 4. Parse results
 
-Summarize logs with:
+Use the commands in `result-parsing.md`.
 
-```sh
-grep -c '^PASS:' logs/<run>.log
-grep -c '^FAIL:' logs/<run>.log
-grep -c '^SKIP:' logs/<run>.log
-grep '^FAIL:' logs/<run>.log
-```
+If a task exits nonzero without a `FAIL:` line, inspect the failing scenario block and record the real cause instead of inventing a `FAIL:` summary.
 
-Important: a task can exit nonzero without printing a `FAIL:` line if a `kubectl wait` or shell command times out. Inspect the scenario block around the failed task name and record the real cause, for example:
+## 5. Update `README.md`
 
-```text
-error: timed out waiting for the condition on httproutes/waf-route
-```
+Update the scenario table, known-bug sections, test-results grid, and run notes together so they stay consistent.
 
-If a route fails because `ResolvedRefs=False`, inspect status:
+Use the editorial rules in `readme-update-rules.md`.
 
-```sh
-kubectl get httproute <name> -n <namespace> -o yaml
-```
+## 6. Validate before responding
 
-For ExtensionRef failures, look for messages such as `ExtensionRef filters are disabled`, which usually indicates missing `gatewayAPI.enableExtensionRefFilters=true` or an operator restart is needed after changing it.
-
-## Updating `README.md`
-
-Update these sections together so they remain consistent:
-
-1. **Scenario table**
-   - Mark stable scenario outcomes as `✅ Pass`.
-   - Use precise notes for branch-only or known-failure cases.
-   - If a formerly failing scenario now passes on the latest branch build, update the status.
-
-2. **Known Cilium bugs**
-   - Move bugs fixed by merged PRs out of **Open bugs** and into **Fixed (merged, not yet released)** unless they are in a released version.
-   - Keep genuinely open issues in **Open bugs**, but update their status if the latest branch run no longer reproduces them.
-   - Do not claim an issue is fixed upstream solely because one local branch run passes; phrase it as “not reproduced by latest branch run” unless the fixing PR is known.
-
-3. **Test results by version**
-   - Use a branch-build column like `main (<sha>)` for results from local Cilium branch images based on main.
-   - If replacing an older branch column (for example `main + #44889`) after the PR merges, rename it to `main (<sha>)` and use the latest test results for that branch run.
-   - Add missing scenario rows when scenarios have been tested but are absent from the grid.
-   - Keep result symbols consistent with the legend.
-
-4. **Legend and run notes**
-   - Keep the legend stable and limited to symbol meanings. Do not add volatile context such as SHAs, branch names, log paths, run dates, or per-run notes to the legend. Only change it when a result symbol is added, removed, or its meaning changes. Recommended wording:
-
-     ```md
-     **Legend:** ✅ = scenario passed, ❌ = scenario failed, ⏭️ = intentionally skipped by version guard (known bug or unsupported feature), · = no result recorded.
-     ```
-
-   - Put volatile run context in column titles and run notes instead. Mention LB mode and log paths used to collect the latest branch column in a separate `**Run notes:**` paragraph.
-
-## Validation before final response
-
-Run formatting and whitespace checks:
+Run:
 
 ```sh
 mise exec -- prettier --check README.md config/values.cilium.lb.yaml
 git --no-pager diff --check -- README.md config/values.cilium.lb.yaml
-```
-
-Check status:
-
-```sh
 git --no-pager status --short
 ```
 
-In the final response, include:
+If a validation command fails, fix the affected file and rerun the validation commands before responding.
 
-- Files changed.
-- Logs used for results.
-- Commands run and pass/fail outcome.
-- Any cluster state left running, if relevant.
+## References
+
+- Result parsing: `result-parsing.md`
+- README update rules: `readme-update-rules.md`
