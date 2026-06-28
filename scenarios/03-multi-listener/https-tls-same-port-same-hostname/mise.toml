@@ -1,3 +1,6 @@
+[env]
+SCENARIO_SKIP_VERSIONS = "1.19.1 1.19.5"
+
 [tasks.start]
 extends = "scenario:start"
 description = "Deploy the HTTPS + TLS passthrough same-port same-hostname rejection scenario"
@@ -6,6 +9,14 @@ depends = [
   "//:cert-manager:install",
 ]
 run = """
+if [ -n "${SCENARIO_SKIP_VERSIONS:-}" ]; then
+  for _v in ${SCENARIO_SKIP_VERSIONS}; do
+    if [ "$_v" = "${CILIUM_VERSION}" ]; then
+      echo "SKIP: known broken on Cilium ${CILIUM_VERSION}"
+      exit 0
+    fi
+  done
+fi
 KUSTOMIZE_DIR="."
 if [ "${FIXTURE_DEPLOYED:-}" = "true" ] && [ -d gateway ]; then
   KUSTOMIZE_DIR="gateway"
