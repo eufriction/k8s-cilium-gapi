@@ -27,6 +27,7 @@ retry_until 10 curl -fsS -H 'Host: app.example.test' http://localhost:"${PORT_80
 metric_name="envoy_http_ext_proc_ceepf_backend_a_coraza_waf_streams_started"
 metric_re="^${metric_name}\\{[^}]*envoy_http_conn_manager_prefix=\"listener-insecure\"[^}]*\\} [0-9]+(\\.[0-9]+)?$"
 metrics_timeout="${ENVOY_METRICS_READY_TIMEOUT:-30}"
+metrics_probe_timeout="${ENVOY_METRICS_PROBE_TIMEOUT:-15s}"
 metrics=""
 
 scrape_ext_proc_metric_sum() {
@@ -34,15 +35,16 @@ scrape_ext_proc_metric_sum() {
   metrics_probe="ext-proc-metrics-probe-${RANDOM}"
   # shellcheck disable=SC2016 # ENVOY_IPS is expanded inside the probe pod.
   metrics=$(kubectl run "$metrics_probe" -n gateway-system --rm -i --restart=Never \
+    --pod-running-timeout="$metrics_probe_timeout" \
     --image="nicolaka/netshoot:${NETSHOOT_VERSION:-v0.15}" \
     --env="ENVOY_IPS=${envoy_ips}" \
     --command -- sh -eu -c '
       for ip in ${ENVOY_IPS}; do
         curl -fsS --connect-timeout 2 --max-time 5 "http://${ip}:9964/metrics" || true
       done
-    ' 2>/dev/null || true)
+    ' 2>&1 || true)
 
-  matches=$(echo "$metrics" | grep -E "$metric_re" || true)
+  matches=$(printf '%s\n' "$metrics" | grep -E "$metric_re" || true)
   if [ -z "$matches" ]; then
     return 0
   fi
@@ -75,7 +77,9 @@ fi
 
 baseline_metric=$(wait_for_ext_proc_metric_sum) || {
   echo "FAIL: ext_proc Envoy metric ${metric_name} is missing after ${metrics_timeout}s" >&2
-  echo "$metrics" | grep -E 'ceepf_backend_a_coraza_waf|ext_proc' >&2 || true
+  if ! printf '%s\n' "$metrics" | grep -E 'ceepf_backend_a_coraza_waf|ext_proc|timed out waiting for the condition|ErrImagePull|ImagePullBackOff|CreateContainer|Pending' >&2; then
+    [ -n "$metrics" ] && printf '%s\n' "$metrics" >&2
+  fi
   exit 1
 }
 echo "PASS: ext_proc Envoy metrics expose ceepf.backend_a.coraza_waf stats"
@@ -142,6 +146,8 @@ done
 
 if [ -z "$after_metric" ] || [ "$after_metric" -le "$baseline_metric" ]; then
   echo "FAIL: ext_proc Envoy metric ${metric_name} did not increase after WAF traffic (${baseline_metric} -> ${after_metric:-missing})" >&2
-  echo "$metrics" | grep -E 'ceepf_backend_a_coraza_waf|ext_proc' >&2 || true
+  if ! printf '%s\n' "$metrics" | grep -E 'ceepf_backend_a_coraza_waf|ext_proc|timed out waiting for the condition|ErrImagePull|ImagePullBackOff|CreateContainer|Pending' >&2; then
+    [ -n "$metrics" ] && printf '%s\n' "$metrics" >&2
+  fi
   exit 1
 fi
