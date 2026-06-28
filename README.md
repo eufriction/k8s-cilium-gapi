@@ -252,6 +252,7 @@ Read each scenario README for the scenario-specific test flow.
 | `06-extensions`      | [`http-ext-proc-waf`](scenarios/06-extensions/http-ext-proc-waf/README.md)                                          | Coraza WAF `ext_proc` with cross-namespace `CiliumEnvoyExtProcFilter` Service reference allowed by `ReferenceGrant` | ⚠️ Broken on some versions |
 | `06-extensions`      | [`https-ext-proc-waf`](scenarios/06-extensions/https-ext-proc-waf/README.md)                                        | HTTPS HTTPRoute with TLS termination and Coraza WAF `ext_proc` via `CiliumEnvoyExtProcFilter`                       | ⚠️ Broken on some versions |
 | `06-extensions`      | [`https-ext-auth-http`](scenarios/06-extensions/https-ext-auth-http/README.md)                                      | HTTPS HTTPRoute with Gateway API `ExternalAuth` using an HTTP ext_authz backend                                     | ✅ Pass                    |
+| `06-extensions`      | [`https-ext-auth-grpc`](scenarios/06-extensions/https-ext-auth-grpc/README.md)                                      | HTTPS HTTPRoute with Gateway API `ExternalAuth` using a gRPC ext_authz backend                                      | ✅ Pass                    |
 | `06-extensions`      | `kyverno-route-governance`                                                                                          | Mutating + validating policies for Gateway API route hygiene                                                        | Planned                    |
 | `06-extensions`      | `http-rate-limit`                                                                                                   | HTTPRoute with Envoy rate-limit filter                                                                              | Planned                    |
 | `07-clustermesh`     | `grpc`                                                                                                              | Cross-cluster gRPC with Cilium ClusterMesh                                                                          | Planned                    |
@@ -325,6 +326,7 @@ The latest main-branch LB run (`main (2b56ecd80b6)`) still reproduces failures i
 | `06-extensions`      | `http-ext-proc-waf`                   |   ⏭️   |   ⏭️   |      ❌      |         ❌         |                            ✅                            |
 | `06-extensions`      | `https-ext-proc-waf`                  |   ⏭️   |   ⏭️   |      ❌      |         ❌         |                            ✅                            |
 | `06-extensions`      | `https-ext-auth-http`                 |   ⏭️   |   ⏭️   |      ✅      |         ✅         |                            ✅                            |
+| `06-extensions`      | `https-ext-auth-grpc`                 |   ⏭️   |   ⏭️   |      ✅      |         ·          |                            ·                             |
 
 **Legend:** ✅ = scenario passed, ❌ = scenario failed, ⏭️ = intentionally skipped by version guard (known bug or unsupported feature), · = no result recorded.
 
