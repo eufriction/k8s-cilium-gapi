@@ -1,0 +1,14 @@
+[env]
+SCENARIO_SKIP_VERSIONS = "1.19.1 1.19.3 1.19.4 1.19.5 1.20.0-pre.1 1.20.0-pre.2"
+
+[tasks.start]
+extends = "scenario:start"
+description = "Deploy the ext_proc WAF + ExternalAuth coexistence scenario"
+depends = ["//:kind:load:apps{% if usage.verbose %} --verbose{% endif %}"]
+
+[tasks.verify]
+extends = "scenario:verify"
+description = "Verify ext_proc WAF and ExternalAuth filters coexist on the same route"
+
+[tasks.delete]
+extends = "scenario:delete"

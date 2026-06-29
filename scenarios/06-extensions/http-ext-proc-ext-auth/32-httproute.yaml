@@ -1,0 +1,64 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/gateway.networking.k8s.io/httproute_v1.json
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: ext-proc-ext-auth-route
+  namespace: backend-a
+  labels:
+    app.kubernetes.io/part-of: demo
+spec:
+  parentRefs:
+    - name: ext-proc-ext-auth-gateway
+      namespace: gateway-system
+      sectionName: http
+  hostnames:
+    - ext-proc-ext-auth.example.test
+  rules:
+    # Public path: no filters applied — baseline for comparison.
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /public
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+      backendRefs:
+        - name: api
+          port: 80
+    # Protected path: WAF (ext_proc) + HTTP ExternalAuth on the same rule.
+    # This exercises the TypedPerFilterConfig merge path: both filters must
+    # produce independent per-route config entries without clobbering each other.
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /protected
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: cilium.io
+            kind: CiliumEnvoyExtProcFilter
+            name: coraza-waf
+        - type: ExternalAuth
+          externalAuth:
+            protocol: HTTP
+            backendRef:
+              name: external-authz
+              namespace: auth
+              port: 8080
+            http:
+              path: /check
+              allowedHeaders:
+                - X-Authz-Token
+              allowedResponseHeaders:
+                - X-Ext-Authz-Result
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+      backendRefs:
+        - name: api
+          port: 80
