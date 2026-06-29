@@ -1,0 +1,9 @@
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization.json
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../10-https-ext-auth-grpc-selfsigned-issuer.yaml
+  - ../11-https-ext-auth-grpc-gateway-certificate.yaml
+  - ../20-auth-referencegrant.yaml
+  - ../30-gateway.yaml
+  - ../31-httproute.yaml
