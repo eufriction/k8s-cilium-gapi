@@ -1,0 +1,19 @@
+# This ReferenceGrant is intentionally wrong: it grants from the correct
+# CiliumEnvoyExtProcFilter in backend-a but names a different target Service
+# ("ext-proc-other") rather than the actual backend ("coraza-waf-extproc").
+# This proves that the controller enforces grant specificity — a grant that
+# does not cover the actual backendRef must not unblock the reference.
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: allow-backend-a-ext-proc-filter-to-other-service
+  namespace: gateway-system
+spec:
+  from:
+    - group: cilium.io
+      kind: CiliumEnvoyExtProcFilter
+      namespace: backend-a
+  to:
+    - group: ""
+      kind: Service
+      name: ext-proc-other
