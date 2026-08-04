@@ -1,11 +1,10 @@
-experimental_monorepo_root = true
+monorepo_root = true
 
 [monorepo]
 config_roots = ["scenarios/*", "scenarios/*/*"]
 
 [settings]
 experimental = true
-unix_default_inline_shell_args = "bash -c"
 
 [env]
 NETSHOOT_VERSION = "v0.15"
