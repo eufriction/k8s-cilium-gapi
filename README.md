@@ -328,6 +328,7 @@ The latest main-branch LB run (`main (2b56ecd80b6)`) still reproduces failures i
 | `06-extensions`      | `grpc-ext-proc`                       |   ⏭️   |   ⏭️   |      ❌      |         ❌         |                            ✅                            |
 | `06-extensions`      | `http-ext-proc-waf`                   |   ⏭️   |   ⏭️   |      ❌      |         ❌         |                            ✅                            |
 | `06-extensions`      | `https-ext-proc-waf`                  |   ⏭️   |   ⏭️   |      ❌      |         ❌         |                            ✅                            |
+| `06-extensions`      | `https-ext-auth-http`                 |   ⏭️   |   ⏭️   |      ✅      |         ✅         |                            ✅                            |
 | `06-extensions`      | `https-ext-auth-grpc`                 |   ⏭️   |   ⏭️   |      ✅      |         ·          |                            ✅                            |
 | `06-extensions`      | `http-ext-proc-referencegrant`        |   ⏭️   |   ⏭️   |      ·       |         ·          |                            ✅                            |
 | `06-extensions`      | `http-ext-proc-ext-auth`              |   ⏭️   |   ⏭️   |      ·       |         ·          |                            ✅                            |
