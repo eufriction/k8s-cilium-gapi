@@ -186,8 +186,12 @@ gateway_ports() {
   local deadline=$((SECONDS + ${GATEWAY_PORTS_TIMEOUT:-60}))
 
   while ((SECONDS < deadline)); do
+    # `|| true` prevents a transient NotFound (exit != 0) from tripping the
+    # caller's `set -e` and silently killing the whole verify.sh — that
+    # would defeat this retry loop entirely, since svc not existing yet is
+    # an expected, normal condition here.
     svc_type=$(kubectl get svc "${svc_name}" -n "${ns}" \
-      -o jsonpath='{.spec.type}' 2>/dev/null)
+      -o jsonpath='{.spec.type}' 2>/dev/null || true)
     if [ -z "$svc_type" ]; then
       # Service doesn't exist yet — Cilium hasn't reconciled the Gateway
       sleep 1
@@ -202,7 +206,7 @@ gateway_ports() {
     fi
     # Service is LoadBalancer — wait for ingress IP
     lb_ip=$(kubectl get svc "${svc_name}" -n "${ns}" \
-      -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
+      -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
     if [ -n "$lb_ip" ]; then
       break
     fi
@@ -217,48 +221,57 @@ gateway_ports() {
     return
   fi
 
-  # Find the kindccm container whose IP matches the LB IP.
-  # cloud-provider-kind may still be spinning up the container, so retry.
-  local cid=""
-  local cid_deadline=$((SECONDS + 15))
-  while ((SECONDS < cid_deadline)); do
+  # Resolve every requested port by re-scanning live kindccm containers on
+  # every attempt, rather than committing to a single container id up front.
+  # cloud-provider-kind can recreate its proxy container (new container id)
+  # when a new LB port appears on an existing IP, e.g. right after a fresh
+  # Gateway is created during rapid scenario churn. Polling a fixed, possibly
+  # stale container id would wait forever for a port it will never gain.
+  local remaining=("$@")
+  local port_deadline=$((SECONDS + ${GATEWAY_PORT_TIMEOUT:-60}))
+  while ((SECONDS < port_deadline)) && ((${#remaining[@]} > 0)); do
+    local cid=""
     while IFS= read -r id; do
       local ip
       ip=$(docker inspect "$id" \
-        --format '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' 2>/dev/null)
+        --format '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' 2>/dev/null || true)
       if echo "$ip" | grep -qw "$lb_ip"; then
         cid="$id"
         break
       fi
     done < <(docker ps --filter "name=kindccm" --format '{{.ID}}' 2>/dev/null)
-    [ -n "$cid" ] && break
+
+    if [ -n "$cid" ]; then
+      local still_missing=()
+      for p in "${remaining[@]}"; do
+        local mapped
+        mapped=$(docker port "$cid" "${p}/tcp" 2>/dev/null | head -1 | cut -d: -f2 || true)
+        if [ -n "$mapped" ]; then
+          printf -v "PORT_${p}" '%s' "$mapped"
+        else
+          still_missing+=("$p")
+        fi
+      done
+      # Bash 3.2 (macOS system bash) treats `"${arr[@]}"` on an empty array
+      # as an unbound variable under `set -u`, which would kill the whole
+      # verify.sh via `set -e`. Guard every expansion of a possibly-empty
+      # array.
+      if ((${#still_missing[@]} > 0)); then
+        remaining=("${still_missing[@]}")
+      else
+        remaining=()
+      fi
+    fi
+    ((${#remaining[@]} == 0)) && break
     sleep 1
   done
 
-  if [ -z "$cid" ]; then
-    echo "WARNING: gateway_ports — no kindccm container for LB IP ${lb_ip}, falling back to 1:1" >&2
-    for p in "$@"; do
+  if ((${#remaining[@]} > 0)); then
+    for p in "${remaining[@]}"; do
+      echo "WARNING: gateway_ports — docker port ${p}/tcp not mapped for LB IP ${lb_ip}, falling back to ${p}" >&2
       printf -v "PORT_${p}" '%s' "${p}"
     done
-    return
   fi
-
-  # Look up each port from the container's port mappings.
-  # The port mapping may not be published yet even though the container exists,
-  # so retry each lookup for up to 10s.
-  for p in "$@"; do
-    local mapped="" port_deadline=$((SECONDS + 10))
-    while ((SECONDS < port_deadline)); do
-      mapped=$(docker port "$cid" "${p}/tcp" 2>/dev/null | head -1 | cut -d: -f2)
-      if [ -n "$mapped" ]; then break; fi
-      sleep 1
-    done
-    if [ -z "$mapped" ]; then
-      echo "WARNING: gateway_ports — docker port ${p}/tcp not mapped for container ${cid}, falling back to ${p}" >&2
-      mapped="$p"
-    fi
-    printf -v "PORT_${p}" '%s' "$mapped"
-  done
 }
 
 # skip_on_versions <versions> [message]
