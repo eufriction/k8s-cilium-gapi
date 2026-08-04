@@ -155,12 +155,12 @@ Branch builds set `CILIUM_VERSION = "branch"`, which never matches a release ver
 
 ### Branch builds
 
-To test a locally-built Cilium branch, first build the images in the Cilium repo:
+To test a locally-built Cilium branch, first build the images in the Cilium repo with the running kind cluster:
 
 ```sh
 cd ../cilium
-make dev-docker-image
-make dev-docker-operator-generic-image
+make kind-image-agent
+make kind-image-operator
 ```
 
 Then copy `branch.toml` and adjust `CILIUM_CHART_DIR` if needed:
@@ -171,11 +171,11 @@ cp versions/branch.toml mise.local.toml
 
 The defaults in `branch.toml` match the standard `make` output:
 
-| Variable                | Description                                                  | Default                                  |
-| ----------------------- | ------------------------------------------------------------ | ---------------------------------------- |
-| `CILIUM_CHART_DIR`      | Path to the local Helm chart directory                       | `../cilium/install/kubernetes/cilium`    |
-| `CILIUM_AGENT_IMAGE`    | Agent image from `make dev-docker-image`                     | `quay.io/cilium/cilium-dev:latest`       |
-| `CILIUM_OPERATOR_IMAGE` | Operator image from `make dev-docker-operator-generic-image` | `quay.io/cilium/operator-generic:latest` |
+| Variable                | Description                                                  | Default                                        |
+| ----------------------- | ------------------------------------------------------------ | ---------------------------------------------- |
+| `CILIUM_CHART_DIR`      | Path to the local Helm chart directory                       | `../cilium/install/kubernetes/cilium`          |
+| `CILIUM_AGENT_IMAGE`    | Agent image from `make dev-docker-image`                     | `localhost:5000/cilium/cilium-dev:local`       |
+| `CILIUM_OPERATOR_IMAGE` | Operator image from `make dev-docker-operator-generic-image` | `localhost:5000/cilium/operator-generic:local` |
 
 Then run the standard workflow - `cluster:start` handles image loading and Helm install automatically:
 
