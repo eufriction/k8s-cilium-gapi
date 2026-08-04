@@ -130,12 +130,13 @@ rm mise.local.toml
 
 Available profiles in `versions/`:
 
-| File                | Cilium       | Gateway API | Notes                             |
-| ------------------- | ------------ | ----------- | --------------------------------- |
-| `1.19.1.toml`       | 1.19.1       | 1.4.1       | Oldest patch, regression baseline |
-| `1.19.5.toml`       | 1.19.5       | 1.4.1       | Retained stable patch             |
-| `1.20.0-pre.3.toml` | 1.20.0-pre.3 | 1.5.1       | Retained pre-release              |
-| `branch.toml`       | local build  | 1.5.1       | Uses `make dev-docker-*` output   |
+| File          | Cilium      | Gateway API | Notes                             |
+| ------------- | ----------- | ----------- | --------------------------------- |
+| `1.19.1.toml` | 1.19.1      | 1.4.1       | Oldest patch, regression baseline |
+| `1.19.5.toml` | 1.19.5      | 1.4.1       | Retained stable patch             |
+| `1.19.6.toml` | 1.19.6      | 1.4.1       | Latest 1.19.x patch               |
+| `1.20.0.toml` | 1.20.0      | 1.6.1       | Latest stable release             |
+| `branch.toml` | local build | 1.6.1       | Uses `make dev-docker-*` output   |
 
 Each profile sets `CILIUM_VERSION`, `GATEWAY_API_VERSION`, and `X_*` env vars that control version-conditional verify behavior (expected status messages, TLSRoute API version).
 

@@ -1,7 +1,0 @@
-# Cilium 1.19.3 — latest stable (default in mise.toml)
-[env]
-CILIUM_VERSION = "1.19.3"
-GATEWAY_API_VERSION = "1.4.1"
-X_GRPCROUTE_ACCEPTED_MSG = "Accepted HTTPRoute"
-X_TLSROUTE_ACCEPTED_MSG = "Accepted HTTPRoute"
-X_TLSROUTE_API_VERSION = "v1alpha2"
