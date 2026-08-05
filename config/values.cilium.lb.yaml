@@ -13,6 +13,11 @@ gatewayAPI:
   enableAlpn: true
   # Required for CiliumEnvoyExtProcFilter ExtensionRef on HTTPRoute/GRPCRoute.
   enableExtensionRefFilters: true
+  # Required for cloud-provider-kind >=0.11
+  externalTrafficPolicy: Local
+  # Disable host networking so Cilium creates LoadBalancer Services.
+  hostNetwork:
+    enabled: false
 
 ingressController:
   enabled: false
