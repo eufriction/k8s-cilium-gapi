@@ -10,11 +10,11 @@ wait_parallel \
   "pod/api -n backend-b --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s"
 
 # Tier 2: gateway
-kubectl wait gateway/header-match-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
+wait_gateway header-match-gateway gateway-system
 
 # Tier 3: routes in parallel
-kubectl wait httproute/backend-a-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
-kubectl wait httproute/backend-b-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
+wait_route httproute backend-a-route backend-a &
+wait_route httproute backend-b-route backend-b &
 wait
 
 # --- Listener status assertions ---
@@ -27,7 +27,6 @@ retry_until 10 curl -fsS -H 'Host: api.example.test' -H 'X-Version: v1' http://l
 body=$(curl -fsS -H 'Host: api.example.test' -H 'X-Version: v1' http://localhost:"${PORT_80}"/headers)
 if ! echo "$body" | grep -q '"X-Routed-To"' || ! echo "$body" | grep -q 'backend-a'; then
   echo "FAIL: X-Version: v1 not routed to backend-a" >&2
-  echo "$body" >&2
   exit 1
 fi
 echo "PASS: X-Version: v1 → backend-a"
@@ -36,15 +35,10 @@ echo "PASS: X-Version: v1 → backend-a"
 body=$(curl -fsS -H 'Host: api.example.test' -H 'X-Version: v2' http://localhost:"${PORT_80}"/headers)
 if ! echo "$body" | grep -q '"X-Routed-To"' || ! echo "$body" | grep -q 'backend-b'; then
   echo "FAIL: X-Version: v2 not routed to backend-b" >&2
-  echo "$body" >&2
   exit 1
 fi
 echo "PASS: X-Version: v2 → backend-b"
 
 # Test 3: No X-Version header → 404 (no matching route)
-http_code=$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: api.example.test' http://localhost:"${PORT_80}"/headers)
-[ "$http_code" = "404" ] || {
-  echo "FAIL: expected 404 without X-Version header, got $http_code" >&2
-  exit 1
-}
+assert_http "http://localhost:${PORT_80}/headers" 404 -H 'Host: api.example.test'
 echo "PASS: no X-Version header → 404 (no matching route)"

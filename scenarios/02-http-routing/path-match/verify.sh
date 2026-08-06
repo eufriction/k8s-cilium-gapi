@@ -10,11 +10,11 @@ wait_parallel \
   "pod/api -n backend-b --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s"
 
 # Tier 2: gateway
-kubectl wait gateway/path-match-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
+wait_gateway path-match-gateway gateway-system
 
 # Tier 3: routes in parallel
-kubectl wait httproute/backend-a-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
-kubectl wait httproute/backend-b-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
+wait_route httproute backend-a-route backend-a &
+wait_route httproute backend-b-route backend-b &
 wait
 
 # --- Listener status assertions ---
@@ -27,7 +27,6 @@ retry_until 10 curl -fsS -H 'Host: app.example.test' http://localhost:"${PORT_80
 body=$(curl -fsS -H 'Host: app.example.test' http://localhost:"${PORT_80}"/api/headers)
 if ! echo "$body" | grep -q '"X-Routed-To"' || ! echo "$body" | grep -q 'backend-a'; then
   echo "FAIL: /api/headers not routed to backend-a" >&2
-  echo "$body" >&2
   exit 1
 fi
 echo "PASS: /api/headers → backend-a"
@@ -36,17 +35,14 @@ echo "PASS: /api/headers → backend-a"
 body=$(curl -fsS -H 'Host: app.example.test' http://localhost:"${PORT_80}"/headers)
 if ! echo "$body" | grep -q '"X-Routed-To"' || ! echo "$body" | grep -q 'backend-b'; then
   echo "FAIL: /headers not routed to backend-b" >&2
-  echo "$body" >&2
   exit 1
 fi
 echo "PASS: /headers → backend-b"
 
 # Test 3: Verify /api prefix takes precedence over / catch-all
 body=$(curl -fsS -H 'Host: app.example.test' http://localhost:"${PORT_80}"/api/get)
-echo "$body" | grep -q 'backend-a' ||
-  {
-    echo "FAIL: /api/get not routed to backend-a (prefix precedence)" >&2
-    echo "$body" >&2
-    exit 1
-  }
+echo "$body" | grep -q 'backend-a' || {
+  echo "FAIL: /api prefix did not take precedence over catch-all" >&2
+  exit 1
+}
 echo "PASS: /api/get → backend-a (prefix takes precedence over catch-all)"
