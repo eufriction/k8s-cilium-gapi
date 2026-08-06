@@ -17,10 +17,10 @@ wait_parallel \
   "certificate/https-ext-auth-grpc-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s"
 
 # Tier 2: gateway
-kubectl wait gateway/ext-auth-grpc-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
+wait_gateway ext-auth-grpc-gateway gateway-system
 
 # Tier 3: route
-kubectl wait httproute/ext-auth-grpc-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s"
+wait_route httproute ext-auth-grpc-route backend-a
 
 # --- Listener status assertions ---
 assert_listener_status ext-auth-grpc-gateway gateway-system https 1 HTTPRoute GRPCRoute
@@ -36,11 +36,7 @@ if echo "$public_body" | grep -qi 'x-ext-authz-result'; then
 fi
 echo "PASS: /public reaches backend without ExternalAuth header"
 
-status_code=$(curl -ksS -o /dev/null -w '%{http_code}' --resolve "$RESOLVE" "${BASE_URL}/grpc-auth/headers")
-if [ "$status_code" != "403" ]; then
-  echo "FAIL: /grpc-auth without token returned HTTP ${status_code} (expected 403)" >&2
-  exit 1
-fi
+assert_http "${BASE_URL}/grpc-auth/headers" 403 -k --resolve "$RESOLVE"
 echo "PASS: /grpc-auth without token denied (HTTP 403)"
 
 body=$(curl -kfsS --resolve "$RESOLVE" -H 'X-Authz-Token: allow' "${BASE_URL}/grpc-auth/headers")
@@ -56,10 +52,6 @@ if ! echo "$body" | grep -qi 'allowed-grpc'; then
 fi
 echo "PASS: /grpc-auth with token allowed and gRPC auth result forwarded"
 
-body=$(curl -kfsS --resolve "$RESOLVE" -H 'X-Authz-Token: allow' "${BASE_URL}/grpc-auth-shared/headers")
-if ! echo "$body" | grep -qi 'allowed-grpc'; then
-  echo "FAIL: /grpc-auth-shared allowed request missing allowed-grpc marker" >&2
-  echo "$body" >&2
-  exit 1
-fi
+assert_body "${BASE_URL}/grpc-auth-shared/headers" 'allowed-grpc' \
+  -k --resolve "$RESOLVE" -H 'X-Authz-Token: allow'
 echo "PASS: /grpc-auth-shared reuses gRPC ExternalAuth config"

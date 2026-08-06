@@ -17,10 +17,10 @@ wait_parallel \
   "certificate/https-ext-auth-http-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s"
 
 # Tier 2: gateway
-kubectl wait gateway/ext-auth-http-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
+wait_gateway ext-auth-http-gateway gateway-system
 
 # Tier 3: route
-kubectl wait httproute/ext-auth-http-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s"
+wait_route httproute ext-auth-http-route backend-a
 
 # --- Listener status assertions ---
 assert_listener_status ext-auth-http-gateway gateway-system https 1 HTTPRoute GRPCRoute
@@ -36,11 +36,7 @@ if echo "$public_body" | grep -qi 'x-ext-authz-result'; then
 fi
 echo "PASS: /public reaches backend without ExternalAuth header"
 
-status_code=$(curl -ksS -o /dev/null -w '%{http_code}' --resolve "$RESOLVE" "${BASE_URL}/http-auth/headers")
-if [ "$status_code" != "403" ]; then
-  echo "FAIL: /http-auth without token returned HTTP ${status_code} (expected 403)" >&2
-  exit 1
-fi
+assert_http "${BASE_URL}/http-auth/headers" 403 -k --resolve "$RESOLVE"
 echo "PASS: /http-auth without token denied (HTTP 403)"
 
 body=$(curl -kfsS --resolve "$RESOLVE" -H 'X-Authz-Token: allow' "${BASE_URL}/http-auth/headers")
@@ -56,12 +52,8 @@ if ! echo "$body" | grep -qi 'allowed-http'; then
 fi
 echo "PASS: /http-auth with token allowed and auth result forwarded"
 
-body=$(curl -kfsS --resolve "$RESOLVE" -H 'X-Authz-Token: allow' "${BASE_URL}/http-auth-shared/headers")
-if ! echo "$body" | grep -qi 'allowed-http'; then
-  echo "FAIL: /http-auth-shared allowed request missing allowed-http marker" >&2
-  echo "$body" >&2
-  exit 1
-fi
+assert_body "${BASE_URL}/http-auth-shared/headers" 'allowed-http' \
+  -k --resolve "$RESOLVE" -H 'X-Authz-Token: allow'
 echo "PASS: /http-auth-shared reuses HTTP ExternalAuth config"
 
 status_code=$(curl -ksS -o /dev/null -w '%{http_code}' --resolve "$RESOLVE" "${BASE_URL}/http-auth-variant/headers")
@@ -71,10 +63,6 @@ if [ "$status_code" != "403" ]; then
 fi
 echo "PASS: /http-auth-variant without variant header denied (HTTP 403)"
 
-body=$(curl -kfsS --resolve "$RESOLVE" -H 'X-Debug-Token: demo' "${BASE_URL}/http-auth-variant/headers")
-if ! echo "$body" | grep -qi 'allowed-http'; then
-  echo "FAIL: /http-auth-variant allowed request missing allowed-http marker" >&2
-  echo "$body" >&2
-  exit 1
-fi
+assert_body "${BASE_URL}/http-auth-variant/headers" 'allowed-http' \
+  -k --resolve "$RESOLVE" -H 'X-Debug-Token: demo'
 echo "PASS: /http-auth-variant uses distinct HTTP ExternalAuth config"

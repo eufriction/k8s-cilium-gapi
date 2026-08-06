@@ -22,9 +22,7 @@ wait_parallel \
 
 gw_timeout="${GW_READY_TIMEOUT:-30}s"
 route_timeout="${ROUTE_READY_TIMEOUT:-30}s"
-kubectl wait gateway/ext-proc-conflict-resolution-gateway -n gateway-system \
-  --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' \
-  --timeout="$gw_timeout"
+wait_gateway ext-proc-conflict-resolution-gateway gateway-system
 kubectl wait gateway/ext-proc-conflict-resolution-gateway -n gateway-system \
   --for='jsonpath={.status.conditions[?(@.type=="Programmed")].status}=True' \
   --timeout="$gw_timeout"
@@ -39,9 +37,7 @@ tie_and_ordered_routes=(
 )
 for route in "${tie_and_ordered_routes[@]}"; do
   IFS='|' read -r namespace name <<<"$route"
-  kubectl wait httproute/"${name}" -n "$namespace" \
-    --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' \
-    --timeout="$route_timeout"
+  wait_route httproute "$name" "$namespace"
   kubectl wait httproute/"${name}" -n "$namespace" \
     --for='jsonpath={.status.parents[0].conditions[?(@.type=="ResolvedRefs")].status}=True' \
     --timeout="$route_timeout"
@@ -49,9 +45,7 @@ done
 
 echo "PASS: six valid HTTPRoutes are Accepted=True and ResolvedRefs=True"
 
-kubectl wait httproute/invalid-route -n backend-a \
-  --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' \
-  --timeout="$route_timeout"
+wait_route httproute invalid-route backend-a
 kubectl wait httproute/invalid-route -n backend-a \
   --for='jsonpath={.status.parents[0].conditions[?(@.type=="ResolvedRefs")].status}=False' \
   --timeout="$route_timeout"

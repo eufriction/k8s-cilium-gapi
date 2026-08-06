@@ -20,14 +20,10 @@ fi
 echo "PASS: configured ext_authz backend Service is missing"
 
 # Tier 2: gateway
-kubectl wait gateway/ext-auth-missing-backend-gateway -n gateway-system \
-  --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' \
-  --timeout="${GW_READY_TIMEOUT:-30}s"
+wait_gateway ext-auth-missing-backend-gateway gateway-system
 
 # Tier 3: route
-kubectl wait httproute/ext-auth-missing-backend-route -n backend-a \
-  --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' \
-  --timeout="${ROUTE_READY_TIMEOUT:-30}s"
+wait_route httproute ext-auth-missing-backend-route backend-a
 echo "PASS: HTTPRoute Accepted=True (route is attached to gateway)"
 
 assert_listener_status ext-auth-missing-backend-gateway gateway-system http 1 HTTPRoute GRPCRoute

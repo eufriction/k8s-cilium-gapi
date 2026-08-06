@@ -24,14 +24,10 @@ wait_parallel \
   "deployment/coraza-waf-extproc -n gateway-system --for=condition=Available --timeout=30s"
 
 # Tier 2: gateway
-kubectl wait gateway/rg-gateway -n gateway-system \
-  --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' \
-  --timeout="${GW_READY_TIMEOUT:-30}s"
+wait_gateway rg-gateway gateway-system
 
 # Tier 3: route syntactically accepted by the gateway
-kubectl wait httproute/rg-route -n backend-a \
-  --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' \
-  --timeout="${ROUTE_READY_TIMEOUT:-30}s"
+wait_route httproute rg-route backend-a
 echo "PASS: HTTPRoute Accepted=True (route is attached to gateway)"
 
 # --- ReferenceGrant enforcement: ResolvedRefs must be False ---

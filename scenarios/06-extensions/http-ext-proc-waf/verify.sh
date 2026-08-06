@@ -12,10 +12,10 @@ wait_parallel \
   "deployment/coraza-waf-extproc -n gateway-system --for=condition=Available --timeout=30s"
 
 # Tier 2: gateway
-kubectl wait gateway/waf-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
+wait_gateway waf-gateway gateway-system
 
 # Tier 3: route
-kubectl wait httproute/waf-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s"
+wait_route httproute waf-route backend-a
 kubectl wait httproute/waf-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="ResolvedRefs")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s"
 
 # --- Listener status assertions ---

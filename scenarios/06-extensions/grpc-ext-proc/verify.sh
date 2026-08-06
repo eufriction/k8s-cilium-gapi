@@ -20,10 +20,10 @@ wait_parallel \
   "certificate/grpc-ext-proc-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s"
 
 # Tier 2: gateway
-kubectl wait gateway/grpc-ext-proc-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
+wait_gateway grpc-ext-proc-gateway gateway-system
 
 # Tier 3: route
-kubectl wait grpcroute/grpc-ext-proc-route -n grpc-backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s"
+wait_route grpcroute grpc-ext-proc-route grpc-backend-a
 kubectl wait grpcroute/grpc-ext-proc-route -n grpc-backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="ResolvedRefs")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s"
 
 # --- Listener status assertions ---

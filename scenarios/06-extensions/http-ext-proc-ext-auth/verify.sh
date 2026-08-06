@@ -24,14 +24,10 @@ wait_parallel \
   "deployment/external-authz -n auth --for=condition=Available --timeout=30s"
 
 # Tier 2: gateway
-kubectl wait gateway/ext-proc-ext-auth-gateway -n gateway-system \
-  --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' \
-  --timeout="${GW_READY_TIMEOUT:-30}s"
+wait_gateway ext-proc-ext-auth-gateway gateway-system
 
 # Tier 3: route
-kubectl wait httproute/ext-proc-ext-auth-route -n backend-a \
-  --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' \
-  --timeout="${ROUTE_READY_TIMEOUT:-30}s"
+wait_route httproute ext-proc-ext-auth-route backend-a
 kubectl wait httproute/ext-proc-ext-auth-route -n backend-a \
   --for='jsonpath={.status.parents[0].conditions[?(@.type=="ResolvedRefs")].status}=True' \
   --timeout="${ROUTE_READY_TIMEOUT:-30}s"
@@ -73,12 +69,7 @@ fi
 echo "PASS: /protected with auth token — both WAF and ExternalAuth filters active (coexistence confirmed)"
 
 # Test 3: /protected without auth token — ExternalAuth must deny
-status_code=$(curl -s -o /dev/null -w '%{http_code}' \
-  -H "Host: ${HOST}" "${BASE_URL}/protected/headers")
-if [ "$status_code" != "403" ]; then
-  echo "FAIL: /protected without token returned HTTP ${status_code} (expected 403 from ExternalAuth)" >&2
-  exit 1
-fi
+assert_http "${BASE_URL}/protected/headers" 403 -H "Host: ${HOST}"
 echo "PASS: /protected without token denied (HTTP 403)"
 
 # Test 4: /protected with auth token but SQL injection — WAF must block

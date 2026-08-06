@@ -17,10 +17,10 @@ wait_parallel \
   "certificate/https-ext-proc-waf-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s"
 
 # Tier 2: gateway
-kubectl wait gateway/https-waf-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
+wait_gateway https-waf-gateway gateway-system
 
 # Tier 3: route
-kubectl wait httproute/https-waf-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s"
+wait_route httproute https-waf-route backend-a
 kubectl wait httproute/https-waf-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="ResolvedRefs")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s"
 
 # --- Listener status assertions ---
