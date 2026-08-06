@@ -1,0 +1,186 @@
+apiVersion: cilium.io/v2alpha1
+kind: CiliumEnvoyExtProcFilter
+metadata:
+  name: oldest-first
+  namespace: backend-a
+spec:
+  backendRef:
+    name: coraza-waf-extproc
+    namespace: gateway-system
+    port: 4317
+  failureModeAllow: false
+  processingMode:
+    requestHeaderMode: SEND
+    responseHeaderMode: SKIP
+    requestBodyMode: NONE
+    responseBodyMode: NONE
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumEnvoyExtProcFilter
+metadata:
+  name: shared-a
+  namespace: backend-a
+spec:
+  backendRef:
+    name: coraza-waf-extproc
+    namespace: gateway-system
+    port: 4317
+  failureModeAllow: false
+  processingMode:
+    requestHeaderMode: SEND
+    responseHeaderMode: SKIP
+    requestBodyMode: NONE
+    responseBodyMode: NONE
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumEnvoyExtProcFilter
+metadata:
+  name: oldest-last
+  namespace: backend-a
+spec:
+  backendRef:
+    name: coraza-waf-extproc
+    namespace: gateway-system
+    port: 4317
+  failureModeAllow: false
+  processingMode:
+    requestHeaderMode: SEND
+    responseHeaderMode: SKIP
+    requestBodyMode: NONE
+    responseBodyMode: NONE
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumEnvoyExtProcFilter
+metadata:
+  name: a-tie-last
+  namespace: backend-a
+spec:
+  backendRef:
+    name: coraza-waf-extproc
+    namespace: gateway-system
+    port: 4317
+  failureModeAllow: false
+  processingMode:
+    requestHeaderMode: SEND
+    responseHeaderMode: SKIP
+    requestBodyMode: NONE
+    responseBodyMode: NONE
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumEnvoyExtProcFilter
+metadata:
+  name: auth-extproc
+  namespace: backend-a
+spec:
+  backendRef:
+    name: coraza-waf-extproc
+    namespace: gateway-system
+    port: 4317
+  failureModeAllow: false
+  processingMode:
+    requestHeaderMode: SEND
+    responseHeaderMode: SKIP
+    requestBodyMode: NONE
+    responseBodyMode: NONE
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumEnvoyExtProcFilter
+metadata:
+  name: b-tie-first
+  namespace: backend-b
+spec:
+  backendRef:
+    name: coraza-waf-extproc
+    namespace: gateway-system
+    port: 4317
+  failureModeAllow: false
+  processingMode:
+    requestHeaderMode: SEND
+    responseHeaderMode: SKIP
+    requestBodyMode: NONE
+    responseBodyMode: NONE
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumEnvoyExtProcFilter
+metadata:
+  name: shared-b
+  namespace: backend-b
+spec:
+  backendRef:
+    name: coraza-waf-extproc
+    namespace: gateway-system
+    port: 4317
+  failureModeAllow: false
+  processingMode:
+    requestHeaderMode: SEND
+    responseHeaderMode: SKIP
+    requestBodyMode: NONE
+    responseBodyMode: NONE
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumEnvoyExtProcFilter
+metadata:
+  name: b-tie-last
+  namespace: backend-b
+spec:
+  backendRef:
+    name: coraza-waf-extproc
+    namespace: gateway-system
+    port: 4317
+  failureModeAllow: false
+  processingMode:
+    requestHeaderMode: SEND
+    responseHeaderMode: SKIP
+    requestBodyMode: NONE
+    responseBodyMode: NONE
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumEnvoyExtProcFilter
+metadata:
+  name: b-name-tie-last
+  namespace: backend-b
+spec:
+  backendRef:
+    name: coraza-waf-extproc
+    namespace: gateway-system
+    port: 4317
+  failureModeAllow: false
+  processingMode:
+    requestHeaderMode: SEND
+    responseHeaderMode: SKIP
+    requestBodyMode: NONE
+    responseBodyMode: NONE
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumEnvoyExtProcFilter
+metadata:
+  name: newest-first
+  namespace: backend-b
+spec:
+  backendRef:
+    name: coraza-waf-extproc
+    namespace: gateway-system
+    port: 4317
+  failureModeAllow: false
+  processingMode:
+    requestHeaderMode: SEND
+    responseHeaderMode: SKIP
+    requestBodyMode: NONE
+    responseBodyMode: NONE
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumEnvoyExtProcFilter
+metadata:
+  name: newest-last
+  namespace: backend-b
+spec:
+  backendRef:
+    name: coraza-waf-extproc
+    namespace: gateway-system
+    port: 4317
+  failureModeAllow: false
+  processingMode:
+    requestHeaderMode: SEND
+    responseHeaderMode: SKIP
+    requestBodyMode: NONE
+    responseBodyMode: NONE

@@ -1,0 +1,107 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/gateway.networking.k8s.io/httproute_v1.json
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: a-tie-route
+  namespace: backend-a
+  labels:
+    app.kubernetes.io/part-of: demo
+spec:
+  parentRefs:
+    - name: ext-proc-conflict-resolution-gateway
+      namespace: gateway-system
+      sectionName: http
+  hostnames:
+    - ext-proc-namespace-a.example.test
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: cilium.io
+            kind: CiliumEnvoyExtProcFilter
+            name: shared-a
+        - type: ExtensionRef
+          extensionRef:
+            group: cilium.io
+            kind: CiliumEnvoyExtProcFilter
+            name: a-tie-last
+      backendRefs:
+        - name: api
+          port: 80
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: a-tie-route
+  namespace: backend-b
+  labels:
+    app.kubernetes.io/part-of: demo
+spec:
+  parentRefs:
+    - name: ext-proc-conflict-resolution-gateway
+      namespace: gateway-system
+      sectionName: http
+  hostnames:
+    - ext-proc-namespace-b.example.test
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: cilium.io
+            kind: CiliumEnvoyExtProcFilter
+            name: b-tie-first
+        - type: ExtensionRef
+          extensionRef:
+            group: cilium.io
+            kind: CiliumEnvoyExtProcFilter
+            name: shared-b
+        - type: ExtensionRef
+          extensionRef:
+            group: cilium.io
+            kind: CiliumEnvoyExtProcFilter
+            name: b-tie-last
+      backendRefs:
+        - name: api
+          port: 80
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: b-tie-route
+  namespace: backend-b
+  labels:
+    app.kubernetes.io/part-of: demo
+spec:
+  parentRefs:
+    - name: ext-proc-conflict-resolution-gateway
+      namespace: gateway-system
+      sectionName: http
+  hostnames:
+    - ext-proc-name-tie.example.test
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: cilium.io
+            kind: CiliumEnvoyExtProcFilter
+            name: shared-b
+        - type: ExtensionRef
+          extensionRef:
+            group: cilium.io
+            kind: CiliumEnvoyExtProcFilter
+            name: b-name-tie-last
+      backendRefs:
+        - name: api
+          port: 80

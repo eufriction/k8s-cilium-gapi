@@ -1,0 +1,45 @@
+[env]
+SCENARIO_SKIP_VERSIONS = "1.19.1 1.19.3 1.19.4 1.19.5 1.19.6 1.20.0-pre.1 1.20.0-pre.2"
+
+[tasks.start]
+extends = "scenario:start"
+description = "Deploy the ext_proc conflict-resolution scenario"
+depends = ["//:kind:load:apps{% if usage.verbose %} --verbose{% endif %}"]
+run = """
+if [ -n "${SCENARIO_SKIP_VERSIONS:-}" ]; then
+  for _v in ${SCENARIO_SKIP_VERSIONS}; do
+    if [ "$_v" = "${CILIUM_VERSION}" ]; then
+      echo "SKIP: known broken on Cilium ${CILIUM_VERSION}"
+      exit 0
+    fi
+  done
+fi
+kubectl rollout status daemonset/cilium -n kube-system --timeout=60s >/dev/null
+if [ "${FIXTURE_DEPLOYED:-}" = "true" ] && [ -d gateway ]; then
+  kubectl kustomize gateway/ --load-restrictor=LoadRestrictionsNone | kubectl apply -f -
+else
+  kubectl apply -k .
+fi
+
+# Recreate the routes in phases so the precedence test does not depend on
+# whether one bulk apply happens to cross a Kubernetes timestamp boundary.
+kubectl delete \
+  -f 31-oldest-route.yaml \
+  -f 32-httproutes.yaml \
+  -f 33-newer-routes.yaml \
+  --ignore-not-found --wait=true --timeout=60s
+sleep 1
+kubectl apply -f 31-oldest-route.yaml
+sleep 1
+kubectl apply -f 32-httproutes.yaml
+sleep 1
+kubectl apply -f 33-newer-routes.yaml
+mise run :verify{% if usage.delete %} --delete{% endif %}
+"""
+
+[tasks.verify]
+extends = "scenario:verify"
+description = "Verify ext_proc ordering, auth placement, and fail-closed behavior"
+
+[tasks.delete]
+extends = "scenario:delete"

@@ -1,0 +1,12 @@
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization.json
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../instances/coraza-waf-extproc
+  - ../20-ext-proc-referencegrant.yaml
+  - ../21-auth-referencegrant.yaml
+  - ../30-gateway.yaml
+  - ../31-ext-proc-filters.yaml
+  - ../31-oldest-route.yaml
+  - ../32-httproutes.yaml
+  - ../33-newer-routes.yaml

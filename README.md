@@ -257,6 +257,7 @@ Read each scenario README for the scenario-specific test flow.
 | `06-extensions`      | [`http-ext-auth-missing-backend`](scenarios/06-extensions/http-ext-auth-missing-backend/README.md)                  | HTTPRoute ExternalAuth fails closed when the configured ext_authz backend Service is missing                         | ✅ Pass                    |
 | `06-extensions`      | [`http-ext-proc-referencegrant`](scenarios/06-extensions/http-ext-proc-referencegrant/README.md)                    | `CiliumEnvoyExtProcFilter` cross-namespace backendRef blocked when `ReferenceGrant` does not cover the ref           | ⚠️ Broken on some versions |
 | `06-extensions`      | [`http-ext-proc-ext-auth`](scenarios/06-extensions/http-ext-proc-ext-auth/README.md)                                | `CiliumEnvoyExtProcFilter` WAF and `ExternalAuth` coexisting on the same HTTPRoute rule                              | ⚠️ Broken on some versions |
+| `06-extensions`      | [`http-ext-proc-conflict-resolution`](scenarios/06-extensions/http-ext-proc-conflict-resolution/README.md)          | Gateway API precedence for ext_proc order, auth placement, and invalid-reference fail-closed behavior                | ⚠️ Broken on some versions |
 | `06-extensions`      | `kyverno-route-governance`                                                                                          | Mutating + validating policies for Gateway API route hygiene                                                         | Planned                    |
 | `06-extensions`      | `http-rate-limit`                                                                                                   | HTTPRoute with Envoy rate-limit filter                                                                               | Planned                    |
 | `07-clustermesh`     | `grpc`                                                                                                              | Cross-cluster gRPC with Cilium ClusterMesh                                                                           | Planned                    |
@@ -331,6 +332,7 @@ The preceding release thresholds are based on the [Cilium v1.19.5](https://githu
 | `06-extensions`      | `http-ext-auth-missing-backend`       |   ⏭️   |   ⏭️   |   ⏭️   |   ·    |         ·          |                            ·                             |
 | `06-extensions`      | `http-ext-proc-referencegrant`        |   ⏭️   |   ⏭️   |   ❌   |   ❌   |         ·          |                            ✅                            |
 | `06-extensions`      | `http-ext-proc-ext-auth`              |   ⏭️   |   ⏭️   |   ❌   |   ❌   |         ·          |                            ✅                            |
+| `06-extensions`      | `http-ext-proc-conflict-resolution`   |   ⏭️   |   ⏭️   |   ⏭️   |   ·    |         ·          |                            ·                             |
 
 **Legend:** ✅ = scenario passed, ❌ = scenario failed, ⏭️ = intentionally skipped by version guard (known bug or unsupported feature), · = no result recorded.
 
