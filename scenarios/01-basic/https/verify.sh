@@ -9,19 +9,19 @@ wait_parallel \
   "pod/api -n backend-b --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \
   "certificate/https-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s"
 # Tier 2: gateway
-kubectl wait gateway/https-multi-namespace-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
+wait_gateway https-multi-namespace-gateway gateway-system
 # Tier 3: routes in parallel
-kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
-kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
+wait_route httproute backend-a-https-route backend-a &
+wait_route httproute backend-b-https-route backend-b &
 wait
 
 # --- Listener status assertions ---
 assert_listener_status https-multi-namespace-gateway gateway-system https 2 HTTPRoute GRPCRoute
 
-retry_until 10 curl -kfsS --resolve "https-a.example.test:${PORT_443}:127.0.0.1" https://https-a.example.test:"${PORT_443}"/headers >/dev/null
-echo "PASS: https-a.example.test"
-curl -kfsS --resolve "https-b.example.test:${PORT_443}:127.0.0.1" https://https-b.example.test:"${PORT_443}"/headers >/dev/null
-echo "PASS: https-b.example.test"
+retry_until 10 assert_http "https://https-a.example.test:${PORT_443}/headers" 200 \
+  -k --resolve "https-a.example.test:${PORT_443}:127.0.0.1"
+assert_http "https://https-b.example.test:${PORT_443}/headers" 200 \
+  -k --resolve "https-b.example.test:${PORT_443}:127.0.0.1"
 
 # cilium/cilium#43881
 msg=$(kubectl get httproute/backend-a-https-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')

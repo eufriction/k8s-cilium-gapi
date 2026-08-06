@@ -11,11 +11,11 @@ wait_parallel \
   "certificate/grpc-multi-namespace-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s"
 
 # Tier 2: gateway
-kubectl wait gateway/grpc-multi-namespace-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
+wait_gateway grpc-multi-namespace-gateway gateway-system
 
 # Tier 3: routes in parallel
-kubectl wait grpcroute/grpc-backend-a-route -n grpc-backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
-kubectl wait grpcroute/grpc-backend-b-route -n grpc-backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
+wait_route grpcroute grpc-backend-a-route grpc-backend-a &
+wait_route grpcroute grpc-backend-b-route grpc-backend-b &
 wait
 
 # --- Listener status assertions ---

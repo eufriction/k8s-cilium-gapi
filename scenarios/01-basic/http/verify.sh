@@ -10,20 +10,20 @@ wait_parallel \
   "pod/api -n backend-b --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s"
 
 # Tier 2: gateway
-kubectl wait gateway/multi-namespace-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
+wait_gateway multi-namespace-gateway gateway-system
 
 # Tier 3: routes in parallel
-kubectl wait httproute/backend-a-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
-kubectl wait httproute/backend-b-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
+wait_route httproute backend-a-route backend-a &
+wait_route httproute backend-b-route backend-b &
 wait
 
 # --- Listener status assertions ---
 assert_listener_status multi-namespace-gateway gateway-system http 2 HTTPRoute GRPCRoute
 
-retry_until 10 curl -fsS -H 'Host: backend-a.example.test' http://localhost:"${PORT_80}"/headers >/dev/null
-echo "PASS: backend-a HTTP"
-curl -fsS -H 'Host: backend-b.example.test' http://localhost:"${PORT_80}"/headers >/dev/null
-echo "PASS: backend-b HTTP"
+retry_until 10 assert_http "http://localhost:${PORT_80}/headers" 200 \
+  -H 'Host: backend-a.example.test'
+assert_http "http://localhost:${PORT_80}/headers" 200 \
+  -H 'Host: backend-b.example.test'
 
 # cilium/cilium#43881 — Accepted message
 msg=$(kubectl get httproute/backend-a-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
