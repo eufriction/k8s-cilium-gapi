@@ -230,9 +230,19 @@ description = "Run all scenarios with shared fixture for faster execution"
 usage = 'flag "-v --verbose" env="VERBOSE"'
 run = """
 set -euo pipefail
+
+cleanup_fixture() {
+  local run_status=$?
+  trap - EXIT
+  if ! mise run fixture:delete; then
+    echo "WARNING: shared fixture cleanup failed" >&2
+  fi
+  exit "$run_status"
+}
+trap cleanup_fixture EXIT
+
 mise run fixture:start{% if usage.verbose %} --verbose{% endif %}
 FIXTURE_DEPLOYED=true mise run --continue-on-error --jobs 1 '//scenarios/...:start' --delete
-mise run fixture:delete
 """
 
 [tasks.clean]
