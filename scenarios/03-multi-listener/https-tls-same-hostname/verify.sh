@@ -16,11 +16,11 @@ wait_parallel \
   "certificate/backend-b-mtls-client -n backend-b --for=condition=Ready --timeout=10s"
 
 # Tier 2 — gateway
-kubectl wait gateway/https-tls-split-port-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
+wait_gateway https-tls-split-port-gateway gateway-system
 
 # Tier 3 — routes (parallel, manual & + wait)
-kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
-kubectl wait tlsroute/backend-b-tls-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
+wait_route httproute backend-a-https-route backend-a &
+wait_route tlsroute backend-b-tls-route backend-b &
 wait
 
 # --- Listener status assertions ---
@@ -28,7 +28,7 @@ assert_listener_status https-tls-split-port-gateway gateway-system https 1 HTTPR
 assert_listener_status https-tls-split-port-gateway gateway-system tls 1 TLSRoute
 
 # --- HTTPS termination (api.example.test on port 443) ---
-retry_until 10 curl -kfsS --resolve "api.example.test:${PORT_443}:127.0.0.1" https://api.example.test:"${PORT_443}"/headers >/dev/null
+retry_until 10 assert_http "https://api.example.test:${PORT_443}/headers" 200 -k --resolve "api.example.test:${PORT_443}:127.0.0.1"
 echo "PASS: HTTPS termination — api.example.test on port 443"
 
 # --- TLS passthrough with mTLS (api.example.test on port 9443) ---

@@ -10,18 +10,13 @@ wait_parallel \
   "pod/api -n backend-b --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s"
 
 # Tier 2: gateway
-kubectl wait gateway/http-listener-isolation-gateway -n gateway-system \
-  --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
+wait_gateway http-listener-isolation-gateway gateway-system
 
 # Tier 3: routes accepted in parallel
-kubectl wait httproute/route-catch-all -n backend-a \
-  --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
-kubectl wait httproute/route-wildcard-example -n backend-a \
-  --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
-kubectl wait httproute/route-wildcard-foo -n backend-b \
-  --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
-kubectl wait httproute/route-exact-abc-foo -n backend-b \
-  --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
+wait_route httproute route-catch-all backend-a &
+wait_route httproute route-wildcard-example backend-a &
+wait_route httproute route-wildcard-foo backend-b &
+wait_route httproute route-exact-abc-foo backend-b &
 wait
 
 # --- Listener status assertions ---
@@ -48,7 +43,7 @@ assert_listener() {
 }
 
 # Wait for the listener to become ready
-retry_until 10 curl -fsS -H 'Host: abc.foo.example.test' http://localhost:"${PORT_80}"/get >/dev/null
+retry_until 10 assert_http "http://localhost:${PORT_80}/get" 200 -H 'Host: abc.foo.example.test'
 
 # Test 1: Most specific — exact hostname abc.foo.example.test → exact-abc-foo listener
 assert_listener "abc.foo.example.test" "exact-abc-foo" \

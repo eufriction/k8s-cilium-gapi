@@ -10,20 +10,20 @@ wait_parallel \
   "pod/api -n backend-b --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s"
 
 # Tier 2: gateway
-kubectl wait gateway/http-shared-port-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
+wait_gateway http-shared-port-gateway gateway-system
 
 # Tier 3: routes in parallel
-kubectl wait httproute/backend-a-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
-kubectl wait httproute/backend-b-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
+wait_route httproute backend-a-route backend-a &
+wait_route httproute backend-b-route backend-b &
 wait
 
 # --- Listener status assertions ---
 assert_listener_status http-shared-port-gateway gateway-system http-a 1 HTTPRoute GRPCRoute
 assert_listener_status http-shared-port-gateway gateway-system http-b 1 HTTPRoute GRPCRoute
 
-retry_until 10 curl -fsS -H 'Host: api-a.example.test' http://localhost:"${PORT_80}"/headers >/dev/null
+retry_until 10 assert_http "http://localhost:${PORT_80}/headers" 200 -H 'Host: api-a.example.test'
 echo "PASS: api-a HTTP"
-curl -fsS -H 'Host: api-b.example.test' http://localhost:"${PORT_80}"/headers >/dev/null
+assert_http "http://localhost:${PORT_80}/headers" 200 -H 'Host: api-b.example.test'
 echo "PASS: api-b HTTP"
 
 msg=$(kubectl get httproute/backend-a-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')

@@ -13,13 +13,13 @@ wait_parallel \
   "certificate/same-hostname-split-ports-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s"
 
 # Tier 2 — gateway
-kubectl wait gateway/same-hostname-split-ports-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
+wait_gateway same-hostname-split-ports-gateway gateway-system
 
 # Tier 3 — routes (parallel, manual & + wait)
-kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
-kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
-kubectl wait grpcroute/backend-a-grpc-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
-kubectl wait grpcroute/backend-b-grpc-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
+wait_route httproute backend-a-https-route backend-a &
+wait_route httproute backend-b-https-route backend-b &
+wait_route grpcroute backend-a-grpc-route backend-a &
+wait_route grpcroute backend-b-grpc-route backend-b &
 wait
 
 # --- Listener status assertions ---
@@ -27,9 +27,9 @@ assert_listener_status same-hostname-split-ports-gateway gateway-system https 2 
 assert_listener_status same-hostname-split-ports-gateway gateway-system grpcs 2 HTTPRoute GRPCRoute
 
 echo "--- HTTPS checks (port 443, hostname api.example.test) ---"
-retry_until 10 curl -kfsS --resolve "api.example.test:${PORT_443}:127.0.0.1" https://api.example.test:"${PORT_443}"/headers >/dev/null
+retry_until 10 assert_http "https://api.example.test:${PORT_443}/headers" 200 -k --resolve "api.example.test:${PORT_443}:127.0.0.1"
 echo "PASS: HTTPS backend-a on port 443"
-curl -kfsS --resolve "api.example.test:${PORT_443}:127.0.0.1" https://api.example.test:"${PORT_443}"/b/headers >/dev/null
+assert_http "https://api.example.test:${PORT_443}/b/headers" 200 -k --resolve "api.example.test:${PORT_443}:127.0.0.1"
 echo "PASS: HTTPS backend-b on port 443 (path /b)"
 
 GRPC_IMPORT_PATH="${REPO_ROOT}/apps/backend-grpc/proto"

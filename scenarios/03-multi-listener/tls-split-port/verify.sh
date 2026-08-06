@@ -15,11 +15,11 @@ wait_parallel \
   "certificate/backend-b-mtls-client -n backend-b --for=condition=Ready --timeout=10s"
 
 # Tier 2: gateway
-kubectl wait gateway/tls-split-port-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
+wait_gateway tls-split-port-gateway gateway-system
 
 # Tier 3: routes in parallel
-kubectl wait tlsroute/backend-a-mtls-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
-kubectl wait tlsroute/backend-b-mtls-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
+wait_route tlsroute backend-a-mtls-route backend-a &
+wait_route tlsroute backend-b-mtls-route backend-b &
 wait
 
 # --- Listener status assertions ---

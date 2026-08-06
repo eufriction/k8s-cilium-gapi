@@ -11,12 +11,12 @@ wait_parallel \
   "pod/grpc-api -n backend-b --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \
   "certificate/shared-port-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s"
 # Tier 2: gateway
-kubectl wait gateway/shared-port-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
+wait_gateway shared-port-gateway gateway-system
 # Tier 3: routes in parallel
-kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
-kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
-kubectl wait grpcroute/backend-a-grpc-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
-kubectl wait grpcroute/backend-b-grpc-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
+wait_route httproute backend-a-https-route backend-a &
+wait_route httproute backend-b-https-route backend-b &
+wait_route grpcroute backend-a-grpc-route backend-a &
+wait_route grpcroute backend-b-grpc-route backend-b &
 wait
 
 # --- Listener status assertions ---
@@ -81,7 +81,7 @@ fi
 echo "PASS: backend-grpc-b.example.test — all $ITERATIONS requests routed to backend-b"
 
 echo "--- HTTPS checks (shared port 443) ---"
-retry_until 10 curl -kfsS --resolve "backend.example.test:${PORT_443}:127.0.0.1" https://backend.example.test:"${PORT_443}"/headers >/dev/null
+retry_until 10 assert_http "https://backend.example.test:${PORT_443}/headers" 200 -k --resolve "backend.example.test:${PORT_443}:127.0.0.1"
 echo "PASS: HTTPS backend-a on port 443"
-curl -kfsS --resolve "backend-b.example.test:${PORT_443}:127.0.0.1" https://backend-b.example.test:"${PORT_443}"/headers >/dev/null
+assert_http "https://backend-b.example.test:${PORT_443}/headers" 200 -k --resolve "backend-b.example.test:${PORT_443}:127.0.0.1"
 echo "PASS: HTTPS backend-b on port 443"
