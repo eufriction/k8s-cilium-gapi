@@ -13,7 +13,7 @@ wait_parallel \
   "certificate/backend-b-mtls-ca -n backend-b --for=condition=Ready --timeout=10s" \
   "certificate/backend-b-mtls-server -n backend-b --for=condition=Ready --timeout=10s" \
   "certificate/backend-b-mtls-client -n backend-b --for=condition=Ready --timeout=10s"
-kubectl wait gateway/mixed-protocol-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
+wait_gateway mixed-protocol-gateway gateway-system
 
 # --- Route acceptance ---
 # When cilium#45559 is present, adding a TLS Passthrough listener causes
@@ -21,12 +21,9 @@ kubectl wait gateway/mixed-protocol-gateway -n gateway-system --for='jsonpath={.
 # rejecting HTTPRoutes with NotAllowedByListeners.
 route_fail=0
 
-kubectl wait httproute/backend-a-app-route -n gateway-system \
-  --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" || route_fail=1
-kubectl wait httproute/http-redirect -n gateway-system \
-  --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" || route_fail=1
-kubectl wait tlsroute/backend-b-mtls-route -n gateway-system \
-  --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" || route_fail=1
+wait_route httproute backend-a-app-route gateway-system || route_fail=1
+wait_route httproute http-redirect gateway-system || route_fail=1
+wait_route tlsroute backend-b-mtls-route gateway-system || route_fail=1
 
 if [ "$route_fail" -ne 0 ]; then
   echo "FAIL: One or more routes not accepted — dumping gateway listener status" >&2

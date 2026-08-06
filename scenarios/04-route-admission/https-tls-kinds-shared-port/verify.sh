@@ -13,12 +13,12 @@ wait_parallel \
   "certificate/backend-b-mtls-ca -n backend-b --for=condition=Ready --timeout=10s" \
   "certificate/backend-b-mtls-server -n backend-b --for=condition=Ready --timeout=10s" \
   "certificate/backend-b-mtls-client -n backend-b --for=condition=Ready --timeout=10s"
-kubectl wait gateway/kind-https-tls-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
+wait_gateway kind-https-tls-gateway gateway-system
 
 echo "--- Checking route acceptance ---"
 route_fail=0
 
-if ! kubectl wait httproute/backend-a-web-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" 2>/dev/null; then
+if ! wait_route httproute backend-a-web-route backend-a 2>/dev/null; then
   echo "FAIL: HTTPRoute backend-a-web-route NOT accepted by https listener"
   echo "  reason: $(kubectl get httproute backend-a-web-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].reason}')"
   echo "  message: $(kubectl get httproute backend-a-web-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')"
@@ -27,7 +27,7 @@ else
   echo "PASS: HTTPRoute backend-a-web-route accepted by https listener"
 fi
 
-if ! kubectl wait tlsroute/backend-b-mtls-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" 2>/dev/null; then
+if ! wait_route tlsroute backend-b-mtls-route backend-b 2>/dev/null; then
   echo "FAIL: TLSRoute backend-b-mtls-route NOT accepted by tls listener"
   echo "  reason: $(kubectl get tlsroute backend-b-mtls-route -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].reason}')"
   echo "  message: $(kubectl get tlsroute backend-b-mtls-route -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')"

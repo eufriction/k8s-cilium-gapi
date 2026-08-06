@@ -7,7 +7,7 @@ gateway_ports ns-split-port-gateway gateway-system 80 8080
 # --- Wait for resources ---
 wait_parallel \
   "pod/api -n backend-a --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s"
-kubectl wait gateway/ns-split-port-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
+wait_gateway ns-split-port-gateway gateway-system
 
 # Give the controller time to reconcile route status
 sleep 5
@@ -23,10 +23,4 @@ echo "PASS: HTTP traffic to open.example.test on port 8080 (open listener)"
 # --- Negative: restricted listener rejects traffic ---
 # Port 80 listener has no attached routes (cross-namespace rejected), so any
 # request should get 404.
-http_status=$(curl -so /dev/null -w '%{http_code}' -H 'Host: restricted.example.test' http://localhost:"${PORT_80}"/headers || true)
-if [ "$http_status" = "404" ]; then
-  echo "PASS: restricted listener returns 404 (no routes attached)"
-else
-  echo "FAIL: restricted listener returned HTTP ${http_status} (expected 404)" >&2
-  exit 1
-fi
+assert_http "http://localhost:${PORT_80}/headers" 404 -H 'Host: restricted.example.test'

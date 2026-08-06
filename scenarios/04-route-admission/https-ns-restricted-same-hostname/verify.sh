@@ -12,7 +12,7 @@ wait_parallel \
   "certificate/ns-restricted-split-port-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s"
 
 # Tier 2 — gateway
-kubectl wait gateway/ns-restricted-same-hostname-split-port-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
+wait_gateway ns-restricted-same-hostname-split-port-gateway gateway-system
 
 # Give the controller time to reconcile route status
 sleep 5
@@ -30,10 +30,5 @@ echo "PASS: HTTPS traffic — api.example.test on port 50051 (open listener)"
 # so traffic on port 443 for the same hostname should return 404.
 # Currently broken: Cilium's data plane leaks the route from the open listener
 # onto port 443 via shared envoy filter chains — cilium#42159 (data-plane half).
-http_status=$(curl -kso /dev/null -w '%{http_code}' --resolve "api.example.test:${PORT_443}:127.0.0.1" https://api.example.test:"${PORT_443}"/headers || true)
-if [ "$http_status" = "404" ]; then
-  echo "PASS: restricted listener returns 404 for same hostname (listener isolation enforced)"
-else
-  echo "FAIL: restricted listener returned HTTP ${http_status} (expected 404) — data-plane half of cilium#42159" >&2
-  exit 1
-fi
+assert_http "https://api.example.test:${PORT_443}/headers" 404 \
+  -k --resolve "api.example.test:${PORT_443}:127.0.0.1"

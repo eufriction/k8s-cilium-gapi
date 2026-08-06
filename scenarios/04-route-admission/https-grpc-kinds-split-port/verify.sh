@@ -10,11 +10,11 @@ wait_parallel \
   "pod/grpc-api -n backend-a --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \
   "pod/grpc-api -n backend-b --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \
   "certificate/allowed-routes-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s"
-kubectl wait gateway/allowed-routes-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
-kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
-kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
-kubectl wait grpcroute/backend-a-grpc-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
-kubectl wait grpcroute/backend-b-grpc-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
+wait_gateway allowed-routes-gateway gateway-system
+wait_route httproute backend-a-https-route backend-a &
+wait_route httproute backend-b-https-route backend-b &
+wait_route grpcroute backend-a-grpc-route backend-a &
+wait_route grpcroute backend-b-grpc-route backend-b &
 wait
 
 # --- Listener status assertions ---
@@ -91,10 +91,5 @@ echo "PASS: grpc-b.example.test — all $ITERATIONS requests routed to backend-b
 # HTTP hostnames (sectionName: https, port 443) must NOT be accessible on
 # the gRPC port (50051).  When Cilium collapses multi-port HTTPS listeners
 # into a single envoy listener, routes leak across ports.
-http_status=$(curl -kso /dev/null -w '%{http_code}' --resolve "https-a.example.test:${PORT_50051}:127.0.0.1" https://https-a.example.test:"${PORT_50051}"/headers || true)
-if [ "$http_status" = "404" ]; then
-  echo "PASS: HTTP hostname correctly returns 404 on gRPC port (per-port isolation)"
-else
-  echo "FAIL: HTTP hostname returned HTTP ${http_status} on gRPC port 50051 (expected 404) — listener collapse leaks routes across ports" >&2
-  exit 1
-fi
+assert_http "https://https-a.example.test:${PORT_50051}/headers" 404 \
+  -k --resolve "https-a.example.test:${PORT_50051}:127.0.0.1"

@@ -8,7 +8,7 @@ gateway_ports selector-listener-conflict-gateway gateway-system 80
 wait_parallel \
   "pod/api -n backend-a --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \
   "pod/api -n backend-b --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s"
-kubectl wait gateway/selector-listener-conflict-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
+wait_gateway selector-listener-conflict-gateway gateway-system
 
 # Give the controller time to reconcile route and listener status.
 sleep 5
@@ -28,10 +28,4 @@ echo "PASS: selected.example.test routes through the selector-matching listener"
 # --- Negative: unselected listener must not serve the route ---
 # This catches listener-level selector leaks where model ingestion treats
 # NamespacesFromSelector as allow-all after gateway-level route filtering.
-http_status=$(curl -so /dev/null -w '%{http_code}' -H 'Host: unselected.example.test' http://localhost:"${PORT_80}"/headers || true)
-if [ "$http_status" = "404" ]; then
-  echo "PASS: unselected.example.test returns 404 (route namespace does not match listener selector)"
-else
-  echo "FAIL: unselected.example.test returned HTTP ${http_status} (expected 404)" >&2
-  exit 1
-fi
+assert_http "http://localhost:${PORT_80}/headers" 404 -H 'Host: unselected.example.test'

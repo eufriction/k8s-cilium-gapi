@@ -8,7 +8,7 @@ gateway_ports ns-shared-port-gateway gateway-system 443
 wait_parallel \
   "pod/api -n backend-a --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \
   "certificate/ns-shared-port-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s"
-kubectl wait gateway/ns-shared-port-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
+wait_gateway ns-shared-port-gateway gateway-system
 
 # Give the controller time to reconcile route status
 sleep 5

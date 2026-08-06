@@ -10,7 +10,7 @@ wait_parallel \
   "pod/grpc-api -n backend-a --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \
   "pod/grpc-api -n backend-b --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \
   "certificate/shared-port-allowed-routes-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s"
-kubectl wait gateway/shared-port-allowed-routes-gateway -n gateway-system --for='jsonpath={.status.conditions[?(@.type=="Accepted")].status}=True' --timeout="${GW_READY_TIMEOUT:-30}s"
+wait_gateway shared-port-allowed-routes-gateway gateway-system
 
 echo "--- Checking route attachment (allowedRoutes.kinds: HTTPRoute + GRPCRoute) ---"
 echo "NOTE: Cilium does not support multiple allowedRoutes.kinds entries on a"
@@ -22,7 +22,7 @@ echo ""
 
 route_fail=0
 
-if ! kubectl wait httproute/backend-a-https-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" 2>/dev/null; then
+if ! wait_route httproute backend-a-https-route backend-a 2>/dev/null; then
   echo "FAIL: HTTPRoute backend-a NOT accepted by https listener"
   echo "  reason: $(kubectl get httproute backend-a-https-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].reason}')"
   echo "  message: $(kubectl get httproute backend-a-https-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')"
@@ -31,7 +31,7 @@ else
   echo "PASS: HTTPRoute backend-a accepted by https listener"
 fi
 
-if ! kubectl wait httproute/backend-b-https-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" 2>/dev/null; then
+if ! wait_route httproute backend-b-https-route backend-b 2>/dev/null; then
   echo "FAIL: HTTPRoute backend-b NOT accepted by https listener"
   echo "  reason: $(kubectl get httproute backend-b-https-route -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].reason}')"
   echo "  message: $(kubectl get httproute backend-b-https-route -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')"
@@ -40,7 +40,7 @@ else
   echo "PASS: HTTPRoute backend-b accepted by https listener"
 fi
 
-if ! kubectl wait grpcroute/backend-a-grpc-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" 2>/dev/null; then
+if ! wait_route grpcroute backend-a-grpc-route backend-a 2>/dev/null; then
   echo "FAIL: GRPCRoute backend-a NOT accepted by https listener"
   echo "  reason: $(kubectl get grpcroute backend-a-grpc-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].reason}')"
   echo "  message: $(kubectl get grpcroute backend-a-grpc-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')"
@@ -49,7 +49,7 @@ else
   echo "PASS: GRPCRoute backend-a accepted by https listener"
 fi
 
-if ! kubectl wait grpcroute/backend-b-grpc-route -n backend-b --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" 2>/dev/null; then
+if ! wait_route grpcroute backend-b-grpc-route backend-b 2>/dev/null; then
   echo "FAIL: GRPCRoute backend-b NOT accepted by https listener"
   echo "  reason: $(kubectl get grpcroute backend-b-grpc-route -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].reason}')"
   echo "  message: $(kubectl get grpcroute backend-b-grpc-route -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')"
