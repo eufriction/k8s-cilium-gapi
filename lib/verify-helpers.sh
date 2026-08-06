@@ -311,11 +311,8 @@ gateway_ports() {
   done
 
   if [ -z "$lb_ip" ]; then
-    echo "WARNING: gateway_ports — no LB IP for ${svc_name} after ${GATEWAY_PORTS_TIMEOUT:-60}s, falling back to 1:1" >&2
-    for p in "$@"; do
-      printf -v "PORT_${p}" '%s' "${p}"
-    done
-    return
+    echo "INFRA: gateway_ports — no LB IP for ${svc_name} after ${GATEWAY_PORTS_TIMEOUT:-60}s" >&2
+    return 2
   fi
 
   # Resolve every requested port by re-scanning live kindccm containers on
@@ -365,9 +362,9 @@ gateway_ports() {
 
   if ((${#remaining[@]} > 0)); then
     for p in "${remaining[@]}"; do
-      echo "WARNING: gateway_ports — docker port ${p}/tcp not mapped for LB IP ${lb_ip}, falling back to ${p}" >&2
-      printf -v "PORT_${p}" '%s' "${p}"
+      echo "INFRA: gateway_ports — docker port ${p}/tcp not mapped for LB IP ${lb_ip}" >&2
     done
+    return 2
   fi
 }
 
