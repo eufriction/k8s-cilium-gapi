@@ -80,6 +80,103 @@ retry_until() {
   "$@"
 }
 
+# assert_http <url> <expected_status> [<curl_args>...]
+#
+# Requests a URL and verifies its HTTP status code. Additional arguments are
+# passed to curl before the URL, which supports headers and other request
+# options used by scenario checks.
+#
+# Example:
+#   assert_http "http://localhost:${PORT_80}/headers" 200 \
+#     -H 'Host: app.example.test'
+assert_http() {
+  local url="$1" expected="$2"
+  shift 2
+  local status
+
+  # Keep the status assertion responsible for reporting connection failures as
+  # HTTP 000 instead of letting curl's non-zero exit status bypass the check.
+  status=$(curl -s -o /dev/null -w '%{http_code}' "$@" "$url" || true)
+  if [ "$status" != "$expected" ]; then
+    echo "FAIL: $url → HTTP $status (expected $expected)" >&2
+    return 1
+  fi
+  echo "PASS: $url → HTTP $expected"
+}
+
+# assert_body <url> <grep_pattern> [<curl_args>...]
+#
+# Requests a URL and verifies that its response body matches a case-insensitive
+# grep pattern. Additional arguments are passed to curl before the URL.
+#
+# Example:
+#   assert_body "http://localhost:${PORT_80}/headers" 'x-waf-result' \
+#     -H 'Host: app.example.test'
+assert_body() {
+  local url="$1" pattern="$2"
+  shift 2
+  local body
+
+  if ! body=$(curl -fsS "$@" "$url"); then
+    echo "FAIL: $url → unable to retrieve response body" >&2
+    return 1
+  fi
+  if ! printf '%s\n' "$body" | grep -i -- "$pattern" >/dev/null; then
+    echo "FAIL: $url body missing '$pattern'" >&2
+    echo "$body" >&2
+    return 1
+  fi
+  echo "PASS: $url body contains '$pattern'"
+}
+
+# assert_redirect <url> <location_pattern> [<curl_args>...]
+#
+# Requests the headers for a URL and verifies that the Location header matches
+# the supplied case-sensitive grep pattern. Additional arguments are passed to
+# curl before the URL.
+#
+# Example:
+#   assert_redirect "http://localhost:${PORT_80}/" '^https://' \
+#     -H 'Host: redirect.example.test'
+assert_redirect() {
+  local url="$1" expected="$2"
+  shift 2
+  local headers location
+
+  if ! headers=$(curl -sS -I "$@" "$url"); then
+    echo "FAIL: $url → unable to retrieve response headers" >&2
+    return 1
+  fi
+  location=$(printf '%s\n' "$headers" | grep -i '^location:' | tr -d '\r' | awk '{print $2}' || true)
+  if ! printf '%s\n' "$location" | grep -- "$expected" >/dev/null; then
+    echo "FAIL: $url redirect → $location (expected match '$expected')" >&2
+    return 1
+  fi
+  echo "PASS: $url redirects to $location"
+}
+
+# wait_gateway <name> <namespace> [<condition>]
+#
+# Waits for a Gateway condition to become True. The condition defaults to
+# Accepted and the timeout can be overridden with GW_READY_TIMEOUT.
+wait_gateway() {
+  local name="$1" ns="$2" condition="${3:-Accepted}"
+  kubectl wait "gateway/$name" -n "$ns" \
+    --for="jsonpath={.status.conditions[?(@.type==\"$condition\")].status}=True" \
+    --timeout="${GW_READY_TIMEOUT:-30}s"
+}
+
+# wait_route <kind> <name> <namespace> [<condition>]
+#
+# Waits for a route parent condition to become True. The condition defaults to
+# Accepted and the timeout can be overridden with ROUTE_READY_TIMEOUT.
+wait_route() {
+  local kind="$1" name="$2" ns="$3" condition="${4:-Accepted}"
+  kubectl wait "$kind/$name" -n "$ns" \
+    --for="jsonpath={.status.parents[0].conditions[?(@.type==\"$condition\")].status}=True" \
+    --timeout="${ROUTE_READY_TIMEOUT:-30}s"
+}
+
 # assert_msg <actual> <env_var_name> <resource_label>
 #
 # Compares an actual status message against the value of the named env var.
