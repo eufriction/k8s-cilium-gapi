@@ -96,17 +96,17 @@ mise run cluster:delete
 
 Two cluster modes are available:
 
-| Mode         | Task               | Gateway access            | Notes                                                                        |
-| ------------ | ------------------ | ------------------------- | ---------------------------------------------------------------------------- |
-| hostNetwork  | `cluster:start`    | `localhost:<portMapping>` | Fastest. Kind `extraPortMappings` expose Gateway ports directly.             |
-| LoadBalancer | `cluster:start:lb` | `<LB IP>:<service port>`  | Production-realistic. Requires `cloud-provider-kind` in a separate terminal. |
+| Mode         | Task                 | Gateway access            | Notes                                                                        |
+| ------------ | -------------------- | ------------------------- | ---------------------------------------------------------------------------- |
+| hostNetwork  | `cluster:start`      | `localhost:<portMapping>` | Fastest. Kind `extraPortMappings` expose Gateway ports directly.             |
+| LoadBalancer | `cluster:start --lb` | `<LB IP>:<service port>`  | Production-realistic. Requires `cloud-provider-kind` in a separate terminal. |
 
 LB mode exercises the full `type: LoadBalancer` path that production clusters use. It validates that Gateways receive external IPs and that port-mapping through the kind Docker network works correctly. The redirect scenario in particular needs LB mode to verify HTTP-to-HTTPS redirect following through real service ports.
 
 To run in LB mode:
 
 ```sh
-mise run cluster:start:lb
+mise run cluster:start --lb
 # In a separate terminal:
 mise run cloud-provider-kind:start
 # Back in the main terminal:
@@ -336,7 +336,7 @@ The preceding release thresholds are based on the [Cilium v1.19.5](https://githu
 
 **Legend:** ✅ = scenario passed, ❌ = scenario failed, ⏭️ = intentionally skipped by version guard (known bug or unsupported feature), · = no result recorded.
 
-**Notes:** Results for released versions use LB mode (`cluster:start:lb` + `cloud-provider-kind`). Column titles identify the Cilium build tested such as released version, branch SHA, or pull request. Cross-reference scenario names with the [Known Cilium bugs](#known-cilium-bugs) table for failure and skip details. PR #46479 ext_proc results were rechecked in fixture/gateway-only mode with `FIXTURE_DEPLOYED=true` after updating each scenario's `gateway/` kustomization.
+**Notes:** Results for released versions use LB mode (`cluster:start --lb` + `cloud-provider-kind`). Column titles identify the Cilium build tested such as released version, branch SHA, or pull request. Cross-reference scenario names with the [Known Cilium bugs](#known-cilium-bugs) table for failure and skip details. PR #46479 ext_proc results were rechecked in fixture/gateway-only mode with `FIXTURE_DEPLOYED=true` after updating each scenario's `gateway/` kustomization.
 
 ---
 

@@ -70,7 +70,7 @@ kubectl rollout status deployment/cilium-operator -n kube-system --timeout=180s
 Typical LB-mode startup:
 
 ```sh
-mise run cluster:start:lb 2>&1 | tee logs/cluster-start-lb-<label>.log
+mise run cluster:start --lb 2>&1 | tee logs/cluster-start-lb-<label>.log
 ```
 
 Remind the user that `mise run cloud-provider-kind:start` must be running in another terminal.

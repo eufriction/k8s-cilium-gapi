@@ -470,7 +470,7 @@ run = "mise run cilium:uninstall && mise run cilium:install{% if usage.verbose %
 [tasks."cilium:reinstall:lb"]
 description = "Uninstall and install Cilium again in load-balancer mode"
 usage = 'flag "-v --verbose" env="VERBOSE" help="Enable verbose output for image pulls and builds"'
-run = "mise run cilium:uninstall && mise run cilium:install:lb{% if usage.verbose %} --verbose{% endif %}"
+run = "mise run cilium:uninstall && mise run cilium:install --lb{% if usage.verbose %} --verbose{% endif %}"
 
 [tasks."cilium:reload"]
 description = "Load locally-built Cilium images into kind and restart the agent + operator"
@@ -611,7 +611,10 @@ run = [
 
 [tasks."cilium:install"]
 description = "Install Cilium in kube-proxy-free mode using Helm"
-usage = 'flag "-v --verbose" env="VERBOSE"'
+usage = '''
+flag "-v --verbose" env="VERBOSE"
+flag "--lb" env="LOAD_BALANCER" help="Use LoadBalancer service configuration"
+'''
 depends = [
   "kind:load:cilium{% if usage.verbose %} --verbose{% endif %}",
   "gateway-api:install",
@@ -628,9 +631,14 @@ if [ -n "${CILIUM_CHART_DIR}" ]; then
 else
   helm_args+=(cilium/cilium --version "${CILIUM_VERSION}")
 fi
+values_file="config/values.cilium.yaml"
+if [ "${usage_lb:-${LOAD_BALANCER:-false}}" = "true" ]; then
+  values_file="config/values.cilium.lb.yaml"
+  echo "Installing Cilium with LoadBalancer service configuration"
+fi
 helm_args+=(
   --namespace kube-system
-  --values config/values.cilium.yaml
+  --values "$values_file"
   --set "k8sServiceHost=${APISERVER_IP}"
   --set k8sServicePort=6443
   --set securityContext.privileged=true
@@ -652,62 +660,17 @@ fi
 helm "${helm_args[@]}"
 """
 
-[tasks."cilium:install:lb"]
-description = "Install Cilium in load-balancer mode for Gateway API comparison scenarios"
-usage = 'flag "-v --verbose" env="VERBOSE"'
-depends = [
-  "kind:load:cilium{% if usage.verbose %} --verbose{% endif %}",
-  "gateway-api:install",
-]
-run = """
-APISERVER_IP=$(docker inspect -f '{% raw %}{{.NetworkSettings.Networks.kind.IPAddress}}{% endraw %}' ${KIND_CLUSTER_NAME}-control-plane)
-if [ -z "$APISERVER_IP" ]; then
-  echo "ERROR: could not resolve control-plane IP from Docker – is the kind cluster running?" >&2
-  exit 1
-fi
-helm_args=(install cilium)
-if [ -n "${CILIUM_CHART_DIR}" ]; then
-  helm_args+=("${CILIUM_CHART_DIR}")
-else
-  helm_args+=(cilium/cilium --version "${CILIUM_VERSION}")
-fi
-helm_args+=(
-  --namespace kube-system
-  --values config/values.cilium.lb.yaml
-  --set "k8sServiceHost=${APISERVER_IP}"
-  --set k8sServicePort=6443
-  --set securityContext.privileged=true
-)
-if [ -n "${CILIUM_AGENT_IMAGE}" ]; then
-  helm_args+=(--set "image.override=${CILIUM_AGENT_IMAGE}")
-fi
-if [ -n "${CILIUM_OPERATOR_IMAGE}" ]; then
-  helm_args+=(--set "operator.image.override=${CILIUM_OPERATOR_IMAGE}")
-fi
-if [ -n "${CILIUM_CHART_DIR}" ]; then
-  helm_args+=(
-    --set image.pullPolicy=IfNotPresent
-    --set operator.image.pullPolicy=IfNotPresent
-    --set hubble.relay.image.pullPolicy=IfNotPresent
-    --set envoy.image.pullPolicy=IfNotPresent
-  )
-fi
-helm "${helm_args[@]}"
-"""
 
 [tasks."cluster:start"]
 description = "Bootstrap the full cluster: kind + Cilium in order"
-usage = 'flag "-v --verbose" env="VERBOSE" help="Enable verbose output for image pulls and builds"'
-depends = ["kind:start"]
+usage = '''
+flag "-v --verbose" env="VERBOSE" help="Enable verbose output for image pulls and builds"
+flag "--lb" env="LOAD_BALANCER" help="Use the LoadBalancer cluster configuration"
+'''
+depends = ["kind:start{% if usage.lb %}:lb{% endif %}"]
 depends_post = ["cluster:verify"]
-run = "mise run cilium:install{% if usage.verbose %} --verbose{% endif %} && mise run kind:load:apps{% if usage.verbose %} --verbose{% endif %}"
+run = "mise run cilium:install{% if usage.lb %} --lb{% endif %}{% if usage.verbose %} --verbose{% endif %} && mise run kind:load:apps{% if usage.verbose %} --verbose{% endif %}"
 
-[tasks."cluster:start:lb"]
-description = "Bootstrap the load-balancer comparison cluster: kind + Cilium load-balancer mode"
-usage = 'flag "-v --verbose" env="VERBOSE" help="Enable verbose output for image pulls and builds"'
-depends = ["kind:start:lb"]
-depends_post = ["cluster:verify"]
-run = "mise run cilium:install:lb{% if usage.verbose %} --verbose{% endif %} && mise run kind:load:apps{% if usage.verbose %} --verbose{% endif %}"
 
 [tasks."cluster:verify"]
 description = "Verify the cluster is healthy: Cilium status ready"
@@ -719,12 +682,9 @@ run = "mise run kind:delete"
 
 [tasks."cluster:restart"]
 description = "Delete and fully rebuild the cluster"
-usage = 'flag "-v --verbose" env="VERBOSE" help="Enable verbose output for image pulls and builds"'
+usage = '''
+flag "-v --verbose" env="VERBOSE" help="Enable verbose output for image pulls and builds"
+flag "--lb" env="LOAD_BALANCER" help="Use the LoadBalancer cluster configuration"
+'''
 depends = ["cluster:delete"]
-run = "mise run cluster:start{% if usage.verbose %} --verbose{% endif %}"
-
-[tasks."cluster:restart:lb"]
-description = "Delete and fully rebuild the load-balancer comparison cluster"
-usage = 'flag "-v --verbose" env="VERBOSE" help="Enable verbose output for image pulls and builds"'
-depends = ["cluster:delete"]
-run = "mise run cluster:start:lb{% if usage.verbose %} --verbose{% endif %}"
+run = "mise run cluster:start{% if usage.lb %} --lb{% endif %}{% if usage.verbose %} --verbose{% endif %}"

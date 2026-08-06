@@ -34,7 +34,7 @@ cilium status --wait-duration 10s --interactive=false
 If no cluster exists, ask the user which mode to use:
 
 - `hostNetwork`: `mise run cluster:start`
-- `LoadBalancer`: `mise run cluster:start:lb`
+- `LoadBalancer`: `mise run cluster:start --lb`
 
 In `LoadBalancer` mode, remind the user that `mise run cloud-provider-kind:start` must be running in another terminal.
 
