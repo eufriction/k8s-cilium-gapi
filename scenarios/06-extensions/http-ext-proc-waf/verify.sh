@@ -2,6 +2,8 @@
 set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
+# shellcheck source=lib/envoy-metrics.sh
+source "${REPO_ROOT}/lib/envoy-metrics.sh"
 
 skip_on_versions "${SCENARIO_SKIP_VERSIONS:-}" "ext_proc ExtensionRef requires branch build"
 gateway_ports waf-gateway gateway-system 80
@@ -25,46 +27,10 @@ assert_listener_status waf-gateway gateway-system http 1 HTTPRoute GRPCRoute
 retry_until 10 curl -fsS -H 'Host: app.example.test' http://localhost:"${PORT_80}"/headers >/dev/null
 
 metric_name="envoy_http_ext_proc_ceepf_backend_a_coraza_waf_streams_started"
-metric_re="^${metric_name}\\{[^}]*envoy_http_conn_manager_prefix=\"listener-insecure\"[^}]*\\} [0-9]+(\\.[0-9]+)?$"
+metric_listener_prefix="listener-insecure"
 metrics_timeout="${ENVOY_METRICS_READY_TIMEOUT:-30}"
 metrics_probe_timeout="${ENVOY_METRICS_PROBE_TIMEOUT:-15s}"
 metrics=""
-
-scrape_ext_proc_metric_sum() {
-  local metrics_probe matches
-  metrics_probe="ext-proc-metrics-probe-${RANDOM}"
-  # shellcheck disable=SC2016 # ENVOY_IPS is expanded inside the probe pod.
-  metrics=$(kubectl run "$metrics_probe" -n gateway-system --rm -i --restart=Never \
-    --pod-running-timeout="$metrics_probe_timeout" \
-    --image="nicolaka/netshoot:${NETSHOOT_VERSION:-v0.15}" \
-    --env="ENVOY_IPS=${envoy_ips}" \
-    --command -- sh -eu -c '
-      for ip in ${ENVOY_IPS}; do
-        curl -fsS --connect-timeout 2 --max-time 5 "http://${ip}:9964/metrics" || true
-      done
-    ' 2>&1 || true)
-
-  matches=$(printf '%s\n' "$metrics" | grep -E "$metric_re" || true)
-  if [ -z "$matches" ]; then
-    return 0
-  fi
-  echo "$matches" | awk '{sum += $2} END {printf "%d\n", sum}'
-}
-
-wait_for_ext_proc_metric_sum() {
-  local deadline metric_sum
-  deadline=$((SECONDS + metrics_timeout))
-  while ((SECONDS < deadline)); do
-    metric_sum=$(scrape_ext_proc_metric_sum)
-    if [ -n "$metric_sum" ]; then
-      echo "$metric_sum"
-      return 0
-    fi
-    echo "  ext_proc Envoy metric not ready, retrying in 1s..." >&2
-    sleep 1
-  done
-  return 1
-}
 
 # Capture a baseline after the listener is ready. The warm-up request may or may
 # not have reached the same Envoy instance before metrics are scraped, so only
@@ -75,7 +41,7 @@ if [ -z "$envoy_ips" ]; then
   exit 1
 fi
 
-baseline_metric=$(wait_for_ext_proc_metric_sum) || {
+baseline_metric=$(wait_for_ext_proc_metric_sum "$metric_name" "$metric_listener_prefix" "$metrics_timeout") || {
   echo "FAIL: ext_proc Envoy metric ${metric_name} is missing after ${metrics_timeout}s" >&2
   if ! printf '%s\n' "$metrics" | grep -E 'ceepf_backend_a_coraza_waf|ext_proc|timed out waiting for the condition|ErrImagePull|ImagePullBackOff|CreateContainer|Pending' >&2; then
     [ -n "$metrics" ] && printf '%s\n' "$metrics" >&2
@@ -134,7 +100,7 @@ sleep "$metrics_settle_sleep"
 metrics_deadline=$((SECONDS + metrics_timeout))
 after_metric=""
 while ((SECONDS < metrics_deadline)); do
-  after_metric=$(scrape_ext_proc_metric_sum)
+  after_metric=$(scrape_ext_proc_metric_sum "$metric_name" "$metric_listener_prefix")
   if [ -n "$after_metric" ] && [ "$after_metric" -gt "$baseline_metric" ]; then
     echo "PASS: ext_proc Envoy metrics increased after WAF traffic (${baseline_metric} -> ${after_metric})"
     break
