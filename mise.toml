@@ -263,21 +263,13 @@ echo "Wrote cec-dump.yaml"
 """
 
 [tasks."kind:start"]
-description = "Create the k8s-cilium-gapi kind cluster using config/kind.config"
-run = "kind create cluster --config config/kind.config"
-
-[tasks."kind:start:lb"]
-description = "Create the k8s-cilium-gapi kind cluster using config/kind.lb.config"
-run = "kind create cluster --config config/kind.lb.config"
+description = "Create the k8s-cilium-gapi kind cluster"
+usage = 'flag "--lb" env="LOAD_BALANCER" help="Use the LoadBalancer cluster configuration"'
+run = "kind create cluster --config config/kind{% if usage.lb %}.lb{% endif %}.config"
 
 [tasks."kind:delete"]
 description = "Delete the k8s-cilium-gapi kind cluster"
 run = "kind delete cluster --name $KIND_CLUSTER_NAME"
-
-[tasks."kind:restart"]
-description = "Delete and recreate the k8s-cilium-gapi kind cluster"
-depends = ["kind:delete"]
-run = "mise run kind:start"
 
 [tasks."helm:repo:add"]
 description = "Add the Cilium and Kyverno Helm repos"
@@ -470,14 +462,12 @@ description = "Uninstall Cilium from the cluster using Helm"
 run = "helm uninstall cilium --namespace kube-system"
 
 [tasks."cilium:reinstall"]
-description = "Uninstall and install Cilium again in kube-proxy-free mode"
-usage = 'flag "-v --verbose" env="VERBOSE" help="Enable verbose output for image pulls and builds"'
-run = "mise run cilium:uninstall && mise run cilium:install{% if usage.verbose %} --verbose{% endif %}"
-
-[tasks."cilium:reinstall:lb"]
-description = "Uninstall and install Cilium again in load-balancer mode"
-usage = 'flag "-v --verbose" env="VERBOSE" help="Enable verbose output for image pulls and builds"'
-run = "mise run cilium:uninstall && mise run cilium:install --lb{% if usage.verbose %} --verbose{% endif %}"
+description = "Uninstall and install Cilium again"
+usage = '''
+flag "-v --verbose" env="VERBOSE" help="Enable verbose output for image pulls and builds"
+flag "--lb" env="LOAD_BALANCER" help="Use LoadBalancer service configuration"
+'''
+run = "mise run cilium:uninstall && mise run cilium:install{% if usage.lb %} --lb{% endif %}{% if usage.verbose %} --verbose{% endif %}"
 
 [tasks."cilium:reload"]
 description = "Load locally-built Cilium images into kind and restart the agent + operator"
@@ -674,7 +664,7 @@ usage = '''
 flag "-v --verbose" env="VERBOSE" help="Enable verbose output for image pulls and builds"
 flag "--lb" env="LOAD_BALANCER" help="Use the LoadBalancer cluster configuration"
 '''
-depends = ["kind:start{% if usage.lb %}:lb{% endif %}"]
+depends = ["kind:start{% if usage.lb %} --lb{% endif %}"]
 depends_post = ["cluster:verify"]
 run = "mise run cilium:install{% if usage.lb %} --lb{% endif %}{% if usage.verbose %} --verbose{% endif %} && mise run kind:load:apps{% if usage.verbose %} --verbose{% endif %}"
 
