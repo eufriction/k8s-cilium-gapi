@@ -10,16 +10,13 @@ wait_parallel \
   "pod/api -n backend-b --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s"
 wait_gateway selector-listener-conflict-gateway gateway-system
 
-# Give the controller time to reconcile route and listener status.
-sleep 5
-
 # --- Listener status assertions ---
 # backend-a has expose=true, so the route namespace is allowed by http-selected.
 # backend-a does not satisfy http-unselected's DoesNotExist selector, so the
 # same route must not attach to that listener even though the route lists both
 # listener hostnames and omits sectionName.
-assert_listener_status selector-listener-conflict-gateway gateway-system http-selected 1 HTTPRoute GRPCRoute
-assert_listener_status selector-listener-conflict-gateway gateway-system http-unselected 0 HTTPRoute GRPCRoute
+retry_until 10 assert_listener_status selector-listener-conflict-gateway gateway-system http-selected 1 HTTPRoute GRPCRoute
+retry_until 10 assert_listener_status selector-listener-conflict-gateway gateway-system http-unselected 0 HTTPRoute GRPCRoute
 
 # --- Positive: selected listener serves the route ---
 retry_until 10 curl -fsS -H 'Host: selected.example.test' http://localhost:"${PORT_80}"/headers >/dev/null

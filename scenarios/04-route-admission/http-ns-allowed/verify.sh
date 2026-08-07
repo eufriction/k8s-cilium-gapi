@@ -9,12 +9,9 @@ wait_parallel \
   "pod/api -n backend-a --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s"
 wait_gateway allowed-routes-ns-gateway gateway-system
 
-# Give the controller time to reconcile route status
-sleep 5
-
 # --- Listener status assertions ---
-assert_listener_status allowed-routes-ns-gateway gateway-system http-restricted 0 HTTPRoute GRPCRoute
-assert_listener_status allowed-routes-ns-gateway gateway-system http-open 1 HTTPRoute GRPCRoute
+retry_until 10 assert_listener_status allowed-routes-ns-gateway gateway-system http-restricted 0 HTTPRoute GRPCRoute
+retry_until 10 assert_listener_status allowed-routes-ns-gateway gateway-system http-open 1 HTTPRoute GRPCRoute
 
 # --- Traffic test on http-open (port 8080) ---
 retry_until 10 curl -fsS -H 'Host: web.example.test' http://localhost:"${PORT_8080}"/headers >/dev/null

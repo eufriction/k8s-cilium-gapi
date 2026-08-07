@@ -10,12 +10,9 @@ wait_parallel \
   "pod/api -n backend-b --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s"
 wait_gateway selector-ns-gateway gateway-system
 
-# Give the controller time to reconcile route status.
-sleep 5
-
 # --- Listener status assertions ---
 # Only backend-a has expose=true, so only selector-allowed-route should attach.
-assert_listener_status selector-ns-gateway gateway-system http-selector 1 HTTPRoute GRPCRoute
+retry_until 10 assert_listener_status selector-ns-gateway gateway-system http-selector 1 HTTPRoute GRPCRoute
 
 # --- Traffic test for the selected namespace route ---
 retry_until 10 curl -fsS -H 'Host: selector-allowed.example.test' http://localhost:"${PORT_80}"/headers >/dev/null

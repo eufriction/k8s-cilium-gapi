@@ -70,7 +70,12 @@ if ! helm plugin list | grep -q '^images'; then
   echo "kind:load:cilium and kind:load:kyverno tasks will fail, which"
   echo "means cluster:start and all scenarios will not work."
   echo ""
-  read -rp "Install it now? [Y/n] " answer
+  if [[ -t 0 ]]; then
+    read -rp "Install it now? [Y/n] " answer
+  else
+    answer="n"
+    echo "Non-interactive shell; skipping automatic helm-images installation." >&2
+  fi
   if [[ "${answer}" =~ ^[Nn] ]]; then
     echo "Skipping. Run 'helm plugin install https://github.com/nikhilsbhat/helm-images' manually when ready." >&2
   else

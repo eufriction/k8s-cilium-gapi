@@ -10,12 +10,9 @@ wait_parallel \
   "certificate/ns-shared-port-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s"
 wait_gateway ns-shared-port-gateway gateway-system
 
-# Give the controller time to reconcile route status
-sleep 5
-
 # --- Listener status assertions ---
-assert_listener_status ns-shared-port-gateway gateway-system https-restricted 0 HTTPRoute GRPCRoute
-assert_listener_status ns-shared-port-gateway gateway-system https-open 1 HTTPRoute GRPCRoute
+retry_until 10 assert_listener_status ns-shared-port-gateway gateway-system https-restricted 0 HTTPRoute GRPCRoute
+retry_until 10 assert_listener_status ns-shared-port-gateway gateway-system https-open 1 HTTPRoute GRPCRoute
 
 # --- Traffic check on open listener ---
 retry_until 10 curl -kfsS --resolve "open.example.test:${PORT_443}:127.0.0.1" https://open.example.test:"${PORT_443}"/headers >/dev/null

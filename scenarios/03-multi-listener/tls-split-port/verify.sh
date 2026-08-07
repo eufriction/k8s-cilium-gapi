@@ -26,28 +26,28 @@ wait
 assert_listener_status tls-split-port-gateway gateway-system mtls-a 1 TLSRoute
 assert_listener_status tls-split-port-gateway gateway-system mtls-b 1 TLSRoute
 
-TMPDIR=$(mktemp -d)
-trap 'rm -rf "$TMPDIR"' EXIT
+CERT_DIR=$(mktemp -d)
+trap 'rm -rf "$CERT_DIR"' EXIT
 
-kubectl get secret backend-a-mtls-server -n backend-a -o jsonpath='{.data.ca\.crt}' | base64 -d >"$TMPDIR/a-ca.crt"
-kubectl get secret backend-a-mtls-client -n backend-a -o jsonpath='{.data.tls\.crt}' | base64 -d >"$TMPDIR/a-client.crt"
-kubectl get secret backend-a-mtls-client -n backend-a -o jsonpath='{.data.tls\.key}' | base64 -d >"$TMPDIR/a-client.key"
-kubectl get secret backend-b-mtls-server -n backend-b -o jsonpath='{.data.ca\.crt}' | base64 -d >"$TMPDIR/b-ca.crt"
-kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.crt}' | base64 -d >"$TMPDIR/b-client.crt"
-kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.key}' | base64 -d >"$TMPDIR/b-client.key"
+kubectl get secret backend-a-mtls-server -n backend-a -o jsonpath='{.data.ca\.crt}' | base64 -d >"$CERT_DIR/a-ca.crt"
+kubectl get secret backend-a-mtls-client -n backend-a -o jsonpath='{.data.tls\.crt}' | base64 -d >"$CERT_DIR/a-client.crt"
+kubectl get secret backend-a-mtls-client -n backend-a -o jsonpath='{.data.tls\.key}' | base64 -d >"$CERT_DIR/a-client.key"
+kubectl get secret backend-b-mtls-server -n backend-b -o jsonpath='{.data.ca\.crt}' | base64 -d >"$CERT_DIR/b-ca.crt"
+kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.crt}' | base64 -d >"$CERT_DIR/b-client.crt"
+kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.key}' | base64 -d >"$CERT_DIR/b-client.key"
 
 retry_until 10 curl -fsS --resolve "mtls-a.example.test:${PORT_9443}:127.0.0.1" \
-  --cacert "$TMPDIR/a-ca.crt" --cert "$TMPDIR/a-client.crt" --key "$TMPDIR/a-client.key" \
+  --cacert "$CERT_DIR/a-ca.crt" --cert "$CERT_DIR/a-client.crt" --key "$CERT_DIR/a-client.key" \
   https://mtls-a.example.test:"${PORT_9443}"/ >/dev/null
 echo "PASS: backend-a accepts correct client cert on port 9443"
 
 curl -fsS --resolve "mtls-b.example.test:${PORT_50051}:127.0.0.1" \
-  --cacert "$TMPDIR/b-ca.crt" --cert "$TMPDIR/b-client.crt" --key "$TMPDIR/b-client.key" \
+  --cacert "$CERT_DIR/b-ca.crt" --cert "$CERT_DIR/b-client.crt" --key "$CERT_DIR/b-client.key" \
   https://mtls-b.example.test:"${PORT_50051}"/ >/dev/null
 echo "PASS: backend-b accepts correct client cert on port 50051"
 
 if curl -fsS --resolve "mtls-a.example.test:${PORT_9443}:127.0.0.1" \
-  --cacert "$TMPDIR/a-ca.crt" \
+  --cacert "$CERT_DIR/a-ca.crt" \
   https://mtls-a.example.test:"${PORT_9443}"/ >/dev/null 2>&1; then
   echo "FAIL: backend-a should reject missing client cert" >&2
   exit 1
@@ -55,7 +55,7 @@ fi
 echo "PASS: backend-a rejects missing client cert"
 
 if curl -fsS --resolve "mtls-b.example.test:${PORT_50051}:127.0.0.1" \
-  --cacert "$TMPDIR/b-ca.crt" \
+  --cacert "$CERT_DIR/b-ca.crt" \
   https://mtls-b.example.test:"${PORT_50051}"/ >/dev/null 2>&1; then
   echo "FAIL: backend-b should reject missing client cert" >&2
   exit 1

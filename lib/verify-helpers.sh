@@ -383,9 +383,10 @@ gateway_ports() {
 # Use at the top of a verify script to skip known-broken scenarios.
 skip_on_versions() {
   local versions="$1"
-  local msg="${2:-known broken on Cilium ${CILIUM_VERSION}}"
+  local cilium_version="${CILIUM_VERSION:-}"
+  local msg="${2:-known broken on Cilium ${cilium_version}}"
   for _v in $versions; do
-    if [ "$_v" = "${CILIUM_VERSION}" ]; then
+    if [ "$_v" = "$cilium_version" ]; then
       echo "SKIP: ${msg}"
       exit 0
     fi

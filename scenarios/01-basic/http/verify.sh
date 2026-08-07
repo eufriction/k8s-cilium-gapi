@@ -27,15 +27,7 @@ assert_http "http://localhost:${PORT_80}/headers" 200 \
 
 # cilium/cilium#43881 — Accepted message
 msg=$(kubectl get httproute/backend-a-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
-[ "$msg" = "Accepted HTTPRoute" ] || {
-  echo "FAIL: backend-a-route message='$msg'" >&2
-  exit 1
-}
-echo "PASS: backend-a-route Accepted message = '$msg'"
+assert_msg "$msg" "X_HTTPROUTE_ACCEPTED_MSG" "backend-a-route"
 
 msg=$(kubectl get httproute/backend-b-route -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
-[ "$msg" = "Accepted HTTPRoute" ] || {
-  echo "FAIL: backend-b-route message='$msg'" >&2
-  exit 1
-}
-echo "PASS: backend-b-route Accepted message = '$msg'"
+assert_msg "$msg" "X_HTTPROUTE_ACCEPTED_MSG" "backend-b-route"

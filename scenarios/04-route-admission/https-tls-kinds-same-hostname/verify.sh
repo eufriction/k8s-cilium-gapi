@@ -29,15 +29,15 @@ retry_until 10 curl -kfsS --resolve "api.example.test:${PORT_443}:127.0.0.1" htt
 echo "PASS: HTTPS termination — api.example.test on port 443 (kind-restricted to HTTPRoute)"
 
 # --- TLS passthrough with mTLS (api.example.test on port 9443, kinds: [TLSRoute]) ---
-TMPDIR=$(mktemp -d)
-trap 'rm -rf "$TMPDIR"' EXIT
+CERT_DIR=$(mktemp -d)
+trap 'rm -rf "$CERT_DIR"' EXIT
 
-kubectl get secret backend-b-mtls-server -n backend-b -o jsonpath='{.data.ca\.crt}' | base64 -d >"$TMPDIR/b-ca.crt"
-kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.crt}' | base64 -d >"$TMPDIR/b-client.crt"
-kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.key}' | base64 -d >"$TMPDIR/b-client.key"
+kubectl get secret backend-b-mtls-server -n backend-b -o jsonpath='{.data.ca\.crt}' | base64 -d >"$CERT_DIR/b-ca.crt"
+kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.crt}' | base64 -d >"$CERT_DIR/b-client.crt"
+kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.key}' | base64 -d >"$CERT_DIR/b-client.key"
 
 curl -fsS --resolve "api.example.test:${PORT_9443}:127.0.0.1" \
-  --cacert "$TMPDIR/b-ca.crt" --cert "$TMPDIR/b-client.crt" --key "$TMPDIR/b-client.key" \
+  --cacert "$CERT_DIR/b-ca.crt" --cert "$CERT_DIR/b-client.crt" --key "$CERT_DIR/b-client.key" \
   https://api.example.test:"${PORT_9443}"/ >/dev/null
 echo "PASS: TLS passthrough — api.example.test mTLS on port 9443 (kind-restricted to TLSRoute)"
 

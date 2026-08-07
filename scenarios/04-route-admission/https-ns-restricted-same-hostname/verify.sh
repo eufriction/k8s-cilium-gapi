@@ -14,12 +14,9 @@ wait_parallel \
 # Tier 2 — gateway
 wait_gateway ns-restricted-same-hostname-split-port-gateway gateway-system
 
-# Give the controller time to reconcile route status
-sleep 5
-
 # --- Listener status assertions ---
-assert_listener_status ns-restricted-same-hostname-split-port-gateway gateway-system https-restricted 0 HTTPRoute GRPCRoute
-assert_listener_status ns-restricted-same-hostname-split-port-gateway gateway-system https-open 1 HTTPRoute GRPCRoute
+retry_until 10 assert_listener_status ns-restricted-same-hostname-split-port-gateway gateway-system https-restricted 0 HTTPRoute GRPCRoute
+retry_until 10 assert_listener_status ns-restricted-same-hostname-split-port-gateway gateway-system https-open 1 HTTPRoute GRPCRoute
 
 # --- Traffic check on the open listener (port 50051) ---
 retry_until 10 curl -kfsS --resolve "api.example.test:${PORT_50051}:127.0.0.1" https://api.example.test:"${PORT_50051}"/headers >/dev/null

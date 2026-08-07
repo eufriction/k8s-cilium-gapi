@@ -170,14 +170,14 @@ assert_http "http://localhost:${PORT_80}/headers" 301 -H 'Host: http-a.http.exam
 echo "PASS: HTTP redirect on port 80 returns 301"
 
 echo "--- TLS passthrough checks (port 443, tls-passthrough listener — TLSRoute only) ---"
-TMPDIR=$(mktemp -d)
-trap 'rm -rf "$TMPDIR"' EXIT
+CERT_DIR=$(mktemp -d)
+trap 'rm -rf "$CERT_DIR"' EXIT
 
-kubectl get secret backend-a-mtls-server -n backend-a -o jsonpath='{.data.ca\.crt}' | base64 -d >"$TMPDIR/a-ca.crt"
-kubectl get secret backend-a-mtls-client -n backend-a -o jsonpath='{.data.tls\.crt}' | base64 -d >"$TMPDIR/a-client.crt"
-kubectl get secret backend-a-mtls-client -n backend-a -o jsonpath='{.data.tls\.key}' | base64 -d >"$TMPDIR/a-client.key"
+kubectl get secret backend-a-mtls-server -n backend-a -o jsonpath='{.data.ca\.crt}' | base64 -d >"$CERT_DIR/a-ca.crt"
+kubectl get secret backend-a-mtls-client -n backend-a -o jsonpath='{.data.tls\.crt}' | base64 -d >"$CERT_DIR/a-client.crt"
+kubectl get secret backend-a-mtls-client -n backend-a -o jsonpath='{.data.tls\.key}' | base64 -d >"$CERT_DIR/a-client.key"
 
 curl -fsS --resolve "tls-a.tls.example.test:${PORT_443}:127.0.0.1" \
-  --cacert "$TMPDIR/a-ca.crt" --cert "$TMPDIR/a-client.crt" --key "$TMPDIR/a-client.key" \
+  --cacert "$CERT_DIR/a-ca.crt" --cert "$CERT_DIR/a-client.crt" --key "$CERT_DIR/a-client.key" \
   https://tls-a.tls.example.test:"${PORT_443}"/ >/dev/null
 echo "PASS: TLS passthrough — tls-a.tls.example.test mTLS on port 443"
