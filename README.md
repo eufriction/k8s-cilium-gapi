@@ -80,7 +80,9 @@ mise run scenarios:run-all
 mise run cluster:delete
 ```
 
-`scenarios:run-all` deploys a shared fixture (namespaces + backend pods), runs every scenario in gateway-only mode (only Gateway + Route resources are applied/deleted per scenario), then tears down the fixture. Scenarios known to be broken on the active `CILIUM_VERSION` are skipped before deploying.
+`scenarios:run-all` deploys a shared fixture (namespaces + backend pods), runs every scenario in gateway-only mode (only Gateway + Route resources are applied/deleted per scenario), then writes `run-all.log` and the machine-readable `run-all-results.tsv` before tearing down the fixture. Scenarios known to be broken on the active `CILIUM_VERSION` are skipped before deploying.
+
+The results file records the Cilium version, overall status, PASS/FAIL/SKIP counts, each scenario status, failure details, and a copy-pasteable rerun command for failed scenarios. Set `RUN_LOG` or `RUN_RESULTS` to choose different output paths.
 
 To run without the fixture (each scenario deploys its own backends):
 

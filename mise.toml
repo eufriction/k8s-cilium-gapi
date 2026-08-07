@@ -184,8 +184,16 @@ cleanup_fixture() {
 }
 trap cleanup_fixture EXIT
 
+run_log="${RUN_LOG:-run-all.log}"
+run_results="${RUN_RESULTS:-run-all-results.tsv}"
+scenario_status=0
+
 mise run fixture:start{% if usage.verbose %} --verbose{% endif %}
-FIXTURE_DEPLOYED=true mise run --continue-on-error --jobs 1 '//scenarios/...:start' --delete
+FIXTURE_DEPLOYED=true mise run --continue-on-error --jobs 1 '//scenarios/...:start' --delete 2>&1 | tee "$run_log" || scenario_status=$?
+if ! bash scripts/summarize-results.sh --results "$run_results" --cilium-version "${CILIUM_VERSION:-unknown}" "$run_log"; then
+  echo "WARNING: could not generate scenario results file" >&2
+fi
+exit "$scenario_status"
 """
 
 [tasks.clean]
@@ -193,7 +201,7 @@ description = "Remove local overrides, logs, and CEC dumps"
 run = """
 set -euo pipefail
 removed=0
-for f in mise.local.toml *.log scenarios/*/run-*.log scenarios/*/*/run-*.log; do
+for f in mise.local.toml run-all-results.tsv *.log scenarios/*/run-*.log scenarios/*/*/run-*.log; do
   if [ -e "$f" ]; then
     rm -v "$f"
     removed=$((removed + 1))

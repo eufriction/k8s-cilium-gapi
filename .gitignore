@@ -131,8 +131,9 @@ mise.local.toml
 .envrc
 .direnv/
 
-# Log files
+# Scenario run logs and machine-readable summaries
 *.log
+run-all-results.tsv
 
 # OS generated files
 Thumbs.db

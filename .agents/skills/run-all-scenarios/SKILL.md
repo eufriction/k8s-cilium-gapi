@@ -56,29 +56,26 @@ mise run --continue-on-error --jobs 1 '//scenarios/...:start' --delete 2>&1 | te
 - `--jobs 1` keeps scenarios sequential so namespaces do not collide.
 - `--delete` cleans up each scenario after verification.
 - `tee run.log` keeps a log for later analysis.
+- `bash scripts/summarize-results.sh --results run-all-results.tsv run.log` writes the machine-readable result file.
 
 Set `timeout_ms` to at least `1800000` for full-suite commands.
 
 ## 3. Summarize results
 
-If you used the fixtureless `tee run.log` workflow, summarize that file with:
+`mise run scenarios:run-all` writes `run-all-results.tsv` automatically. For the fixtureless workflow, generate the same file explicitly:
 
 ```sh
-echo "=== PASS ===" && grep -c '^PASS:' run.log
-echo "=== FAIL ===" && grep -c '^FAIL:' run.log
-echo "=== SKIP ===" && grep -c '^SKIP:' run.log
-echo "--- FAIL details ---" && grep '^FAIL:' run.log
-echo "--- SKIP details ---" && grep '^SKIP:' run.log
+bash scripts/summarize-results.sh --results run-all-results.tsv run.log
 ```
 
-If you used `mise run scenarios:run-all`, summarize the command output or any captured log instead of assuming a local `run.log` file exists.
+Read the TSV result file instead of parsing the log. It contains:
 
-Present:
+- `version<TAB><Cilium version>`
+- `status<TAB>PASS|FAIL`
+- `counts<TAB>pass=<n><TAB>fail=<n><TAB>skip=<n>`
+- one `scenario` row per scenario with its status, failure detail, and rerun command
 
-- PASS count
-- FAIL count
-- SKIP count
-- every `FAIL:` line verbatim
+Present the PASS, FAIL, and SKIP counts, every failed scenario, its failure detail, and its copy-pasteable rerun command.
 
 ## 4. Re-run failing scenarios
 
