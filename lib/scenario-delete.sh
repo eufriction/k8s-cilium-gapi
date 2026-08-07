@@ -2,6 +2,10 @@
 # scenario-delete.sh — delete scenario resources with statedb-safe convergence
 set -euo pipefail
 
+SCENARIO_DELETE_DIR="$(CDPATH="" cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/envoy-readiness.sh
+source "${SCENARIO_DELETE_DIR}/envoy-readiness.sh"
+
 echo "--- Deleting scenario resources ---"
 
 # Pre-delete: ensure cilium has fully reconciled the scenario's resources.
@@ -32,11 +36,22 @@ if ! kubectl rollout status daemonset/cilium -n kube-system --timeout=15s >/dev/
   sleep 5
 fi
 
+# Capture the Gateway identities before deletion. The generated Service, CEC,
+# kindccm container, and Envoy resources are named from this identity.
+if [ "${FIXTURE_DEPLOYED:-}" = "true" ] && [ -d gateway ]; then
+  MANIFESTS=$(kubectl kustomize gateway/ --load-restrictor=LoadRestrictionsNone)
+else
+  MANIFESTS=$(kubectl kustomize . 2>/dev/null || true)
+fi
+GATEWAYS=$(printf '%s\n' "$MANIFESTS" |
+  kubectl get -f - --no-headers \
+    -o custom-columns='KIND:.kind,NAMESPACE:.metadata.namespace,NAME:.metadata.name' 2>/dev/null |
+  awk '$1 == "Gateway" { print $2 "/" $3 }' || true)
+
 if [ "${FIXTURE_DEPLOYED:-}" = "true" ] && [ -d gateway ]; then
   # Ordered deletion: remove routes first, then gateway + certs.
   # This reduces reconciliation pressure on the cilium-agent and operator
   # by letting them process route removal before the gateway disappears.
-  MANIFESTS=$(kubectl kustomize gateway/ --load-restrictor=LoadRestrictionsNone)
   ROUTES=$(echo "$MANIFESTS" | kubectl get -f - -o name 2>/dev/null | grep -E "httproute|grpcroute|tlsroute" || true)
   if [ -n "$ROUTES" ]; then
     echo "$ROUTES" | xargs kubectl delete --ignore-not-found
@@ -48,8 +63,21 @@ else
   kubectl delete -k . --ignore-not-found
 fi
 
+# Wait for the entire LB/Envoy resource chain to disappear before the next
+# scenario can create a Gateway with the same listener and ports.
+while IFS= read -r gateway; do
+  [ -n "$gateway" ] || continue
+  gateway_namespace=${gateway%%/*}
+  gateway_name=${gateway#*/}
+  envoy_wait_gateway_resources_gone "$gateway_name" "$gateway_namespace"
+done <<EOF
+$GATEWAYS
+EOF
+
+# Keep an explicit override as a bounded emergency fallback, but do not sleep
+# by default now that deletion is guarded by observable convergence gates.
 if [ "${POST_DELETE_SLEEP:-0}" -gt 0 ]; then
-  echo "Sleeping ${POST_DELETE_SLEEP}s after delete (POST_DELETE_SLEEP)..."
+  echo "Sleeping ${POST_DELETE_SLEEP}s after delete (POST_DELETE_SLEEP override)..."
   sleep "$POST_DELETE_SLEEP"
 fi
 

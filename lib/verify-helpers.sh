@@ -4,6 +4,10 @@
 # Source this file at the top of verify.sh (after setting REPO_ROOT):
 #   source "${REPO_ROOT}/lib/verify-helpers.sh"
 
+VERIFY_HELPERS_DIR="$(CDPATH="" cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/envoy-readiness.sh
+source "${VERIFY_HELPERS_DIR}/envoy-readiness.sh"
+
 # wait_parallel <wait_args...>
 #
 # Runs multiple `kubectl wait` calls in parallel and waits for all to finish.
@@ -98,7 +102,7 @@ assert_http() {
   # HTTP 000 instead of letting curl's non-zero exit status bypass the check.
   status=$(curl -s -o /dev/null -w '%{http_code}' "$@" "$url" || true)
   if [ "$status" != "$expected" ]; then
-    echo "FAIL: $url → HTTP $status (expected $expected)" >&2
+    envoy_assert_http_failure_class "$url" "$status" "$expected"
     return 1
   fi
   echo "PASS: $url → HTTP $expected"
@@ -366,6 +370,10 @@ gateway_ports() {
     done
     return 2
   fi
+
+  # Do not start data-plane assertions until every Cilium Envoy has the
+  # Gateway listener, route configuration, and reserved:ingress policy.
+  envoy_gateway_ready "$gw" "$ns"
 }
 
 # skip_on_versions <versions> [message]
