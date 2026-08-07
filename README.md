@@ -56,7 +56,7 @@ mise run //scenarios/01-basic/http:start                       # deploy + verify
 mise run //scenarios/03-multi-listener/http-grpc-split-port:start  # deploy + verify
 ```
 
-Each `start` task runs `kubectl apply -k .`, then `verify`. Pass `--delete` to clean up after verification:
+Each `start` task renders the scenario with `kubectl kustomize . --load-restrictor=LoadRestrictionsNone` and applies it, then runs `verify`. Pass `--delete` to clean up after verification:
 
 ```sh
 mise run //scenarios/01-basic/http:start --delete    # deploy + verify + delete

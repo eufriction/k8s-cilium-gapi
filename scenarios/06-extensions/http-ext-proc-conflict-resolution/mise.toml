@@ -18,7 +18,7 @@ kubectl rollout status daemonset/cilium -n kube-system --timeout=60s >/dev/null
 if [ "${FIXTURE_DEPLOYED:-}" = "true" ] && [ -d gateway ]; then
   kubectl kustomize gateway/ --load-restrictor=LoadRestrictionsNone | kubectl apply -f -
 else
-  kubectl apply -k .
+  kubectl kustomize . --load-restrictor=LoadRestrictionsNone | kubectl apply -f -
 fi
 
 # Recreate the routes in phases so the precedence test does not depend on

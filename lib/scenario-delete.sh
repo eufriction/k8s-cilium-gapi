@@ -41,7 +41,7 @@ fi
 if [ "${FIXTURE_DEPLOYED:-}" = "true" ] && [ -d gateway ]; then
   MANIFESTS=$(kubectl kustomize gateway/ --load-restrictor=LoadRestrictionsNone)
 else
-  MANIFESTS=$(kubectl kustomize . 2>/dev/null || true)
+  MANIFESTS=$(kubectl kustomize . --load-restrictor=LoadRestrictionsNone 2>/dev/null || true)
 fi
 GATEWAYS=$(printf '%s\n' "$MANIFESTS" |
   kubectl get -f - --no-headers \
@@ -60,7 +60,7 @@ if [ "${FIXTURE_DEPLOYED:-}" = "true" ] && [ -d gateway ]; then
   # Now delete the remaining resources (gateway, certificates, issuers).
   echo "$MANIFESTS" | kubectl delete --ignore-not-found -f -
 else
-  kubectl delete -k . --ignore-not-found
+  kubectl kustomize . --load-restrictor=LoadRestrictionsNone | kubectl delete --ignore-not-found -f -
 fi
 
 # Wait for the entire LB/Envoy resource chain to disappear before the next
