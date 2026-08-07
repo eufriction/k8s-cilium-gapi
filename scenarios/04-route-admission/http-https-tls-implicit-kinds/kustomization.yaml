@@ -8,7 +8,7 @@ resources:
   - 10-gateway-selfsigned-issuer.yaml
   - 11-gateway-certificate.yaml
   - 12-backend-b-pki.yaml
-  - instances/backend-http-a
+  - ../../../config/instances/backend-http-a
   - instances/backend-mtls-b
   - 30-gateway.yaml
   - 31-backend-a-httproute.yaml

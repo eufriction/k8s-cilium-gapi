@@ -6,7 +6,7 @@ resources:
   - 00-backend-a-namespace.yaml
   - 10-redirect-selfsigned-issuer.yaml
   - 11-redirect-gateway-certificate.yaml
-  - instances/backend-http-a
+  - ../../../config/instances/backend-http-a
   - 30-gateway.yaml
   - 31-http-redirect-httproute.yaml
   - 32-backend-a-httproute.yaml

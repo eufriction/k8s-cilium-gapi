@@ -7,7 +7,7 @@ resources:
   - 00-backend-b-namespace.yaml
   - 10-same-hostname-split-ports-selfsigned-issuer.yaml
   - 11-same-hostname-split-ports-gateway-certificate.yaml
-  - instances/backend-http-a
+  - ../../../config/instances/backend-http-a
   - instances/backend-http-b
   - instances/backend-grpc-a
   - instances/backend-grpc-b

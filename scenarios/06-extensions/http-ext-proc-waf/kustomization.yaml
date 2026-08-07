@@ -4,7 +4,7 @@ kind: Kustomization
 resources:
   - ../../../config/namespaces/gateway-system.yaml
   - 00-backend-a-namespace.yaml
-  - instances/backend-http-a
+  - ../../../config/instances/backend-http-a
   - instances/coraza-waf-extproc
   - 20-ext-proc-referencegrant.yaml
   - 30-gateway.yaml

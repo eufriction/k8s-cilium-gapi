@@ -4,6 +4,6 @@ kind: Kustomization
 resources:
   - ../../../config/namespaces/gateway-system.yaml
   - 00-backend-a-namespace.yaml
-  - instances/backend-http-a
+  - ../../../config/instances/backend-http-a
   - 30-gateway.yaml
   - 31-cross-ns-httproute.yaml

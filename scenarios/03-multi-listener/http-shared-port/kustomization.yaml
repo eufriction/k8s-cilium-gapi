@@ -5,7 +5,7 @@ resources:
   - ../../../config/namespaces/gateway-system.yaml
   - 00-backend-a-namespace.yaml
   - 00-backend-b-namespace.yaml
-  - instances/backend-http-a
+  - ../../../config/instances/backend-http-a
   - instances/backend-http-b
   - 30-gateway.yaml
   - 31-backend-a-httproute.yaml

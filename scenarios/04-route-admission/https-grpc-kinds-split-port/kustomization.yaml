@@ -7,7 +7,7 @@ resources:
   - 00-backend-b-namespace.yaml
   - 10-allowed-routes-selfsigned-issuer.yaml
   - 11-allowed-routes-gateway-certificate.yaml
-  - instances/backend-http-a
+  - ../../../config/instances/backend-http-a
   - instances/backend-http-b
   - instances/backend-grpc-a
   - instances/backend-grpc-b

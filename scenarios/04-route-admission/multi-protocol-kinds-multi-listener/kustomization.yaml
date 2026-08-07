@@ -8,7 +8,7 @@ resources:
   - 10-kind-restricted-selfsigned-issuer.yaml
   - 11-kind-restricted-gateway-certificate.yaml
   - 12-backend-a-pki.yaml
-  - instances/backend-http-a
+  - ../../../config/instances/backend-http-a
   - instances/backend-http-b
   - instances/backend-grpc-a
   - instances/backend-grpc-b

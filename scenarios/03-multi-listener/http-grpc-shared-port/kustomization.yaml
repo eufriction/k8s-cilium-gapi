@@ -7,7 +7,7 @@ resources:
   - 00-backend-b-namespace.yaml
   - 10-shared-port-selfsigned-issuer.yaml
   - 11-shared-port-gateway-certificate.yaml
-  - instances/backend-http-a
+  - ../../../config/instances/backend-http-a
   - instances/backend-http-b
   - instances/backend-grpc-a
   - instances/backend-grpc-b

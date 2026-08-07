@@ -5,7 +5,7 @@ resources:
   - ../../../config/namespaces/gateway-system.yaml
   - 00-backend-a-namespace.yaml
   - 00-auth-namespace.yaml
-  - instances/backend-http-a
+  - ../../../config/instances/backend-http-a
   - instances/coraza-waf-extproc
   - instances/external-authz
   - 20-ext-proc-referencegrant.yaml
