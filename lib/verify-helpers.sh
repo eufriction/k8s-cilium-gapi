@@ -372,3 +372,52 @@ skip_on_versions() {
     fi
   done
 }
+
+# grpc_call <authority> <port_value> [<grpcurl_args>...]
+#
+# Makes a single gRPC UnaryCall and prints the JSON response.  Uses
+# GRPC_IMPORT_PATH, GRPC_PROTO, GRPC_REQ, and GRPC_METHOD from the
+# environment (with sensible defaults).  Extra arguments are passed to
+# grpcurl before the host:port.
+#
+# Intended for warm-up with retry_until:
+#   retry_until 10 grpc_call grpc-a.example.test "$PORT_443" >/dev/null
+grpc_call() {
+  local authority="$1" port="$2"
+  shift 2
+  grpcurl -insecure \
+    -authority "$authority" \
+    -import-path "${GRPC_IMPORT_PATH:-${VERIFY_HELPERS_DIR}/../apps/backend-grpc/proto}" \
+    -proto "${GRPC_PROTO:-grpc/testing/testservice.proto}" \
+    -d "${GRPC_REQ:-{\"response_size\":32,\"fill_server_id\":true}}" \
+    "$@" \
+    "localhost:${port}" \
+    "${GRPC_METHOD:-grpc.testing.TestService/UnaryCall}"
+}
+
+# assert_grpc <authority> <port_value> <expected_server_id> [<iterations>]
+#
+# Sends <iterations> (default: GRPC_ITERATIONS or 10) gRPC UnaryCall
+# requests and verifies every response's serverId matches the expected
+# value.  Uses the same environment variables as grpc_call.
+#
+# Example:
+#   assert_grpc grpc-a.example.test "$PORT_443" grpc-backend-a
+#   assert_grpc grpc-a.example.test "$PORT_443" grpc-backend-a 20
+assert_grpc() {
+  local authority="$1" port="$2" expected="$3"
+  local iterations="${4:-${GRPC_ITERATIONS:-10}}"
+  local misrouted=0 server_id
+  for i in $(seq 1 "$iterations"); do
+    server_id=$(grpc_call "$authority" "$port" | jq -r '.serverId')
+    if [ "$server_id" != "$expected" ]; then
+      echo "  iteration $i: $authority routed to '$server_id' (expected $expected)" >&2
+      misrouted=$((misrouted + 1))
+    fi
+  done
+  if [ "$misrouted" -gt 0 ]; then
+    echo "FAIL: $authority mis-routed $misrouted/$iterations requests" >&2
+    return 1
+  fi
+  echo "PASS: $authority — all $iterations requests routed to $expected"
+}

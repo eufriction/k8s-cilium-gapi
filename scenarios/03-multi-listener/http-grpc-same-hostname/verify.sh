@@ -32,34 +32,18 @@ echo "PASS: HTTPS backend-a on port 443"
 assert_http "https://api.example.test:${PORT_443}/b/headers" 200 -k --resolve "api.example.test:${PORT_443}:127.0.0.1"
 echo "PASS: HTTPS backend-b on port 443 (path /b)"
 
-GRPC_IMPORT_PATH="${REPO_ROOT}/apps/backend-grpc/proto"
-GRPC_PROTO=grpc/testing/testservice.proto
-GRPC_REQ='{"response_size":32,"fill_server_id":true}'
-GRPC_METHOD=grpc.testing.TestService/UnaryCall
-ITERATIONS=20
+GRPC_ITERATIONS=20
 
 echo "--- gRPC distribution check (port 50051, same hostname api.example.test) ---"
 echo "Two GRPCRoutes share the same hostname — traffic must reach BOTH backends."
 
-retry_until 10 grpcurl -insecure \
-  -authority api.example.test \
-  -import-path "$GRPC_IMPORT_PATH" \
-  -proto "$GRPC_PROTO" \
-  -d "$GRPC_REQ" \
-  localhost:"${PORT_50051}" \
-  "$GRPC_METHOD" >/dev/null
+retry_until 10 grpc_call api.example.test "$PORT_50051" >/dev/null
 echo "gRPC listener warm-up complete"
 
 seen_a=0
 seen_b=0
-for i in $(seq 1 $ITERATIONS); do
-  server_id=$(grpcurl -insecure \
-    -authority api.example.test \
-    -import-path "$GRPC_IMPORT_PATH" \
-    -proto "$GRPC_PROTO" \
-    -d "$GRPC_REQ" \
-    localhost:"${PORT_50051}" \
-    "$GRPC_METHOD" | jq -r '.serverId')
+for i in $(seq 1 "$GRPC_ITERATIONS"); do
+  server_id=$(grpc_call api.example.test "$PORT_50051" | jq -r '.serverId')
   case "$server_id" in
   backend-a) seen_a=$((seen_a + 1)) ;;
   backend-b) seen_b=$((seen_b + 1)) ;;
@@ -67,7 +51,7 @@ for i in $(seq 1 $ITERATIONS); do
   esac
 done
 
-echo "  backend-a: $seen_a/$ITERATIONS    backend-b: $seen_b/$ITERATIONS"
+echo "  backend-a: $seen_a/$GRPC_ITERATIONS    backend-b: $seen_b/$GRPC_ITERATIONS"
 if [ "$seen_a" -eq 0 ] || [ "$seen_b" -eq 0 ]; then
   echo "FAIL: gRPC traffic not distributed — one backend received 0 requests" >&2
   echo "  This indicates route merging or a routing bug." >&2

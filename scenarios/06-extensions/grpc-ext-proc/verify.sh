@@ -9,11 +9,7 @@ skip_on_versions "${SCENARIO_SKIP_VERSIONS:-}" "ext_proc ExtensionRef requires b
 gateway_ports grpc-ext-proc-gateway gateway-system 443
 
 HOST=grpc-ext-proc.example.test
-GRPC_IMPORT_PATH="${REPO_ROOT}/apps/backend-grpc/proto"
-GRPC_PROTO=grpc/testing/testservice.proto
-GRPC_REQ='{"response_size":32,"fill_server_id":true}'
-GRPC_METHOD=grpc.testing.TestService/UnaryCall
-ITERATIONS=5
+GRPC_ITERATIONS=5
 
 # Tier 1: pods + certs
 wait_parallel \
@@ -32,13 +28,7 @@ kubectl wait grpcroute/grpc-ext-proc-route -n grpc-backend-a --for='jsonpath={.s
 assert_listener_status grpc-ext-proc-gateway gateway-system grpcs 1 HTTPRoute GRPCRoute
 
 # Warm up the gRPC listener.
-retry_until 10 grpcurl -insecure \
-  -authority "$HOST" \
-  -import-path "$GRPC_IMPORT_PATH" \
-  -proto "$GRPC_PROTO" \
-  -d "$GRPC_REQ" \
-  localhost:"${PORT_443}" \
-  "$GRPC_METHOD" >/dev/null
+retry_until 10 grpc_call "$HOST" "$PORT_443" >/dev/null
 
 metric_name="envoy_http_ext_proc_ceepf_grpc_backend_a_grpc_coraza_waf_streams_started"
 metric_listener_prefix=""
@@ -65,25 +55,7 @@ baseline_metric=$(wait_for_ext_proc_metric_sum "$metric_name" "$metric_listener_
 echo "PASS: ext_proc Envoy metrics expose ceepf.grpc_backend_a.grpc_coraza_waf stats"
 
 # Test 1: gRPC requests route to the backend through the ExtensionRef filter.
-misrouted=0
-for i in $(seq 1 $ITERATIONS); do
-  server_id=$(grpcurl -insecure \
-    -authority "$HOST" \
-    -import-path "$GRPC_IMPORT_PATH" \
-    -proto "$GRPC_PROTO" \
-    -d "$GRPC_REQ" \
-    localhost:"${PORT_443}" \
-    "$GRPC_METHOD" | jq -r '.serverId')
-  if [ "$server_id" != "grpc-backend-a" ]; then
-    echo "  iteration $i: routed to '${server_id}' (expected grpc-backend-a)" >&2
-    misrouted=$((misrouted + 1))
-  fi
-done
-[ "$misrouted" -eq 0 ] || {
-  echo "FAIL: gRPC ext_proc route mis-routed ${misrouted}/${ITERATIONS}" >&2
-  exit 1
-}
-echo "PASS: gRPC requests route to grpc-backend-a through the ext_proc-filtered route"
+assert_grpc "$HOST" "$PORT_443" grpc-backend-a
 
 # Test 2: Envoy ext_proc metrics increase after gRPC traffic.
 metrics_settle_sleep="${ENVOY_METRICS_SETTLE_SLEEP:-30}"

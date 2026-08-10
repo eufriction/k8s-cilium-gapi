@@ -103,63 +103,17 @@ echo "PASS: HTTPS backend-a on port 443"
 curl -kfsS --resolve "http-b.http.example.test:${PORT_443}:127.0.0.1" https://http-b.http.example.test:"${PORT_443}"/headers >/dev/null
 echo "PASS: HTTPS backend-b on port 443"
 
-GRPC_IMPORT_PATH="${REPO_ROOT}/apps/backend-grpc/proto"
-GRPC_PROTO=grpc/testing/testservice.proto
-GRPC_REQ='{"response_size":32,"fill_server_id":true}'
-GRPC_METHOD=grpc.testing.TestService/UnaryCall
-ITERATIONS=10
+GRPC_ITERATIONS=10
 
 echo "--- gRPC affinity checks (port 443, grpcs listener — GRPCRoute only) ---"
-retry_until 10 grpcurl -insecure \
-  -authority grpc-a.grpc.example.test \
-  -import-path "$GRPC_IMPORT_PATH" \
-  -proto "$GRPC_PROTO" \
-  -d "$GRPC_REQ" \
-  localhost:"${PORT_443}" \
-  "$GRPC_METHOD" >/dev/null
+retry_until 10 grpc_call grpc-a.grpc.example.test "$PORT_443" >/dev/null
 echo "gRPC listener warm-up complete"
 
 # grpc-a.grpc.example.test must always route to backend-a
-misrouted=0
-for i in $(seq 1 $ITERATIONS); do
-  server_id=$(grpcurl -insecure \
-    -authority grpc-a.grpc.example.test \
-    -import-path "$GRPC_IMPORT_PATH" \
-    -proto "$GRPC_PROTO" \
-    -d "$GRPC_REQ" \
-    localhost:"${PORT_443}" \
-    "$GRPC_METHOD" | jq -r '.serverId')
-  if [ "$server_id" != "backend-a" ]; then
-    echo "  iteration $i: grpc-a.grpc.example.test routed to '$server_id' (expected backend-a)" >&2
-    misrouted=$((misrouted + 1))
-  fi
-done
-if [ "$misrouted" -gt 0 ]; then
-  echo "FAIL: grpc-a.grpc.example.test mis-routed $misrouted/$ITERATIONS requests" >&2
-  exit 1
-fi
-echo "PASS: grpc-a.grpc.example.test — all $ITERATIONS requests routed to backend-a"
+assert_grpc grpc-a.grpc.example.test "$PORT_443" backend-a
 
 # grpc-b.grpc.example.test must always route to backend-b
-misrouted=0
-for i in $(seq 1 $ITERATIONS); do
-  server_id=$(grpcurl -insecure \
-    -authority grpc-b.grpc.example.test \
-    -import-path "$GRPC_IMPORT_PATH" \
-    -proto "$GRPC_PROTO" \
-    -d "$GRPC_REQ" \
-    localhost:"${PORT_443}" \
-    "$GRPC_METHOD" | jq -r '.serverId')
-  if [ "$server_id" != "backend-b" ]; then
-    echo "  iteration $i: grpc-b.grpc.example.test routed to '$server_id' (expected backend-b)" >&2
-    misrouted=$((misrouted + 1))
-  fi
-done
-if [ "$misrouted" -gt 0 ]; then
-  echo "FAIL: grpc-b.grpc.example.test mis-routed $misrouted/$ITERATIONS requests" >&2
-  exit 1
-fi
-echo "PASS: grpc-b.grpc.example.test — all $ITERATIONS requests routed to backend-b"
+assert_grpc grpc-b.grpc.example.test "$PORT_443" backend-b
 
 echo "--- HTTP redirect checks (port 80, http listener — no explicit kinds) ---"
 # In LB mode PORT_80 is a random mapped port (e.g. 63568).  curl's --resolve

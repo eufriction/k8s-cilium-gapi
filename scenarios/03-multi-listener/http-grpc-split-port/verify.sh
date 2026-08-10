@@ -30,63 +30,17 @@ echo "PASS: HTTPS backend-a on port 443"
 assert_http "https://https-b.example.test:${PORT_443}/headers" 200 -k --resolve "https-b.example.test:${PORT_443}:127.0.0.1"
 echo "PASS: HTTPS backend-b on port 443"
 
-GRPC_IMPORT_PATH="${REPO_ROOT}/apps/backend-grpc/proto"
-GRPC_PROTO=grpc/testing/testservice.proto
-GRPC_REQ='{"response_size":32,"fill_server_id":true}'
-GRPC_METHOD=grpc.testing.TestService/UnaryCall
-ITERATIONS=10
+GRPC_ITERATIONS=10
 
 echo "--- gRPC affinity checks (port 50051) ---"
-retry_until 10 grpcurl -insecure \
-  -authority grpc-a.example.test \
-  -import-path "$GRPC_IMPORT_PATH" \
-  -proto "$GRPC_PROTO" \
-  -d "$GRPC_REQ" \
-  localhost:"${PORT_50051}" \
-  "$GRPC_METHOD" >/dev/null
+retry_until 10 grpc_call grpc-a.example.test "$PORT_50051" >/dev/null
 echo "gRPC listener warm-up complete"
 
 # grpc-a.example.test must always route to backend-a
-misrouted=0
-for i in $(seq 1 $ITERATIONS); do
-  server_id=$(grpcurl -insecure \
-    -authority grpc-a.example.test \
-    -import-path "$GRPC_IMPORT_PATH" \
-    -proto "$GRPC_PROTO" \
-    -d "$GRPC_REQ" \
-    localhost:"${PORT_50051}" \
-    "$GRPC_METHOD" | jq -r '.serverId')
-  if [ "$server_id" != "backend-a" ]; then
-    echo "  iteration $i: grpc-a.example.test routed to '$server_id' (expected backend-a)" >&2
-    misrouted=$((misrouted + 1))
-  fi
-done
-if [ "$misrouted" -gt 0 ]; then
-  echo "FAIL: grpc-a.example.test mis-routed $misrouted/$ITERATIONS requests" >&2
-  exit 1
-fi
-echo "PASS: grpc-a.example.test — all $ITERATIONS requests routed to backend-a"
+assert_grpc grpc-a.example.test "$PORT_50051" backend-a
 
 # grpc-b.example.test must always route to backend-b
-misrouted=0
-for i in $(seq 1 $ITERATIONS); do
-  server_id=$(grpcurl -insecure \
-    -authority grpc-b.example.test \
-    -import-path "$GRPC_IMPORT_PATH" \
-    -proto "$GRPC_PROTO" \
-    -d "$GRPC_REQ" \
-    localhost:"${PORT_50051}" \
-    "$GRPC_METHOD" | jq -r '.serverId')
-  if [ "$server_id" != "backend-b" ]; then
-    echo "  iteration $i: grpc-b.example.test routed to '$server_id' (expected backend-b)" >&2
-    misrouted=$((misrouted + 1))
-  fi
-done
-if [ "$misrouted" -gt 0 ]; then
-  echo "FAIL: grpc-b.example.test mis-routed $misrouted/$ITERATIONS requests" >&2
-  exit 1
-fi
-echo "PASS: grpc-b.example.test — all $ITERATIONS requests routed to backend-b"
+assert_grpc grpc-b.example.test "$PORT_50051" backend-b
 
 # --- Negative: per-port listener isolation ---
 # HTTP hostnames (sectionName: https, port 443) must NOT be accessible on

@@ -21,61 +21,15 @@ wait
 # --- Listener status assertions ---
 assert_listener_status grpc-multi-namespace-gateway gateway-system grpcs 2 HTTPRoute GRPCRoute
 
-GRPC_IMPORT_PATH="${REPO_ROOT}/apps/backend-grpc/proto"
-GRPC_PROTO=grpc/testing/testservice.proto
-GRPC_REQ='{"response_size":32,"fill_server_id":true}'
-GRPC_METHOD=grpc.testing.TestService/UnaryCall
-ITERATIONS=10
+GRPC_ITERATIONS=10
 
 echo "--- gRPC affinity checks (port 443) ---"
-retry_until 10 grpcurl -insecure \
-  -authority grpc-a.example.test \
-  -import-path "$GRPC_IMPORT_PATH" \
-  -proto "$GRPC_PROTO" \
-  -d "$GRPC_REQ" \
-  localhost:"${PORT_443}" \
-  "$GRPC_METHOD" >/dev/null
+retry_until 10 grpc_call grpc-a.example.test "$PORT_443" >/dev/null
 echo "gRPC listener warm-up complete"
 
-misrouted=0
-for i in $(seq 1 $ITERATIONS); do
-  server_id=$(grpcurl -insecure \
-    -authority grpc-a.example.test \
-    -import-path "$GRPC_IMPORT_PATH" \
-    -proto "$GRPC_PROTO" \
-    -d "$GRPC_REQ" \
-    localhost:"${PORT_443}" \
-    "$GRPC_METHOD" | jq -r '.serverId')
-  if [ "$server_id" != "grpc-backend-a" ]; then
-    echo "  iteration $i: grpc-a routed to '$server_id' (expected grpc-backend-a)" >&2
-    misrouted=$((misrouted + 1))
-  fi
-done
-[ "$misrouted" -eq 0 ] || {
-  echo "FAIL: grpc-a mis-routed $misrouted/$ITERATIONS" >&2
-  exit 1
-}
-echo "PASS: grpc-a.example.test — all $ITERATIONS requests routed to grpc-backend-a"
+assert_grpc grpc-a.example.test "$PORT_443" grpc-backend-a
 
-misrouted=0
-for i in $(seq 1 $ITERATIONS); do
-  server_id=$(grpcurl -insecure \
-    -authority grpc-b.example.test \
-    -import-path "$GRPC_IMPORT_PATH" \
-    -proto "$GRPC_PROTO" \
-    -d "$GRPC_REQ" \
-    localhost:"${PORT_443}" \
-    "$GRPC_METHOD" | jq -r '.serverId')
-  if [ "$server_id" != "grpc-backend-b" ]; then
-    echo "  iteration $i: grpc-b routed to '$server_id' (expected grpc-backend-b)" >&2
-    misrouted=$((misrouted + 1))
-  fi
-done
-[ "$misrouted" -eq 0 ] || {
-  echo "FAIL: grpc-b mis-routed $misrouted/$ITERATIONS" >&2
-  exit 1
-}
-echo "PASS: grpc-b.example.test — all $ITERATIONS requests routed to grpc-backend-b"
+assert_grpc grpc-b.example.test "$PORT_443" grpc-backend-b
 
 # cilium/cilium#43881 — pre-1.19.6 releases report "Accepted HTTPRoute"
 msg=$(kubectl get grpcroute/grpc-backend-a-route -n grpc-backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
