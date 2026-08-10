@@ -9,6 +9,7 @@ depends = [
   "//:cert-manager:install",
 ]
 run = """
+echo "SCENARIO: {{config_root}}"
 if [ -n "${SCENARIO_SKIP_VERSIONS:-}" ]; then
   for _v in ${SCENARIO_SKIP_VERSIONS}; do
     if [ "$_v" = "${CILIUM_VERSION}" ]; then

@@ -6,6 +6,7 @@ extends = "scenario:start"
 description = "Deploy the ext_proc conflict-resolution scenario"
 depends = ["//:kind:load:apps{% if usage.verbose %} --verbose{% endif %}"]
 run = """
+echo "SCENARIO: {{config_root}}"
 if [ -n "${SCENARIO_SKIP_VERSIONS:-}" ]; then
   for _v in ${SCENARIO_SKIP_VERSIONS}; do
     if [ "$_v" = "${CILIUM_VERSION}" ]; then

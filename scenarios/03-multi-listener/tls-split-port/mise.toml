@@ -6,6 +6,7 @@ depends = [
   "//:cert-manager:install",
 ]
 run = """
+echo "SCENARIO: {{config_root}}"
 KUSTOMIZE_DIR="."
 if [ "${FIXTURE_DEPLOYED:-}" = "true" ] && [ -d gateway ]; then
   KUSTOMIZE_DIR="gateway"

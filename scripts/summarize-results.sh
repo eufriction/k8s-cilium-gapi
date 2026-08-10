@@ -116,9 +116,12 @@ record_result() {
 }
 
 while IFS= read -r line || [ -n "$line" ]; do
-  if [[ "$line" =~ //scenarios/([^:[:space:]]+):(start|verify|delete) ]]; then
+  if [[ "$line" =~ ^SCENARIO:[[:space:]]+.*/scenarios/(.+)$ ]]; then
+    current="${BASH_REMATCH[1]}"
+    ensure_scenario "$current"
+  elif [[ "$line" =~ //scenarios/([^:[:space:]]+):(start|verify|delete) ]]; then
     candidate="${BASH_REMATCH[1]}"
-    if [ "$candidate" != "..." ]; then
+    if [ "$candidate" != "..." ] && [[ "$candidate" != *"…"* ]]; then
       current="$candidate"
       ensure_scenario "$current"
     fi

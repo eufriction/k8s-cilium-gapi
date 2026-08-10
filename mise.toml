@@ -90,6 +90,7 @@ flag "-v --verbose" env="VERBOSE" help="Enable verbose output for image pulls an
 flag "-d --delete" env="DELETE" help="Delete scenario resources after verify"
 '''
 run = """
+echo "SCENARIO: {{config_root}}"
 if [ -n "${SCENARIO_SKIP_VERSIONS:-}" ]; then
   for _v in ${SCENARIO_SKIP_VERSIONS}; do
     if [ "$_v" = "${CILIUM_VERSION}" ]; then
