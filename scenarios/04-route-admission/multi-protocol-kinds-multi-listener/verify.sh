@@ -136,3 +136,10 @@ curl -fsS --resolve "tls-a.tls.example.test:${PORT_443}:127.0.0.1" \
   --cacert "$CERT_DIR/a-ca.crt" --cert "$CERT_DIR/a-client.crt" --key "$CERT_DIR/a-client.key" \
   https://tls-a.tls.example.test:"${PORT_443}"/ >/dev/null
 echo "PASS: TLS passthrough — tls-a.tls.example.test mTLS on port 443"
+
+# cilium/cilium#43881 — GRPCRoute Accepted message
+msg=$(kubectl get grpcroute/backend-a-grpc-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
+assert_msg "$msg" "X_GRPCROUTE_ACCEPTED_MSG" "backend-a-grpc-route"
+
+msg=$(kubectl get grpcroute/backend-b-grpc-route -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
+assert_msg "$msg" "X_GRPCROUTE_ACCEPTED_MSG" "backend-b-grpc-route"

@@ -47,3 +47,10 @@ assert_grpc grpc-b.example.test "$PORT_50051" backend-b
 # into a single envoy listener, routes leak across ports.
 assert_http "https://https-a.example.test:${PORT_50051}/headers" 404 \
   -k --resolve "https-a.example.test:${PORT_50051}:127.0.0.1"
+
+# cilium/cilium#43881 — GRPCRoute Accepted message
+msg=$(kubectl get grpcroute/backend-a-grpc-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
+assert_msg "$msg" "X_GRPCROUTE_ACCEPTED_MSG" "backend-a-grpc-route"
+
+msg=$(kubectl get grpcroute/backend-b-grpc-route -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
+assert_msg "$msg" "X_GRPCROUTE_ACCEPTED_MSG" "backend-b-grpc-route"

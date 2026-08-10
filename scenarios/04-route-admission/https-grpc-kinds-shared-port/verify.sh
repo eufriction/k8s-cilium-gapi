@@ -90,3 +90,10 @@ retry_until 10 curl -kfsS --resolve "backend.example.test:${PORT_443}:127.0.0.1"
 echo "PASS: HTTPS backend-a on port 443"
 curl -kfsS --resolve "backend-b.example.test:${PORT_443}:127.0.0.1" https://backend-b.example.test:"${PORT_443}"/headers >/dev/null
 echo "PASS: HTTPS backend-b on port 443"
+
+# cilium/cilium#43881 — GRPCRoute Accepted message
+msg=$(kubectl get grpcroute/backend-a-grpc-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
+assert_msg "$msg" "X_GRPCROUTE_ACCEPTED_MSG" "backend-a-grpc-route"
+
+msg=$(kubectl get grpcroute/backend-b-grpc-route -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
+assert_msg "$msg" "X_GRPCROUTE_ACCEPTED_MSG" "backend-b-grpc-route"

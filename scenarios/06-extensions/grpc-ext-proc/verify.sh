@@ -82,3 +82,7 @@ if [ -z "$after_metric" ] || [ "$after_metric" -le "$baseline_metric" ]; then
   fi
   exit 1
 fi
+
+# cilium/cilium#43881 — GRPCRoute Accepted message
+msg=$(kubectl get grpcroute/grpc-ext-proc-route -n grpc-backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
+assert_msg "$msg" "X_GRPCROUTE_ACCEPTED_MSG" "grpc-ext-proc-route"

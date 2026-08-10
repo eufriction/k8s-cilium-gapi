@@ -82,3 +82,10 @@ else
   echo "FAIL: HTTP path /b returned unexpected HTTP ${http_status} on gRPC port 50051" >&2
   exit 1
 fi
+
+# cilium/cilium#43881 — GRPCRoute Accepted message
+msg=$(kubectl get grpcroute/backend-a-grpc-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
+assert_msg "$msg" "X_GRPCROUTE_ACCEPTED_MSG" "backend-a-grpc-route"
+
+msg=$(kubectl get grpcroute/backend-b-grpc-route -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
+assert_msg "$msg" "X_GRPCROUTE_ACCEPTED_MSG" "backend-b-grpc-route"
