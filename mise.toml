@@ -303,25 +303,7 @@ description = "Discover, pull, and load Kyverno images into the kind cluster"
 depends = ["helm:repo:add"]
 hide = true
 usage = 'flag "-v --verbose"'
-run = """
-set -euo pipefail
-
-err() { echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2; }
-
-images=()
-while IFS= read -r img; do
-  images+=("${img}")
-done < <(helm images get kyverno/kyverno --version ${KYVERNO_CHART_VERSION} \\
-  --values config/values.kyverno.yaml 2>/dev/null \\
-  | sed 's/@sha256:.*//' \\
-  | sort -u)
-
-for img in "${images[@]}"; do
-  docker pull{% if not usage.verbose %} --quiet{% endif %} "${img}" || err "WARN: pull failed for ${img}, using local image"
-done
-
-kind load{% if not usage.verbose %} --quiet{% endif %} docker-image "${images[@]}" --name "${KIND_CLUSTER_NAME}"
-"""
+run = "bash lib/kind-load.sh kyverno{% if usage.verbose %} --verbose{% endif %}"
 
 [tasks."kind:load:apps"]
 description = "Build, pull, and load demo app images into the kind cluster"

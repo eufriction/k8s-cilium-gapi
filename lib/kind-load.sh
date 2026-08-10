@@ -100,6 +100,30 @@ load_cilium() {
   fi
 }
 
+load_kyverno() {
+  images=()
+  while IFS= read -r img; do
+    images+=("${img}")
+  done < <(helm images get kyverno/kyverno --version "${KYVERNO_CHART_VERSION}" \
+    --values config/values.kyverno.yaml 2>/dev/null |
+    sed 's/@sha256:.*//' |
+    sort -u)
+
+  for img in "${images[@]}"; do
+    if [ "${verbose}" = true ]; then
+      docker pull "${img}" || err "WARN: pull failed for ${img}, using local image"
+    else
+      docker pull --quiet "${img}" || err "WARN: pull failed for ${img}, using local image"
+    fi
+  done
+
+  if [ "${verbose}" = true ]; then
+    kind load docker-image "${images[@]}" --name "${KIND_CLUSTER_NAME}"
+  else
+    kind load --quiet docker-image "${images[@]}" --name "${KIND_CLUSTER_NAME}"
+  fi
+}
+
 load_apps() {
   if [ "${verbose}" = true ]; then
     docker build -t "backend-grpc:${BACKEND_GRPC_VERSION}" apps/backend-grpc/image
@@ -181,7 +205,7 @@ main() {
 
   for arg in "$@"; do
     case "${arg}" in
-    cilium | apps)
+    cilium | kyverno | apps)
       if [ -n "${loader}" ]; then
         usage
       fi
