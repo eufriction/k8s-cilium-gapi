@@ -73,11 +73,5 @@ assert_http "${BASE_URL}/protected/headers" 403 -H "Host: ${HOST}"
 echo "PASS: /protected without token denied (HTTP 403)"
 
 # Test 4: /protected with auth token but SQL injection — WAF must block
-status_code=$(curl -s -o /dev/null -w '%{http_code}' \
-  -H "Host: ${HOST}" -H 'X-Authz-Token: allow' \
-  "${BASE_URL}/protected/get?q=union+select+1+from+users")
-if [ "$status_code" != "403" ]; then
-  echo "FAIL: SQL injection to /protected with valid token returned HTTP ${status_code} (expected 403 from WAF)" >&2
-  exit 1
-fi
-echo "PASS: SQL injection to /protected with valid token blocked by WAF (HTTP 403)"
+assert_http "${BASE_URL}/protected/get?q=union+select+1+from+users" 403 \
+  -H "Host: ${HOST}" -H 'X-Authz-Token: allow'

@@ -51,46 +51,24 @@ baseline_metric=$(wait_for_ext_proc_metric_sum "$metric_name" "$metric_listener_
 echo "PASS: ext_proc Envoy metrics expose ceepf.backend_a.coraza_waf stats"
 
 # Test 1: Clean request passes through WAF
-body=$(curl -fsS -H 'Host: app.example.test' http://localhost:"${PORT_80}"/headers)
-if ! echo "$body" | grep -qi 'x-waf-result'; then
-  echo "FAIL: clean request missing x-waf-result header (WAF not processing)" >&2
-  echo "$body" >&2
-  exit 1
-fi
-echo "PASS: clean request passed through WAF (x-waf-result header present)"
+assert_body "http://localhost:${PORT_80}/headers" 'x-waf-result' \
+  -H 'Host: app.example.test'
 
 # Test 2: SQL injection is blocked by WAF
-status_code=$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: app.example.test' "http://localhost:${PORT_80}/get?q=union+select+1+from+users")
-if [ "$status_code" != "403" ]; then
-  echo "FAIL: SQL injection not blocked (got HTTP ${status_code}, expected 403)" >&2
-  exit 1
-fi
-echo "PASS: SQL injection blocked by WAF (HTTP 403)"
+assert_http "http://localhost:${PORT_80}/get?q=union+select+1+from+users" 403 \
+  -H 'Host: app.example.test'
 
 # Test 3: XSS attempt is blocked by WAF
-status_code=$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: app.example.test' "http://localhost:${PORT_80}/get?q=<script>alert(1)</script>")
-if [ "$status_code" != "403" ]; then
-  echo "FAIL: XSS not blocked (got HTTP ${status_code}, expected 403)" >&2
-  exit 1
-fi
-echo "PASS: XSS blocked by WAF (HTTP 403)"
+assert_http "http://localhost:${PORT_80}/get?q=<script>alert(1)</script>" 403 \
+  -H 'Host: app.example.test'
 
 # Test 4: Path traversal is blocked by WAF
-status_code=$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: app.example.test' "http://localhost:${PORT_80}/get?file=../../../etc/passwd")
-if [ "$status_code" != "403" ]; then
-  echo "FAIL: path traversal not blocked (got HTTP ${status_code}, expected 403)" >&2
-  exit 1
-fi
-echo "PASS: path traversal blocked by WAF (HTTP 403)"
+assert_http "http://localhost:${PORT_80}/get?file=../../../etc/passwd" 403 \
+  -H 'Host: app.example.test'
 
 # Test 5: Another clean request to confirm WAF isn't over-blocking
-body=$(curl -fsS -H 'Host: app.example.test' http://localhost:"${PORT_80}"/get?name=hello)
-if ! echo "$body" | grep -qi 'x-waf-result'; then
-  echo "FAIL: legitimate request blocked or WAF not processing" >&2
-  echo "$body" >&2
-  exit 1
-fi
-echo "PASS: legitimate request with query params passes WAF"
+assert_body "http://localhost:${PORT_80}/get?name=hello" 'x-waf-result' \
+  -H 'Host: app.example.test'
 
 # Test 6: Envoy ext_proc metrics increase after WAF traffic.
 metrics_settle_sleep="${ENVOY_METRICS_SETTLE_SLEEP:-30}"

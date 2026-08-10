@@ -56,12 +56,7 @@ assert_body "${BASE_URL}/http-auth-shared/headers" 'allowed-http' \
   -k --resolve "$RESOLVE" -H 'X-Authz-Token: allow'
 echo "PASS: /http-auth-shared reuses HTTP ExternalAuth config"
 
-status_code=$(curl -ksS -o /dev/null -w '%{http_code}' --resolve "$RESOLVE" "${BASE_URL}/http-auth-variant/headers")
-if [ "$status_code" != "403" ]; then
-  echo "FAIL: /http-auth-variant without variant header returned HTTP ${status_code} (expected 403)" >&2
-  exit 1
-fi
-echo "PASS: /http-auth-variant without variant header denied (HTTP 403)"
+assert_http "${BASE_URL}/http-auth-variant/headers" 403 -k --resolve "$RESOLVE"
 
 assert_body "${BASE_URL}/http-auth-variant/headers" 'allowed-http' \
   -k --resolve "$RESOLVE" -H 'X-Debug-Token: demo'
