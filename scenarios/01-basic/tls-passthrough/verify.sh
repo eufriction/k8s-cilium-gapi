@@ -59,7 +59,7 @@ if curl -fsS --resolve "mtls-b.example.test:${PORT_9443}:127.0.0.1" \
 fi
 echo "PASS: backend-b rejects cross-namespace client cert"
 
-# cilium/cilium#43881 — TLSRoute reports "Accepted HTTPRoute" on <= 1.19.x
+# cilium/cilium#43881 — pre-1.19.6 releases report "Accepted HTTPRoute"
 msg=$(kubectl get tlsroute/backend-a-mtls-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
 assert_msg "$msg" "X_TLSROUTE_ACCEPTED_MSG" "backend-a-mtls-route"
 

@@ -24,6 +24,7 @@ KYVERNO_CHART_VERSION = "3.7.1"
 KIND_CLUSTER_NAME = "k8s-cilium-gapi"
 # Version-conditional vars (X_ prefix). Defaults match 1.19.3 (latest stable).
 # Override by copying a versions/*.toml to mise.local.toml.
+X_HTTPROUTE_ACCEPTED_MSG = "Accepted HTTPRoute"
 X_GRPCROUTE_ACCEPTED_MSG = "Accepted HTTPRoute"
 X_TLSROUTE_ACCEPTED_MSG = "Accepted HTTPRoute"
 X_TLSROUTE_API_VERSION = "v1alpha2"

@@ -77,7 +77,7 @@ done
 }
 echo "PASS: grpc-b.example.test — all $ITERATIONS requests routed to grpc-backend-b"
 
-# cilium/cilium#43881 — GRPCRoute reports "Accepted HTTPRoute" on <= 1.19.x
+# cilium/cilium#43881 — pre-1.19.6 releases report "Accepted HTTPRoute"
 msg=$(kubectl get grpcroute/grpc-backend-a-route -n grpc-backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
 assert_msg "$msg" "X_GRPCROUTE_ACCEPTED_MSG" "grpc-backend-a-route"
 

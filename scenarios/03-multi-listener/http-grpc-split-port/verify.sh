@@ -2,6 +2,7 @@
 set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
+skip_on_versions "${SCENARIO_SKIP_VERSIONS:-}" "split-port gRPC bug — not yet fixed upstream"
 gateway_ports https-grpc-multi-namespace-gateway gateway-system 443 50051
 # Tier 1: pods + certs in parallel
 wait_parallel \

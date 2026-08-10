@@ -47,6 +47,6 @@ retry_until 10 curl -fsS --resolve "mtls-b.example.test:${PORT_443}:127.0.0.1" \
 echo "PASS: TLS passthrough — mtls-b.example.test mTLS on port 443"
 
 # --- Status message checks ---
-# cilium/cilium#43881 — TLSRoute reports "Accepted HTTPRoute" on <= 1.19.x
+# cilium/cilium#43881 — pre-1.19.6 releases report "Accepted HTTPRoute"
 msg=$(kubectl get tlsroute/backend-b-mtls-route -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
 assert_msg "$msg" "X_TLSROUTE_ACCEPTED_MSG" "backend-b-mtls-route"

@@ -2,6 +2,7 @@
 set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
+skip_on_versions "${SCENARIO_SKIP_VERSIONS:-}" "multi-protocol allowedRoutes.kinds bug — not yet fixed upstream"
 gateway_ports kind-restricted-gateway gateway-system 80 443
 wait_parallel \
   "pod/api -n backend-a --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \

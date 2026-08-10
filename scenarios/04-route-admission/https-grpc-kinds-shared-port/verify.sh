@@ -2,7 +2,7 @@
 set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
-skip_on_versions "1.19.1" "shared-port allowedRoutes.kinds bug — GRPCRoute excluded from Envoy config (fixed in 1.19.3)"
+skip_on_versions "${SCENARIO_SKIP_VERSIONS:-}" "shared-port allowedRoutes.kinds bug — GRPCRoute excluded from Envoy config (fixed in 1.19.3)"
 gateway_ports shared-port-allowed-routes-gateway gateway-system 443
 wait_parallel \
   "pod/api -n backend-a --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \

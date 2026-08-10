@@ -2,7 +2,7 @@
 set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
-skip_on_versions "1.19.1 1.19.3 1.20.0-pre.1" "per-listener allowedRoutes.kinds broken — CheckGatewayRouteKindAllowed global overwrite (cilium#45559)"
+skip_on_versions "${SCENARIO_SKIP_VERSIONS:-}" "per-listener allowedRoutes.kinds broken — CheckGatewayRouteKindAllowed global overwrite (cilium#45559)"
 gateway_ports kind-https-tls-gateway gateway-system 443
 
 # --- Wait for resources ---

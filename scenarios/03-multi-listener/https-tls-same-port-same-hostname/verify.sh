@@ -2,6 +2,7 @@
 set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
+skip_on_versions "${SCENARIO_SKIP_VERSIONS:-}" "invalid same-port same-hostname HTTPS/TLS configuration"
 
 GW=https-tls-same-port-same-hostname-gateway
 NS=gateway-system

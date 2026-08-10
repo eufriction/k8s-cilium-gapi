@@ -2,7 +2,7 @@
 set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
-skip_on_versions "1.19.1 1.19.3 1.20.0-pre.1" "mixed-protocol listeners — known broken (cilium#45559)"
+skip_on_versions "${SCENARIO_SKIP_VERSIONS:-}" "mixed-protocol listeners — known broken (cilium#45559)"
 gateway_ports mixed-protocol-gateway gateway-system 80 443
 
 # --- Wait for resources ---
