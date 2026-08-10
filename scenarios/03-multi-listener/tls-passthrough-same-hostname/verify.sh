@@ -51,6 +51,11 @@ curl -fsS --resolve "tls.example.test:${PORT_9443}:127.0.0.1" \
   https://tls.example.test:"${PORT_9443}"/ >/dev/null
 echo "PASS: TLS passthrough — tls.example.test on port 9443 → backend-b"
 
+assert_tls_isolation "https://tls.example.test:${PORT_9443}/" \
+  "backend-a certs must not work on port 9443 (routes to backend-b)" \
+  --cacert "$CERT_DIR/a-ca.crt" --cert "$CERT_DIR/a-client.crt" \
+  --key "$CERT_DIR/a-client.key" --resolve "tls.example.test:${PORT_9443}:127.0.0.1"
+
 # --- Status message checks ---
 msg=$(kubectl get tlsroute/backend-a-tls-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
 assert_msg "$msg" "X_TLSROUTE_ACCEPTED_MSG" "backend-a-tls-route"

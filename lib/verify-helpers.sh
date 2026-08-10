@@ -88,6 +88,43 @@ assert_http() {
   echo "PASS: $url → HTTP $expected"
 }
 
+# assert_tls_isolation <url> <label> [<curl_args>...]
+#
+# Asserts that a TLS connection attempt fails (status 000), proving per-port
+# listener isolation. Detects listener-collapse bugs where the gateway
+# terminates TLS instead of passing through to the mTLS backend.
+#
+#   000 = PASS — TLS handshake failure (mTLS backend rejected the client)
+#   200 = FAIL — route leaked (gateway terminated TLS, forwarded to HTTP backend)
+#   other = FAIL — unexpected
+#
+# Example (HTTPS→TLS leakage, different ports):
+#   assert_tls_isolation "https://api.example.test:${PORT_9443}/headers" \
+#     "HTTPRoute must not leak to TLS passthrough port" \
+#     -k --resolve "api.example.test:${PORT_9443}:127.0.0.1"
+#
+# Example (cross-CA, same protocol):
+#   assert_tls_isolation "https://tls.example.test:${PORT_9443}/" \
+#     "backend-a certs must not work on port 9443" \
+#     --cacert "$CERT_DIR/a-ca.crt" --cert "$CERT_DIR/a-client.crt" \
+#     --key "$CERT_DIR/a-client.key" --resolve "..."
+assert_tls_isolation() {
+  local url="$1" label="$2"
+  shift 2
+  local status
+  status=$(curl -so /dev/null -w '%{http_code}' "$@" "$url" || true)
+  if [ "$status" = "000" ]; then
+    echo "PASS: ${label} (connection rejected — per-port isolation)"
+    return 0
+  elif [ "$status" = "200" ]; then
+    echo "FAIL: ${label} — route leaked (got HTTP 200)" >&2
+    return 1
+  else
+    echo "FAIL: ${label} — unexpected HTTP ${status} (expected 000)" >&2
+    return 1
+  fi
+}
+
 # assert_body <url> <grep_pattern> [<curl_args>...]
 #
 # Requests a URL and verifies that its response body matches a case-insensitive

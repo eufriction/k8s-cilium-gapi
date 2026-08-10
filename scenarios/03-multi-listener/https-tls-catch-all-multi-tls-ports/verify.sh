@@ -54,6 +54,13 @@ curl -fsS --resolve "api.example.test:${PORT_9443}:127.0.0.1" \
   https://api.example.test:"${PORT_9443}"/ >/dev/null
 echo "PASS: TLS passthrough — api.example.test mTLS on port 9443"
 
+assert_tls_isolation "https://api.example.test:${PORT_50051}/headers" \
+  "HTTPRoute must not leak to TLS passthrough port 50051" \
+  -k --resolve "api.example.test:${PORT_50051}:127.0.0.1"
+assert_tls_isolation "https://api.example.test:${PORT_9443}/headers" \
+  "HTTPRoute must not leak to TLS passthrough port 9443" \
+  -k --resolve "api.example.test:${PORT_9443}:127.0.0.1"
+
 # --- Status message checks ---
 msg=$(kubectl get tlsroute/backend-b-tls-route-50051 -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
 assert_msg "$msg" "X_TLSROUTE_ACCEPTED_MSG" "backend-b-tls-route-50051"

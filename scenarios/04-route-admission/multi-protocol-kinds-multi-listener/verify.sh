@@ -137,6 +137,10 @@ curl -fsS --resolve "tls-a.tls.example.test:${PORT_443}:127.0.0.1" \
   https://tls-a.tls.example.test:"${PORT_443}"/ >/dev/null
 echo "PASS: TLS passthrough — tls-a.tls.example.test mTLS on port 443"
 
+assert_tls_isolation "https://tls-a.tls.example.test:${PORT_443}/headers" \
+  "HTTPS listener must not serve TLS passthrough SNI" \
+  -k --resolve "tls-a.tls.example.test:${PORT_443}:127.0.0.1"
+
 # cilium/cilium#43881 — GRPCRoute Accepted message
 msg=$(kubectl get grpcroute/backend-a-grpc-route -n backend-a -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
 assert_msg "$msg" "X_GRPCROUTE_ACCEPTED_MSG" "backend-a-grpc-route"
