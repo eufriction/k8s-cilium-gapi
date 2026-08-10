@@ -13,7 +13,7 @@ ENVOY_VERSION = "1.33.2"
 BACKEND_GRPC_VERSION = "0.1.1"
 CORAZA_WAF_EXTPROC_VERSION = "0.1.0"
 EXTERNAL_AUTHZ_VERSION = "0.1.0"
-CILIUM_VERSION = "1.19.3"
+CILIUM_VERSION = "1.19.6"
 CILIUM_CHART_DIR = ""
 CILIUM_AGENT_IMAGE = ""
 CILIUM_OPERATOR_IMAGE = ""
@@ -22,11 +22,11 @@ CERT_MANAGER_VERSION = "1.20.2"
 GATEWAY_API_VERSION = "1.4.1"
 KYVERNO_CHART_VERSION = "3.7.1"
 KIND_CLUSTER_NAME = "k8s-cilium-gapi"
-# Version-conditional vars (X_ prefix). Defaults match 1.19.3 (latest stable).
+# Version-conditional vars (X_ prefix). Defaults match 1.19.6 (latest stable).
 # Override by copying a versions/*.toml to mise.local.toml.
 X_HTTPROUTE_ACCEPTED_MSG = "Accepted HTTPRoute"
-X_GRPCROUTE_ACCEPTED_MSG = "Accepted HTTPRoute"
-X_TLSROUTE_ACCEPTED_MSG = "Accepted HTTPRoute"
+X_GRPCROUTE_ACCEPTED_MSG = "Accepted GRPCRoute"
+X_TLSROUTE_ACCEPTED_MSG = "Accepted TLSRoute"
 X_TLSROUTE_API_VERSION = "v1alpha2"
 SCENARIO_SKIP_VERSIONS = ""
 POD_READY_TIMEOUT = "10"
@@ -203,7 +203,7 @@ description = "Remove local overrides, logs, and CEC dumps"
 run = """
 set -euo pipefail
 removed=0
-for f in mise.local.toml run-all-results.tsv *.log scenarios/*/run-*.log scenarios/*/*/run-*.log; do
+for f in mise.local.toml run-all-results.tsv cec-dump.yaml *.log scenarios/*/run-*.log scenarios/*/*/run-*.log; do
   if [ -e "$f" ]; then
     rm -v "$f"
     removed=$((removed + 1))
