@@ -1,0 +1,61 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/gateway.networking.k8s.io/gateway_v1.json
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: ordering-gateway
+  namespace: ext-proc-ordering
+  labels:
+    app.kubernetes.io/part-of: demo
+spec:
+  gatewayClassName: cilium
+  allowedListeners:
+    namespaces:
+      from: Same
+  listeners:
+    - name: direct
+      hostname: direct.ordering.example.test
+      port: 8080
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: Same
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: ListenerSet
+metadata:
+  name: ordering-listeners
+  namespace: ext-proc-ordering
+  labels:
+    app.kubernetes.io/part-of: demo
+spec:
+  parentRef:
+    group: gateway.networking.k8s.io
+    kind: Gateway
+    name: ordering-gateway
+    namespace: ext-proc-ordering
+  listeners:
+    - name: delegated
+      hostname: delegated.ordering.example.test
+      port: 8080
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: Same
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: ordering-other-gateway
+  namespace: ext-proc-ordering
+  labels:
+    app.kubernetes.io/part-of: demo
+spec:
+  gatewayClassName: cilium
+  listeners:
+    - name: isolated
+      hostname: isolated.ordering.example.test
+      port: 8081
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: Same

@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/cilium.io/ciliumenvoyextprocfilter_v2alpha1.json
+apiVersion: cilium.io/v2alpha1
+kind: CiliumEnvoyExtProcFilter
+metadata:
+  name: order-a
+  namespace: ext-proc-gamma
+spec:
+  backendRef:
+    name: ext-proc-backend
+    port: 4317
+  failureModeAllow: false
+  processingMode:
+    requestHeaderMode: SEND
+    responseHeaderMode: SKIP
+    requestBodyMode: NONE
+    responseBodyMode: NONE
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumEnvoyExtProcFilter
+metadata:
+  name: order-b
+  namespace: ext-proc-gamma
+spec:
+  backendRef:
+    name: ext-proc-backend
+    port: 4317
+  failureModeAllow: false
+  processingMode:
+    requestHeaderMode: SEND
+    responseHeaderMode: SKIP
+    requestBodyMode: NONE
+    responseBodyMode: NONE

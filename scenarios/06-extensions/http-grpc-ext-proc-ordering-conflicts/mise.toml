@@ -1,0 +1,44 @@
+[env]
+SCENARIO_SKIP_VERSIONS = "1.19.6 1.20.0"
+
+[tasks.start]
+extends = "scenario:start"
+description = "Deploy the Gateway ext_proc ordering-conflict scenario"
+run = """
+echo "SCENARIO: {{config_root}}"
+if [ -n "${SCENARIO_SKIP_VERSIONS:-}" ]; then
+  for _v in ${SCENARIO_SKIP_VERSIONS}; do
+    if [ "$_v" = "${CILIUM_VERSION}" ]; then
+      echo "SKIP: known broken on Cilium ${CILIUM_VERSION}"
+      exit 0
+    fi
+  done
+fi
+kubectl rollout status daemonset/cilium -n kube-system --timeout=60s >/dev/null
+if [ "${FIXTURE_DEPLOYED:-}" = "true" ] && [ -d gateway ]; then
+  kubectl kustomize gateway/ --load-restrictor=LoadRestrictionsNone | kubectl apply -f -
+else
+  kubectl kustomize . --load-restrictor=LoadRestrictionsNone | kubectl apply -f -
+fi
+
+# Recreate route precedence groups so creationTimestamp determines the winner.
+kubectl delete \
+  -f 30-foundation-route.yaml \
+  -f 31-compatible-route.yaml \
+  -f 32-conflicting-routes.yaml \
+  --ignore-not-found --wait=true --timeout=60s
+sleep 1
+kubectl apply -f 30-foundation-route.yaml
+sleep 1
+kubectl apply -f 31-compatible-route.yaml
+sleep 1
+kubectl apply -f 32-conflicting-routes.yaml
+mise run :verify{% if usage.delete %} --delete{% endif %}
+"""
+
+[tasks.verify]
+extends = "scenario:verify"
+description = "Verify Gateway and ListenerSet ext_proc ordering conflicts"
+
+[tasks.delete]
+extends = "scenario:delete"

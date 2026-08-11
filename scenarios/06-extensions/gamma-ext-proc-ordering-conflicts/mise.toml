@@ -1,0 +1,41 @@
+[env]
+SCENARIO_SKIP_VERSIONS = "1.19.6 1.20.0"
+
+[tasks.start]
+extends = "scenario:start"
+description = "Deploy the GAMMA ext_proc ordering-conflict scenario"
+run = """
+echo "SCENARIO: {{config_root}}"
+if [ -n "${SCENARIO_SKIP_VERSIONS:-}" ]; then
+  for _v in ${SCENARIO_SKIP_VERSIONS}; do
+    if [ "$_v" = "${CILIUM_VERSION}" ]; then
+      echo "SKIP: known broken on Cilium ${CILIUM_VERSION}"
+      exit 0
+    fi
+  done
+fi
+kubectl rollout status daemonset/cilium -n kube-system --timeout=60s >/dev/null
+if [ "${FIXTURE_DEPLOYED:-}" = "true" ] && [ -d gateway ]; then
+  kubectl kustomize gateway/ --load-restrictor=LoadRestrictionsNone | kubectl apply -f -
+else
+  kubectl kustomize . --load-restrictor=LoadRestrictionsNone | kubectl apply -f -
+fi
+
+# Create the source-a constraint before the multi-parent declarations.
+kubectl delete \
+  -f 20-foundation-route.yaml \
+  -f 21-multi-parent-routes.yaml \
+  --ignore-not-found --wait=true --timeout=60s
+sleep 1
+kubectl apply -f 20-foundation-route.yaml
+sleep 1
+kubectl apply -f 21-multi-parent-routes.yaml
+mise run :verify{% if usage.delete %} --delete{% endif %}
+"""
+
+[tasks.verify]
+extends = "scenario:verify"
+description = "Verify source-Service-scoped GAMMA ext_proc conflicts"
+
+[tasks.delete]
+extends = "scenario:delete"

@@ -1,0 +1,10 @@
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization.json
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../00-resources.yaml
+  - ../10-gateways.yaml
+  - ../20-ext-proc-filters.yaml
+  - ../30-foundation-route.yaml
+  - ../31-compatible-route.yaml
+  - ../32-conflicting-routes.yaml

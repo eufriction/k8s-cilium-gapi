@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/gateway.networking.k8s.io/httproute_v1.json
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: 00-source-a-foundation
+  namespace: ext-proc-gamma
+  labels:
+    app.kubernetes.io/part-of: demo
+spec:
+  parentRefs:
+    - group: ""
+      kind: Service
+      name: source-a
+      namespace: ext-proc-gamma
+      port: 80
+  rules:
+    - filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: cilium.io
+            kind: CiliumEnvoyExtProcFilter
+            name: order-a
+        - type: ExtensionRef
+          extensionRef:
+            group: cilium.io
+            kind: CiliumEnvoyExtProcFilter
+            name: order-b
+      backendRefs:
+        - name: backend
+          port: 80
