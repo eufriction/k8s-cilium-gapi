@@ -8,10 +8,8 @@ skip_on_versions "${SCENARIO_SKIP_VERSIONS:-}" "ext_proc ExtensionRef requires b
 # Fast-fail if the CiliumEnvoyExtProcFilter CRD is absent: without it Cilium
 # cannot observe the cross-namespace ref, so ResolvedRefs stays True and the
 # ReferenceGrant enforcement check never fires.
-if ! kubectl get crd ciliumenvoyextprocfilters.cilium.io &>/dev/null; then
-  echo "FAIL: CiliumEnvoyExtProcFilter CRD not installed — run this scenario against a branch build with ext_proc support" >&2
-  exit 1
-fi
+require_crd ciliumenvoyextprocfilters.cilium.io \
+  "run this scenario against a branch build with ext_proc support"
 
 gateway_ports rg-gateway gateway-system 80
 
@@ -33,9 +31,7 @@ echo "PASS: HTTPRoute Accepted=True (route is attached to gateway)"
 # --- ReferenceGrant enforcement: ResolvedRefs must be False ---
 # The deployed ReferenceGrant covers a *different* Service (ext-proc-other),
 # so the actual backendRef (coraza-waf-extproc) is not permitted.
-kubectl wait httproute/rg-route -n backend-a \
-  --for='jsonpath={.status.parents[0].conditions[?(@.type=="ResolvedRefs")].status}=False' \
-  --timeout="${ROUTE_READY_TIMEOUT:-30}s"
+wait_route httproute rg-route backend-a ResolvedRefs False
 echo "PASS: HTTPRoute ResolvedRefs=False"
 
 reason=$(kubectl get httproute/rg-route -n backend-a \
@@ -53,17 +49,5 @@ assert_listener_status rg-gateway gateway-system http 1 HTTPRoute GRPCRoute
 # Wait up to 30s for the data plane to settle. A 200 here would indicate
 # fail-open behaviour (regression); a 500 confirms the filter blocks traffic.
 echo "Waiting for data plane to settle as fail-closed..."
-deadline=$((SECONDS + 30))
-status_code=""
-while ((SECONDS < deadline)); do
-  status_code=$(curl -s -o /dev/null -w '%{http_code}' \
-    -H "Host: ${HOST}" "${BASE_URL}/headers" 2>/dev/null) || true
-  [ "$status_code" = "500" ] && break
-  echo "  got HTTP ${status_code:-<no response>}, retrying in 1s..." >&2
-  sleep 1
-done
-if [ "$status_code" != "500" ]; then
-  echo "FAIL: expected HTTP 500 (fail-closed, failureModeAllow=false), got HTTP '${status_code}'" >&2
-  exit 1
-fi
+wait_http_status "${BASE_URL}/headers" 500 30 -H "Host: ${HOST}"
 echo "PASS: data plane fails closed (HTTP 500) — ext_proc ref blocked by missing ReferenceGrant"

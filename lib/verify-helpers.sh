@@ -8,6 +8,21 @@ VERIFY_HELPERS_DIR="$(CDPATH="" cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/envoy-readiness.sh
 source "${VERIFY_HELPERS_DIR}/envoy-readiness.sh"
 
+# require_crd <crd-name> [context]
+#
+# Fails when a scenario-required CRD is not installed. Optional context is
+# appended to the failure message with guidance for enabling the API.
+require_crd() {
+  local name="$1" context="${2:-}"
+
+  if kubectl get "crd/${name}" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  echo "FAIL: CRD ${name} is not installed${context:+ — ${context}}" >&2
+  return 1
+}
+
 # wait_parallel <wait_args...>
 #
 # Runs multiple `kubectl wait` calls in parallel and waits for all to finish.
@@ -58,7 +73,7 @@ retry_until() {
   local end=$((SECONDS + deadline))
   while ((SECONDS < end)); do
     if "$@" 2>/dev/null; then return 0; fi
-    echo "  listener not ready, retrying in 1s..." >&2
+    echo "  condition not met, retrying in 1s..." >&2
     sleep 1
   done
   "$@"
@@ -86,6 +101,34 @@ assert_http() {
     return 1
   fi
   echo "PASS: $url → HTTP $expected"
+}
+
+# wait_http_status <url> <expected-status> <timeout-seconds> [<curl_args>...]
+#
+# Polls an HTTP endpoint until it returns the expected status or the timeout
+# expires. This is useful for fail-closed checks that may briefly observe stale
+# listener configuration while Envoy converges.
+wait_http_status() {
+  local url="$1" expected="$2" timeout="$3"
+  shift 3
+  local deadline status=""
+  deadline=$((SECONDS + timeout))
+
+  while ((SECONDS < deadline)); do
+    status=$(curl -s -o /dev/null -w '%{http_code}' "$@" "$url" 2>/dev/null || true)
+    if [ "$status" = "$expected" ]; then
+      return 0
+    fi
+    echo "  got HTTP ${status:-<no response>}, retrying in 1s..." >&2
+    sleep 1
+  done
+
+  status=$(curl -s -o /dev/null -w '%{http_code}' "$@" "$url" 2>/dev/null || true)
+  if [ "$status" = "$expected" ]; then
+    return 0
+  fi
+  envoy_assert_http_failure_class "$url" "${status:-000}" "$expected"
+  return 1
 }
 
 # assert_tls_isolation <url> <label> [<curl_args>...]
@@ -187,15 +230,48 @@ wait_gateway() {
     --timeout="${GW_READY_TIMEOUT:-30}s"
 }
 
-# wait_route <kind> <name> <namespace> [<condition>]
+# wait_route <kind> <name> <namespace> [<condition>] [<expected-status>]
 #
-# Waits for a route parent condition to become True. The condition defaults to
-# Accepted and the timeout can be overridden with ROUTE_READY_TIMEOUT.
+# Waits for the first route parent's condition to reach the expected status.
+# The condition defaults to Accepted, the status defaults to True, and the
+# timeout can be overridden with ROUTE_READY_TIMEOUT. Multi-parent scenarios
+# should select the intended ParentRef explicitly instead of using this helper.
 wait_route() {
-  local kind="$1" name="$2" ns="$3" condition="${4:-Accepted}"
+  local kind="$1" name="$2" ns="$3" condition="${4:-Accepted}" expected="${5:-True}"
   kubectl wait "$kind/$name" -n "$ns" \
-    --for="jsonpath={.status.parents[0].conditions[?(@.type==\"$condition\")].status}=True" \
+    --for="jsonpath={.status.parents[0].conditions[?(@.type==\"$condition\")].status}=$expected" \
     --timeout="${ROUTE_READY_TIMEOUT:-30}s"
+}
+
+# assert_cec_ext_proc_order <cec-name> <cec-namespace> <filter-namespace> <filter-name>...
+#
+# Verifies the exact, order-sensitive ext_proc filter list in every generated
+# HTTP connection manager found in a CiliumEnvoyConfig.
+assert_cec_ext_proc_order() {
+  local cec_name="$1" cec_namespace="$2" filter_namespace="$3"
+  shift 3
+  local expected actual filter
+
+  expected=$(
+    for filter in "$@"; do
+      printf 'envoy.filters.http.ext_proc/%s/%s\n' "$filter_namespace" "$filter"
+    done
+  )
+  actual=$(kubectl get "cec/${cec_name}" -n "$cec_namespace" -o json 2>/dev/null |
+    jq -r '
+      .spec.resources[]
+      | .. | objects
+      | select(.httpFilters? != null)
+      | .httpFilters[]?.name
+      | select(startswith("envoy.filters.http.ext_proc/"))
+    ' || true)
+
+  if [ "$actual" != "$expected" ]; then
+    echo "FAIL: ${cec_name} ext_proc order differs" >&2
+    printf 'Expected:\n%s\nActual:\n%s\n' "$expected" "${actual:-<missing>}" >&2
+    return 1
+  fi
+  echo "PASS: ${cec_name} ext_proc order is $(printf '%s ' "$@")"
 }
 
 # assert_msg <actual> <env_var_name> <resource_label>

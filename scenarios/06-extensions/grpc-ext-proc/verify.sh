@@ -6,6 +6,8 @@ source "${REPO_ROOT}/lib/verify-helpers.sh"
 source "${REPO_ROOT}/lib/envoy-metrics.sh"
 
 skip_on_versions "${SCENARIO_SKIP_VERSIONS:-}" "ext_proc ExtensionRef requires branch build"
+require_crd ciliumenvoyextprocfilters.cilium.io \
+  "run against a branch build with ext_proc support"
 gateway_ports grpc-ext-proc-gateway gateway-system 443
 
 HOST=grpc-ext-proc.example.test
@@ -22,7 +24,7 @@ wait_gateway grpc-ext-proc-gateway gateway-system
 
 # Tier 3: route
 wait_route grpcroute grpc-ext-proc-route grpc-backend-a
-kubectl wait grpcroute/grpc-ext-proc-route -n grpc-backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="ResolvedRefs")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s"
+wait_route grpcroute grpc-ext-proc-route grpc-backend-a ResolvedRefs
 
 # --- Listener status assertions ---
 assert_listener_status grpc-ext-proc-gateway gateway-system grpcs 1 HTTPRoute GRPCRoute

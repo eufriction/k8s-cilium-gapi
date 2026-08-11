@@ -30,17 +30,5 @@ assert_listener_status ext-auth-missing-backend-gateway gateway-system http 1 HT
 
 # A missing ext_authz backend must not allow the request through to api.
 echo "Waiting for data plane to settle as fail-closed..."
-deadline=$((SECONDS + 30))
-status_code=""
-while ((SECONDS < deadline)); do
-  status_code=$(curl -s -o /dev/null -w '%{http_code}' \
-    -H "Host: ${HOST}" "${BASE_URL}/headers" 2>/dev/null) || true
-  [ "$status_code" = "500" ] && break
-  echo "  got HTTP ${status_code:-<no response>}, retrying in 1s..." >&2
-  sleep 1
-done
-if [ "$status_code" != "500" ]; then
-  echo "FAIL: expected HTTP 500 (fail-closed), got HTTP '${status_code}'" >&2
-  exit 1
-fi
+wait_http_status "${BASE_URL}/headers" 500 30 -H "Host: ${HOST}"
 echo "PASS: data plane fails closed (HTTP 500) when ext_authz backend is missing"

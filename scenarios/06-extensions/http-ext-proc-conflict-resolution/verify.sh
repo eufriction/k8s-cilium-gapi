@@ -5,10 +5,8 @@ source "${REPO_ROOT}/lib/verify-helpers.sh"
 
 skip_on_versions "${SCENARIO_SKIP_VERSIONS:-}" "ext_proc ExtensionRef requires branch build"
 
-if ! kubectl get crd ciliumenvoyextprocfilters.cilium.io &>/dev/null; then
-  echo "FAIL: CiliumEnvoyExtProcFilter CRD not installed — run against a branch build with ext_proc support" >&2
-  exit 1
-fi
+require_crd ciliumenvoyextprocfilters.cilium.io \
+  "run against a branch build with ext_proc support"
 
 gateway_ports ext-proc-conflict-resolution-gateway gateway-system 80
 HOST=ext-proc-auth.example.test
@@ -21,7 +19,6 @@ wait_parallel \
   "deployment/external-authz -n auth --for=condition=Available --timeout=60s"
 
 gw_timeout="${GW_READY_TIMEOUT:-30}s"
-route_timeout="${ROUTE_READY_TIMEOUT:-30}s"
 wait_gateway ext-proc-conflict-resolution-gateway gateway-system
 kubectl wait gateway/ext-proc-conflict-resolution-gateway -n gateway-system \
   --for='jsonpath={.status.conditions[?(@.type=="Programmed")].status}=True' \
@@ -38,17 +35,13 @@ tie_and_ordered_routes=(
 for route in "${tie_and_ordered_routes[@]}"; do
   IFS='|' read -r namespace name <<<"$route"
   wait_route httproute "$name" "$namespace"
-  kubectl wait httproute/"${name}" -n "$namespace" \
-    --for='jsonpath={.status.parents[0].conditions[?(@.type=="ResolvedRefs")].status}=True' \
-    --timeout="$route_timeout"
+  wait_route httproute "$name" "$namespace" ResolvedRefs
 done
 
 echo "PASS: six valid HTTPRoutes are Accepted=True and ResolvedRefs=True"
 
 wait_route httproute invalid-route backend-a
-kubectl wait httproute/invalid-route -n backend-a \
-  --for='jsonpath={.status.parents[0].conditions[?(@.type=="ResolvedRefs")].status}=False' \
-  --timeout="$route_timeout"
+wait_route httproute invalid-route backend-a ResolvedRefs False
 invalid_reason=$(kubectl get httproute/invalid-route -n backend-a \
   -o 'jsonpath={.status.parents[0].conditions[?(@.type=="ResolvedRefs")].reason}')
 if [ "$invalid_reason" != "BackendNotFound" ]; then
@@ -162,17 +155,6 @@ if ! echo "$body" | grep -qi 'x-ext-authz-result'; then
 fi
 echo "PASS: authenticated route runs ext_proc and ExternalAuth"
 
-status_code=""
-deadline=$((SECONDS + 30))
-while ((SECONDS < deadline)); do
-  status_code=$(curl -s -o /dev/null -w '%{http_code}' \
-    -H 'Host: ext-proc-invalid.example.test' "${BASE_URL}/headers" 2>/dev/null) || true
-  [ "$status_code" = "500" ] && break
-  echo "  invalid route returned ${status_code:-<no response>}, retrying in 1s..." >&2
-  sleep 1
-done
-if [ "$status_code" != "500" ]; then
-  echo "FAIL: invalid ext_proc reference returned HTTP ${status_code:-<no response>} (expected 500)" >&2
-  exit 1
-fi
+wait_http_status "${BASE_URL}/headers" 500 30 \
+  -H 'Host: ext-proc-invalid.example.test'
 echo "PASS: invalid ext_proc reference fails closed with HTTP 500"

@@ -7,10 +7,8 @@ skip_on_versions "${SCENARIO_SKIP_VERSIONS:-}" "ext_proc ExtensionRef requires b
 
 # Fast-fail if CiliumEnvoyExtProcFilter CRD is absent — without it the
 # per-route ext_proc config is never generated and both filters cannot coexist.
-if ! kubectl get crd ciliumenvoyextprocfilters.cilium.io &>/dev/null; then
-  echo "FAIL: CiliumEnvoyExtProcFilter CRD not installed — run against a branch build with ext_proc support" >&2
-  exit 1
-fi
+require_crd ciliumenvoyextprocfilters.cilium.io \
+  "run against a branch build with ext_proc support"
 
 gateway_ports ext-proc-ext-auth-gateway gateway-system 80
 
@@ -28,9 +26,7 @@ wait_gateway ext-proc-ext-auth-gateway gateway-system
 
 # Tier 3: route
 wait_route httproute ext-proc-ext-auth-route backend-a
-kubectl wait httproute/ext-proc-ext-auth-route -n backend-a \
-  --for='jsonpath={.status.parents[0].conditions[?(@.type=="ResolvedRefs")].status}=True' \
-  --timeout="${ROUTE_READY_TIMEOUT:-30}s"
+wait_route httproute ext-proc-ext-auth-route backend-a ResolvedRefs
 
 # --- Listener status ---
 assert_listener_status ext-proc-ext-auth-gateway gateway-system http 1 HTTPRoute GRPCRoute

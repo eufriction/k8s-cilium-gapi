@@ -6,6 +6,8 @@ source "${REPO_ROOT}/lib/verify-helpers.sh"
 source "${REPO_ROOT}/lib/envoy-metrics.sh"
 
 skip_on_versions "${SCENARIO_SKIP_VERSIONS:-}" "ext_proc ExtensionRef requires branch build"
+require_crd ciliumenvoyextprocfilters.cilium.io \
+  "run against a branch build with ext_proc support"
 gateway_ports waf-gateway gateway-system 80
 
 # Tier 1: pods
@@ -18,7 +20,7 @@ wait_gateway waf-gateway gateway-system
 
 # Tier 3: route
 wait_route httproute waf-route backend-a
-kubectl wait httproute/waf-route -n backend-a --for='jsonpath={.status.parents[0].conditions[?(@.type=="ResolvedRefs")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s"
+wait_route httproute waf-route backend-a ResolvedRefs
 
 # --- Listener status assertions ---
 assert_listener_status waf-gateway gateway-system http 1 HTTPRoute GRPCRoute
