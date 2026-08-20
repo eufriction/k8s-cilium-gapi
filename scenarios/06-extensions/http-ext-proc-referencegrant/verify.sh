@@ -45,7 +45,7 @@ echo "PASS: ResolvedRefs reason=RefNotPermitted"
 # --- Listener status: route is still attached (Accepted drives attachedRoutes) ---
 assert_listener_status rg-gateway gateway-system http 1 HTTPRoute GRPCRoute
 
-# --- Data plane: fail-closed because failureModeAllow=false ---
+# --- Data plane: fail-closed because failureModeAllow=false is the default ---
 # Wait up to 30s for the data plane to settle. A 200 here would indicate
 # fail-open behaviour (regression); a 500 confirms the filter blocks traffic.
 echo "Waiting for data plane to settle as fail-closed..."

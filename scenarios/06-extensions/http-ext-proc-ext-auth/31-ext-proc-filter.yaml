@@ -8,7 +8,6 @@ spec:
     name: coraza-waf-extproc
     namespace: gateway-system
     port: 4317
-  failureModeAllow: false
   processingMode:
     requestHeaderMode: SEND
     responseHeaderMode: SKIP

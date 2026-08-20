@@ -27,10 +27,10 @@ What `verify.sh` checks:
 
 1. Backend pod and WAF deployment are Ready.
 2. Gateway is Accepted.
-3. HTTPRoute is Accepted (`Accepted=True` — listener accepts the route).
+3. HTTPRoute is Accepted (`Accepted=True`—listener accepts the route).
 4. HTTPRoute has `ResolvedRefs=False` with `reason=RefNotPermitted`.
 5. Listener `http` reports 1 attached route.
-6. Data plane fails closed (HTTP 500) due to `failureModeAllow: false` on the filter.
+6. Data plane fails closed (HTTP 500) due to default failure mode.
 
 ## Prerequisites
 

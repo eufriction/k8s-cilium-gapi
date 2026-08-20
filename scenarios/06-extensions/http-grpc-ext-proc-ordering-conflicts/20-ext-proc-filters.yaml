@@ -8,7 +8,6 @@ spec:
   backendRef:
     name: ext-proc-backend
     port: 4317
-  failureModeAllow: false
   processingMode:
     requestHeaderMode: SEND
     responseHeaderMode: SKIP
@@ -24,7 +23,6 @@ spec:
   backendRef:
     name: ext-proc-backend
     port: 4317
-  failureModeAllow: false
   processingMode:
     requestHeaderMode: SEND
     responseHeaderMode: SKIP
@@ -40,7 +38,6 @@ spec:
   backendRef:
     name: ext-proc-backend
     port: 4317
-  failureModeAllow: false
   processingMode:
     requestHeaderMode: SEND
     responseHeaderMode: SKIP
@@ -56,7 +53,6 @@ spec:
   backendRef:
     name: ext-proc-backend
     port: 4317
-  failureModeAllow: false
   processingMode:
     requestHeaderMode: SEND
     responseHeaderMode: SKIP
