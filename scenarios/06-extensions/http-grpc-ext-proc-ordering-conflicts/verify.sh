@@ -54,6 +54,38 @@ assert_route_parent() {
   echo "PASS: ${kind}/${route} parent ${parent_kind}/${parent_name}:${section}:${port} has Accepted=${expected_status}/${expected_reason} and ResolvedRefs=True"
 }
 
+assert_route_parent_absent() {
+  local kind="$1" route="$2" parent_kind="$3" parent_name="$4"
+  local section="$5" port="$6"
+  local json
+  json=$(kubectl get "$kind/$route" -n "$namespace" -o json 2>/dev/null) || return 1
+
+  if jq -e \
+    --arg controller "$controller" \
+    --arg parent_kind "$parent_kind" \
+    --arg parent_name "$parent_name" \
+    --arg parent_namespace "$namespace" \
+    --arg section "$section" \
+    --argjson port "$port" '
+      any(
+        .status.parents[]?;
+        .controllerName == $controller
+        and .parentRef.group == "gateway.networking.k8s.io"
+        and .parentRef.kind == $parent_kind
+        and .parentRef.name == $parent_name
+        and .parentRef.namespace == $parent_namespace
+        and (.parentRef.sectionName // "") == $section
+        and (.parentRef.port // 0) == $port
+      )
+    ' <<<"$json" >/dev/null; then
+    echo "FAIL: ${kind}/${route} still reports parent ${parent_kind}/${parent_name}:${section}:${port}" >&2
+    jq '.status.parents' <<<"$json" >&2
+    return 1
+  fi
+
+  echo "PASS: ${kind}/${route} no longer reports parent ${parent_kind}/${parent_name}:${section}:${port}"
+}
+
 assert_route_parent_rejected_without_conflict() {
   local kind="$1" route="$2" parent_name="$3" section="$4" port="$5"
   local json
@@ -164,10 +196,36 @@ retry_until 30 assert_route_parent_rejected_without_conflict grpcroute \
 
 echo "PASS: conflicts are scoped to accepted parents in one Gateway aggregate domain"
 
-# Normal reconciliation must clear stale conflict reasons after declarations
-# become compatible or the winning constraint disappears. Restore the staged
-# inputs on both success and failure so standalone :verify remains repeatable.
+# Force Gateway B to reconcile after Gateway A has recorded an ordering
+# conflict. Removing B first makes the later parent addition a deterministic
+# aggregate-specific update instead of relying on initial informer ordering.
+# Restore the staged inputs on both success and failure so standalone :verify
+# runs remain repeatable.
 trap restore_route_precedence EXIT
+kubectl patch grpcroute/grpc-cycle-conflict -n "$namespace" --type=json \
+  -p='[{"op":"replace","path":"/spec/parentRefs","value":[{"group":"gateway.networking.k8s.io","kind":"Gateway","name":"ordering-gateway","namespace":"ext-proc-ordering","sectionName":"direct","port":8080},{"group":"gateway.networking.k8s.io","kind":"ListenerSet","name":"ordering-listeners","namespace":"ext-proc-ordering","sectionName":"delegated","port":8080},{"group":"gateway.networking.k8s.io","kind":"Gateway","name":"ordering-gateway","namespace":"ext-proc-ordering","sectionName":"missing","port":8080}]}]' >/dev/null
+retry_until 30 assert_route_parent grpcroute grpc-cycle-conflict \
+  Gateway ordering-gateway direct 8080 True OrderingConflict
+retry_until 30 assert_route_parent grpcroute grpc-cycle-conflict \
+  ListenerSet ordering-listeners delegated 8080 True OrderingConflict
+retry_until 30 assert_route_parent_absent grpcroute grpc-cycle-conflict \
+  Gateway ordering-other-gateway isolated 8081
+
+echo "PASS: Gateway A retains its conflict while Gateway B is absent"
+
+kubectl patch grpcroute/grpc-cycle-conflict -n "$namespace" --type=json \
+  -p='[{"op":"replace","path":"/spec/parentRefs","value":[{"group":"gateway.networking.k8s.io","kind":"Gateway","name":"ordering-gateway","namespace":"ext-proc-ordering","sectionName":"direct","port":8080},{"group":"gateway.networking.k8s.io","kind":"ListenerSet","name":"ordering-listeners","namespace":"ext-proc-ordering","sectionName":"delegated","port":8080},{"group":"gateway.networking.k8s.io","kind":"Gateway","name":"ordering-other-gateway","namespace":"ext-proc-ordering","sectionName":"isolated","port":8081},{"group":"gateway.networking.k8s.io","kind":"Gateway","name":"ordering-gateway","namespace":"ext-proc-ordering","sectionName":"missing","port":8080}]}]' >/dev/null
+retry_until 30 assert_route_parent grpcroute grpc-cycle-conflict \
+  Gateway ordering-gateway direct 8080 True OrderingConflict
+retry_until 30 assert_route_parent grpcroute grpc-cycle-conflict \
+  ListenerSet ordering-listeners delegated 8080 True OrderingConflict
+retry_until 30 assert_route_parent grpcroute grpc-cycle-conflict \
+  Gateway ordering-other-gateway isolated 8081 True Accepted
+
+echo "PASS: Gateway B reconciliation preserves Gateway A's aggregate-specific OrderingConflict"
+
+# Normal reconciliation must clear stale conflict reasons after declarations
+# become compatible or the winning constraint disappears.
 kubectl patch httproute/http-reverse-conflict -n "$namespace" --type=json \
   -p='[{"op":"replace","path":"/spec/rules/0/filters","value":[{"type":"ExtensionRef","extensionRef":{"group":"cilium.io","kind":"CiliumEnvoyExtProcFilter","name":"order-a"}},{"type":"ExtensionRef","extensionRef":{"group":"cilium.io","kind":"CiliumEnvoyExtProcFilter","name":"order-b"}}]}]' >/dev/null
 retry_until 30 assert_route_parent httproute http-reverse-conflict \

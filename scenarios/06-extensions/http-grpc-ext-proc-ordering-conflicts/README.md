@@ -47,9 +47,12 @@ What `verify.sh` checks:
    namespace, section name, and port remain intact.
 8. Duplicate model occurrences from multiple listeners and gRPC matches do not
    duplicate filters or constraints.
-9. Conflict reasons clear after a declaration becomes compatible or the winning
-   route is deleted.
-10. The verifier restores all staged routes, including their creation-order
+9. Gateway B is removed and re-added as a parent after Gateway A reports an
+   `OrderingConflict`; Gateway A retains its direct and ListenerSet conflicts
+   while Gateway B reports `Accepted/Accepted` after its reconciliation.
+10. Conflict reasons clear after a declaration becomes compatible or the winning
+    route is deleted.
+11. The verifier restores all staged routes, including their creation-order
     groups, so standalone `:verify` runs remain repeatable.
 
 ## Prerequisites
