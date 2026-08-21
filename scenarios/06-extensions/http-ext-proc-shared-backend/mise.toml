@@ -1,0 +1,13 @@
+[env]
+SCENARIO_SKIP_VERSIONS = "1.19.1 1.19.3 1.19.4 1.19.5 1.19.6 1.20.0 1.20.0-pre.1 1.20.0-pre.2"
+
+[tasks.start]
+extends = "scenario:start"
+description = "Deploy the ext_proc shared-backend cluster identity scenario"
+
+[tasks.verify]
+extends = "scenario:verify"
+description = "Verify separate HTTP and gRPC clusters for a shared backend"
+
+[tasks.delete]
+extends = "scenario:delete"

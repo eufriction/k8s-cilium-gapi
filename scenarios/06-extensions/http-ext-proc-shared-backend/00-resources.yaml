@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=https://json.schemastore.org/kubernetes.json
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ext-proc-shared-backend
+  labels:
+    app.kubernetes.io/part-of: demo
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shared
+  namespace: ext-proc-shared-backend
+  labels:
+    app.kubernetes.io/part-of: demo
+spec:
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
