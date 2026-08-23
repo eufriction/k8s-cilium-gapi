@@ -32,7 +32,7 @@ assert_listener_status grpc-ext-proc-gateway gateway-system grpcs 1 HTTPRoute GR
 # Warm up the gRPC listener.
 retry_until 10 grpc_call "$HOST" "$PORT_443" >/dev/null
 
-metric_name="envoy_http_ext_proc_ceepf_grpc_backend_a_grpc_coraza_waf_streams_started"
+metric_name="envoy_http_ext_proc_ceepf_grpc_2dbackend_2da_grpc_2dcoraza_2dwaf_streams_started"
 metric_listener_prefix=""
 metrics_timeout="${ENVOY_METRICS_READY_TIMEOUT:-30}"
 metrics_probe_timeout="${ENVOY_METRICS_PROBE_TIMEOUT:-15s}"
@@ -49,7 +49,7 @@ fi
 
 baseline_metric=$(wait_for_ext_proc_metric_sum "$metric_name" "$metric_listener_prefix" "$metrics_timeout") || {
   echo "FAIL: ext_proc Envoy metric ${metric_name} is missing after ${metrics_timeout}s" >&2
-  if ! printf '%s\n' "$metrics" | grep -E 'ceepf_grpc_backend_a_grpc_coraza_waf|ext_proc|timed out waiting for the condition|ErrImagePull|ImagePullBackOff|CreateContainer|Pending' >&2; then
+  if ! printf '%s\n' "$metrics" | grep -E 'ceepf_grpc_2dbackend_2da_grpc_2dcoraza_2dwaf|ext_proc|timed out waiting for the condition|ErrImagePull|ImagePullBackOff|CreateContainer|Pending' >&2; then
     [ -n "$metrics" ] && printf '%s\n' "$metrics" >&2
   fi
   exit 1
@@ -79,7 +79,7 @@ done
 
 if [ -z "$after_metric" ] || [ "$after_metric" -le "$baseline_metric" ]; then
   echo "FAIL: ext_proc Envoy metric ${metric_name} did not increase after gRPC traffic (${baseline_metric} -> ${after_metric:-missing})" >&2
-  if ! printf '%s\n' "$metrics" | grep -E 'ceepf_grpc_backend_a_grpc_coraza_waf|ext_proc|timed out waiting for the condition|ErrImagePull|ImagePullBackOff|CreateContainer|Pending' >&2; then
+  if ! printf '%s\n' "$metrics" | grep -E 'ceepf_grpc_2dbackend_2da_grpc_2dcoraza_2dwaf|ext_proc|timed out waiting for the condition|ErrImagePull|ImagePullBackOff|CreateContainer|Pending' >&2; then
     [ -n "$metrics" ] && printf '%s\n' "$metrics" >&2
   fi
   exit 1

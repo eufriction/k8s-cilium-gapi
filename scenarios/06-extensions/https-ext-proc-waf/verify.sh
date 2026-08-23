@@ -33,7 +33,7 @@ assert_listener_status https-waf-gateway gateway-system https 1 HTTPRoute GRPCRo
 # Warm up the HTTPS listener.
 retry_until 10 curl -kfsS --resolve "$RESOLVE" "${BASE_URL}/headers" >/dev/null
 
-metric_name="envoy_http_ext_proc_ceepf_backend_a_https_coraza_waf_streams_started"
+metric_name="envoy_http_ext_proc_ceepf_backend_2da_https_2dcoraza_2dwaf_streams_started"
 metric_listener_prefix=""
 metrics_timeout="${ENVOY_METRICS_READY_TIMEOUT:-30}"
 metrics_probe_timeout="${ENVOY_METRICS_PROBE_TIMEOUT:-15s}"
@@ -50,7 +50,7 @@ fi
 
 baseline_metric=$(wait_for_ext_proc_metric_sum "$metric_name" "$metric_listener_prefix" "$metrics_timeout") || {
   echo "FAIL: ext_proc Envoy metric ${metric_name} is missing after ${metrics_timeout}s" >&2
-  if ! printf '%s\n' "$metrics" | grep -E 'ceepf_backend_a_https_coraza_waf|ext_proc|timed out waiting for the condition|ErrImagePull|ImagePullBackOff|CreateContainer|Pending' >&2; then
+  if ! printf '%s\n' "$metrics" | grep -E 'ceepf_backend_2da_https_2dcoraza_2dwaf|ext_proc|timed out waiting for the condition|ErrImagePull|ImagePullBackOff|CreateContainer|Pending' >&2; then
     [ -n "$metrics" ] && printf '%s\n' "$metrics" >&2
   fi
   exit 1
@@ -92,7 +92,7 @@ done
 
 if [ -z "$after_metric" ] || [ "$after_metric" -le "$baseline_metric" ]; then
   echo "FAIL: ext_proc Envoy metric ${metric_name} did not increase after HTTPS WAF traffic (${baseline_metric} -> ${after_metric:-missing})" >&2
-  if ! printf '%s\n' "$metrics" | grep -E 'ceepf_backend_a_https_coraza_waf|ext_proc|timed out waiting for the condition|ErrImagePull|ImagePullBackOff|CreateContainer|Pending' >&2; then
+  if ! printf '%s\n' "$metrics" | grep -E 'ceepf_backend_2da_https_2dcoraza_2dwaf|ext_proc|timed out waiting for the condition|ErrImagePull|ImagePullBackOff|CreateContainer|Pending' >&2; then
     [ -n "$metrics" ] && printf '%s\n' "$metrics" >&2
   fi
   exit 1
