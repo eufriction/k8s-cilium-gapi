@@ -16,6 +16,7 @@ Run progress:
 
 - [ ] Verify cluster health
 - [ ] Choose cluster mode
+- [ ] Verify the shared-fixture safety invariant
 - [ ] Run the full suite
 - [ ] Summarize PASS / FAIL / SKIP counts
 - [ ] Investigate any failures
@@ -38,7 +39,23 @@ If no cluster exists, ask the user which mode to use:
 
 In `LoadBalancer` mode, remind the user that `mise run cloud-provider-kind:start` must be running in another terminal.
 
-## 2. Run the full suite
+## 2. Protect the shared fixture
+
+`scenarios:run-all` sets `FIXTURE_DEPLOYED=true`. In this mode, each scenario must deploy and delete only its scenario-owned resources through `gateway/kustomization.yaml`. The shared `gateway-system` namespace comes from `config/fixture` and must remain until the suite finishes. The full scenario kustomization may still include that namespace for standalone runs, so do not use a standalone `:start --delete` command while the shared fixture is active.
+
+Before adding or debugging a scenario in fixture mode, render its gateway overlay and confirm that it does not contain `Namespace/gateway-system`:
+
+```sh
+kubectl kustomize scenarios/<group>/<name>/gateway/ --load-restrictor=LoadRestrictionsNone \
+  | kubectl get -f - --ignore-not-found \
+    -o custom-columns='KIND:.kind,NAMESPACE:.metadata.namespace,NAME:.metadata.name'
+```
+
+If the scenario has no `gateway/` directory, add a fixture-only overlay containing only the scenario-owned Gateway, Route, filter, certificate, and related resources before including it in `run-all`.
+
+The fixture is intentionally deleted at the end of the full suite, so checking `gateway-system` after `scenarios:run-all` is expected to return `NotFound`. For a focused safety check, use the fixture-mode command in `run-scenarios` and verify the namespace before and after the scenario cleanup.
+
+## 3. Run the full suite
 
 Default to the shared-fixture path because it is the fastest supported full-suite workflow:
 
@@ -60,7 +77,7 @@ mise run --continue-on-error --jobs 1 '//scenarios/...:start' --delete 2>&1 | te
 
 Set `timeout_ms` to at least `1800000` for full-suite commands.
 
-## 3. Summarize results
+## 4. Summarize results
 
 `mise run scenarios:run-all` writes `run-all-results.tsv` automatically. For the fixtureless workflow, generate the same file explicitly:
 
@@ -77,7 +94,7 @@ Read the TSV result file instead of parsing the log. It contains:
 
 Present the PASS, FAIL, and SKIP counts, every failed scenario, its failure detail, and its copy-pasteable rerun command.
 
-## 4. Re-run failing scenarios
+## 5. Re-run failing scenarios
 
 Use a concrete scenario path when narrowing down a failure. Example:
 
