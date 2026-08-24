@@ -172,10 +172,10 @@ if ! [[ "$foundation_timestamp" < "$compatible_timestamp" ]] || ! [[ "$compatibl
 fi
 echo "PASS: route creation timestamps preserve foundation, compatible, conflict precedence"
 
-# B<C followed by A<B is compatible and must produce A,B,C. The cycle rule
-# C<D<A loses atomically, but its unique D node remains in the HCM chain.
+# B<C followed by A<B is compatible and must produce A,B,C. The conflicting
+# C<D<A rule is rejected fail-closed, so its unique D node is not in this HCM chain.
 retry_until 30 assert_cec_ext_proc_order cilium-gateway-ordering-gateway \
-  "$namespace" "$namespace" order-a order-b order-c losing-only-d
+  "$namespace" "$namespace" order-a order-b order-c
 retry_until 30 assert_cec_ext_proc_order cilium-gateway-ordering-other-gateway \
   "$namespace" "$namespace" order-c losing-only-d order-a
 
@@ -184,11 +184,11 @@ retry_until 30 assert_route_parent httproute 00-b-before-c \
 retry_until 30 assert_route_parent httproute 01-a-before-b \
   Gateway ordering-gateway direct 8080 True Accepted
 retry_until 30 assert_route_parent httproute http-reverse-conflict \
-  Gateway ordering-gateway direct 8080 True OrderingConflict
+  Gateway ordering-gateway direct 8080 False OrderingConflict
 retry_until 30 assert_route_parent grpcroute grpc-cycle-conflict \
-  Gateway ordering-gateway direct 8080 True OrderingConflict
+  Gateway ordering-gateway direct 8080 False OrderingConflict
 retry_until 30 assert_route_parent grpcroute grpc-cycle-conflict \
-  ListenerSet ordering-listeners delegated 8080 True OrderingConflict
+  ListenerSet ordering-listeners delegated 8080 False OrderingConflict
 retry_until 30 assert_route_parent grpcroute grpc-cycle-conflict \
   Gateway ordering-other-gateway isolated 8081 True Accepted
 retry_until 30 assert_route_parent_rejected_without_conflict grpcroute \
@@ -205,9 +205,9 @@ trap restore_route_precedence EXIT
 kubectl patch grpcroute/grpc-cycle-conflict -n "$namespace" --type=json \
   -p='[{"op":"replace","path":"/spec/parentRefs","value":[{"group":"gateway.networking.k8s.io","kind":"Gateway","name":"ordering-gateway","namespace":"ext-proc-ordering","sectionName":"direct","port":8080},{"group":"gateway.networking.k8s.io","kind":"ListenerSet","name":"ordering-listeners","namespace":"ext-proc-ordering","sectionName":"delegated","port":8080},{"group":"gateway.networking.k8s.io","kind":"Gateway","name":"ordering-gateway","namespace":"ext-proc-ordering","sectionName":"missing","port":8080}]}]' >/dev/null
 retry_until 30 assert_route_parent grpcroute grpc-cycle-conflict \
-  Gateway ordering-gateway direct 8080 True OrderingConflict
+  Gateway ordering-gateway direct 8080 False OrderingConflict
 retry_until 30 assert_route_parent grpcroute grpc-cycle-conflict \
-  ListenerSet ordering-listeners delegated 8080 True OrderingConflict
+  ListenerSet ordering-listeners delegated 8080 False OrderingConflict
 retry_until 30 assert_route_parent_absent grpcroute grpc-cycle-conflict \
   Gateway ordering-other-gateway isolated 8081
 
@@ -216,9 +216,9 @@ echo "PASS: Gateway A retains its conflict while Gateway B is absent"
 kubectl patch grpcroute/grpc-cycle-conflict -n "$namespace" --type=json \
   -p='[{"op":"replace","path":"/spec/parentRefs","value":[{"group":"gateway.networking.k8s.io","kind":"Gateway","name":"ordering-gateway","namespace":"ext-proc-ordering","sectionName":"direct","port":8080},{"group":"gateway.networking.k8s.io","kind":"ListenerSet","name":"ordering-listeners","namespace":"ext-proc-ordering","sectionName":"delegated","port":8080},{"group":"gateway.networking.k8s.io","kind":"Gateway","name":"ordering-other-gateway","namespace":"ext-proc-ordering","sectionName":"isolated","port":8081},{"group":"gateway.networking.k8s.io","kind":"Gateway","name":"ordering-gateway","namespace":"ext-proc-ordering","sectionName":"missing","port":8080}]}]' >/dev/null
 retry_until 30 assert_route_parent grpcroute grpc-cycle-conflict \
-  Gateway ordering-gateway direct 8080 True OrderingConflict
+  Gateway ordering-gateway direct 8080 False OrderingConflict
 retry_until 30 assert_route_parent grpcroute grpc-cycle-conflict \
-  ListenerSet ordering-listeners delegated 8080 True OrderingConflict
+  ListenerSet ordering-listeners delegated 8080 False OrderingConflict
 retry_until 30 assert_route_parent grpcroute grpc-cycle-conflict \
   Gateway ordering-other-gateway isolated 8081 True Accepted
 
@@ -231,9 +231,9 @@ kubectl patch httproute/http-reverse-conflict -n "$namespace" --type=json \
 retry_until 30 assert_route_parent httproute http-reverse-conflict \
   Gateway ordering-gateway direct 8080 True Accepted
 retry_until 30 assert_route_parent grpcroute grpc-cycle-conflict \
-  Gateway ordering-gateway direct 8080 True OrderingConflict
+  Gateway ordering-gateway direct 8080 False OrderingConflict
 retry_until 30 assert_route_parent grpcroute grpc-cycle-conflict \
-  ListenerSet ordering-listeners delegated 8080 True OrderingConflict
+  ListenerSet ordering-listeners delegated 8080 False OrderingConflict
 
 kubectl delete -f 30-foundation-route.yaml --wait=true --timeout=60s >/dev/null
 retry_until 30 assert_route_parent grpcroute grpc-cycle-conflict \

@@ -12,7 +12,7 @@ namespace=ext-proc-gamma
 controller=io.cilium/gateway-controller
 
 assert_service_parent() {
-  local kind="$1" route="$2" service="$3" expected_reason="$4"
+  local kind="$1" route="$2" service="$3" expected_status="$4" expected_reason="$5"
   local json
   json=$(kubectl get "$kind/$route" -n "$namespace" -o json 2>/dev/null) || return 1
 
@@ -20,6 +20,7 @@ assert_service_parent() {
     --arg controller "$controller" \
     --arg service "$service" \
     --arg parent_namespace "$namespace" \
+    --arg status "$expected_status" \
     --arg reason "$expected_reason" '
       [
         .status.parents[]?
@@ -32,18 +33,18 @@ assert_service_parent() {
             and .parentRef.port == 80
           )
         | select(
-            ([.conditions[]? | select(.type == "Accepted" and .status == "True" and .reason == $reason)] | length) == 1
+            ([.conditions[]? | select(.type == "Accepted" and .status == $status and .reason == $reason)] | length) == 1
             and ([.conditions[]? | select(.type == "ResolvedRefs" and .status == "True")] | length) == 1
           )
       ]
       | length == 1
     ' <<<"$json" >/dev/null; then
-    echo "FAIL: ${kind}/${route} Service/${service}:80 does not have Accepted=True/${expected_reason}" >&2
+    echo "FAIL: ${kind}/${route} Service/${service}:80 does not have Accepted=${expected_status}/${expected_reason}" >&2
     jq '.status.parents' <<<"$json" >&2
     return 1
   fi
 
-  echo "PASS: ${kind}/${route} Service/${service}:80 has Accepted=True/${expected_reason} and ResolvedRefs=True"
+  echo "PASS: ${kind}/${route} Service/${service}:80 has Accepted=${expected_status}/${expected_reason} and ResolvedRefs=True"
 }
 
 restore_route_precedence() {
@@ -88,14 +89,14 @@ echo "PASS: source-a foundation route has precedence over multi-parent routes"
 # source-b sees only the two compatible B<A declarations.
 retry_until 30 assert_cec_ext_proc_order source-a "$namespace" "$namespace" order-a order-b
 retry_until 30 assert_cec_ext_proc_order source-b "$namespace" "$namespace" order-b order-a
-retry_until 30 assert_service_parent httproute 00-source-a-foundation source-a Accepted
+retry_until 30 assert_service_parent httproute 00-source-a-foundation source-a True Accepted
 
 for kind_route in \
   'httproute http-multi-parent-conflict' \
   'grpcroute grpc-multi-parent-conflict'; do
   read -r kind route <<<"$kind_route"
-  retry_until 30 assert_service_parent "$kind" "$route" source-a OrderingConflict
-  retry_until 30 assert_service_parent "$kind" "$route" source-b Accepted
+  retry_until 30 assert_service_parent "$kind" "$route" source-a False OrderingConflict
+  retry_until 30 assert_service_parent "$kind" "$route" source-b True Accepted
 done
 
 echo "PASS: multi-parent HTTPRoute and GRPCRoute status is scoped per source Service"
@@ -109,8 +110,8 @@ for kind_route in \
   'httproute http-multi-parent-conflict' \
   'grpcroute grpc-multi-parent-conflict'; do
   read -r kind route <<<"$kind_route"
-  retry_until 30 assert_service_parent "$kind" "$route" source-a Accepted
-  retry_until 30 assert_service_parent "$kind" "$route" source-b Accepted
+  retry_until 30 assert_service_parent "$kind" "$route" source-a True Accepted
+  retry_until 30 assert_service_parent "$kind" "$route" source-b True Accepted
 done
 retry_until 30 assert_cec_ext_proc_order source-a "$namespace" "$namespace" order-b order-a
 retry_until 30 assert_cec_ext_proc_order source-b "$namespace" "$namespace" order-b order-a
