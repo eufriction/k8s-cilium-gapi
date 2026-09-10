@@ -2,7 +2,7 @@
 set -euo pipefail
 REPO_ROOT="$(cd "${1:-$(dirname "${BASH_SOURCE[0]}")}/../../.." && pwd)"
 source "${REPO_ROOT}/lib/verify-helpers.sh"
-skip_on_versions "${SCENARIO_SKIP_VERSIONS:-}" "HTTPS/TLS shared-port multi-port regression requires per-port TLS translation (cilium#44889 + cilium#45371)"
+skip_on_versions "${SCENARIO_SKIP_VERSIONS:-}" "HTTPS/TLS shared-port multi-port regression is broken on Cilium 1.20.1 (cilium#48269)"
 gateway_ports https-tls-shared-port-multi-tls-ports-gateway gateway-system 443 50051 9443
 
 # --- Wait for resources ---
