@@ -3,9 +3,6 @@ monorepo_root = true
 [monorepo]
 config_roots = ["scenarios/*", "scenarios/*/*"]
 
-[settings]
-experimental = true
-
 [env]
 NETSHOOT_VERSION = "v0.15"
 HTTPBIN_VERSION = "2.22.1"
