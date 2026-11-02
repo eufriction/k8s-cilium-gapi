@@ -26,7 +26,7 @@ These values come from `mise.toml` and affect scenario verification timing:
 To test a specific release profile before starting the cluster:
 
 ```sh
-cp versions/1.19.4.toml mise.local.toml
+cp versions/1.19.10.toml mise.local.toml
 ```
 
 For local Cilium branch builds, use `versions/branch.toml`. It sets `CILIUM_VERSION=branch`, so branch runs do not match release-only skip lists.

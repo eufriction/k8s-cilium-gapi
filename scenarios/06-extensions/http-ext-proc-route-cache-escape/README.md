@@ -77,8 +77,7 @@ own scenario.
 
 Requires a Cilium build with the `CiliumEnvoyExtProcFilter` CRD and
 `gatewayAPI.enableExtensionRefFilters=true`, plus `ExternalAuth` support on
-`HTTPRoute`. Released profiles without that support are skipped via
-`SCENARIO_SKIP_VERSIONS`.
+`HTTPRoute`.
 
 ## Run
 

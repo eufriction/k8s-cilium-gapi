@@ -40,8 +40,7 @@ What `verify.sh` checks:
 
 Requires a Cilium build with `CiliumEnvoyExtProcFilter` CRD and
 `gatewayAPI.enableExtensionRefFilters=true`, plus `ExternalAuth` support on
-`HTTPRoute`. Released profiles that do not include this support are skipped via
-`SCENARIO_SKIP_VERSIONS`.
+`HTTPRoute`.
 
 ## Run
 

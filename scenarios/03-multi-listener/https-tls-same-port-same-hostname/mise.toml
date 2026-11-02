@@ -1,6 +1,3 @@
-[env]
-SCENARIO_SKIP_VERSIONS = "1.19.1 1.19.5"
-
 [tasks.start]
 extends = "scenario:start"
 description = "Deploy the HTTPS + TLS passthrough same-port same-hostname rejection scenario"

@@ -53,8 +53,6 @@ This scenario requires Cilium with `CiliumEnvoyExtProcFilter` support,
 `gatewayAPI.enableExtensionRefFilters=true`, and GAMMA support. No live backend
 pods are required because the scenario verifies status and CEC output only.
 
-Cilium `1.19.6` and `1.20.0` are skipped via `SCENARIO_SKIP_VERSIONS`.
-
 ## Run
 
 ```sh

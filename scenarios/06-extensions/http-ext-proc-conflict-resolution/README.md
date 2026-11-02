@@ -52,8 +52,7 @@ What `verify.sh` checks:
 ## Prerequisites
 
 This scenario requires a Cilium build with `CiliumEnvoyExtProcFilter` support
-and `gatewayAPI.enableExtensionRefFilters=true`. Released profiles that do not
-include this support are skipped via `SCENARIO_SKIP_VERSIONS`.
+and `gatewayAPI.enableExtensionRefFilters=true`.
 
 ## Run
 

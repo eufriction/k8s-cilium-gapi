@@ -11,7 +11,7 @@ BACKEND_GRPC_VERSION = "0.1.1"
 CORAZA_WAF_EXTPROC_VERSION = "0.1.0"
 EXTERNAL_AUTHZ_VERSION = "0.1.0"
 ROUTE_MUTATOR_EXTPROC_VERSION = "0.1.0"
-CILIUM_VERSION = "1.19.6"
+CILIUM_VERSION = "1.19.10"
 CILIUM_CHART_DIR = ""
 CILIUM_AGENT_IMAGE = ""
 CILIUM_OPERATOR_IMAGE = ""
@@ -20,7 +20,7 @@ CERT_MANAGER_VERSION = "1.20.2"
 GATEWAY_API_VERSION = "1.4.1"
 KYVERNO_CHART_VERSION = "3.7.1"
 KIND_CLUSTER_NAME = "k8s-cilium-gapi"
-# Version-conditional vars (X_ prefix). Defaults match 1.19.6 (latest stable).
+# Version-conditional vars (X_ prefix). Defaults match the 1.19.10 profile.
 # Override by copying a versions/*.toml to mise.local.toml.
 X_HTTPROUTE_ACCEPTED_MSG = "Accepted HTTPRoute"
 X_GRPCROUTE_ACCEPTED_MSG = "Accepted GRPCRoute"

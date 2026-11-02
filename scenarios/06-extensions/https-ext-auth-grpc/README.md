@@ -33,8 +33,7 @@ What `verify.sh` checks:
 ## Prerequisites
 
 This scenario requires Cilium and Gateway API CRDs with experimental
-`HTTPRoute` `ExternalAuth` support. Released profiles that do not include this
-support are skipped via `SCENARIO_SKIP_VERSIONS`.
+`HTTPRoute` `ExternalAuth` support.
 
 ## Run
 

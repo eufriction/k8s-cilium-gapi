@@ -38,8 +38,7 @@ both ordinary HTTP and the ext_proc gRPC protocol.
 ## Prerequisites
 
 This scenario requires Cilium with `CiliumEnvoyExtProcFilter` support and
-`gatewayAPI.enableExtensionRefFilters=true`. It is skipped on released
-versions without the required ext_proc support; branch builds run it.
+`gatewayAPI.enableExtensionRefFilters=true`.
 
 ## Run
 
