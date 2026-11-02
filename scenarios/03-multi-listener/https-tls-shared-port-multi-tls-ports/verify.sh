@@ -19,21 +19,21 @@ wait_parallel \
 wait_gateway https-tls-shared-port-multi-tls-ports-gateway gateway-system
 
 # --- Routes ---
-wait_route httproute backend-a-https-route-c backend-a &
-wait_route httproute backend-a-https-route-c backend-a ResolvedRefs &
-wait_route tlsroute backend-b-tls-route-a backend-b &
-wait_route tlsroute backend-b-tls-route-a backend-b ResolvedRefs &
-wait_route tlsroute backend-b-tls-route-b backend-b &
-wait_route tlsroute backend-b-tls-route-b backend-b ResolvedRefs &
-wait_route tlsroute backend-b-tls-route-d backend-b &
-wait_route tlsroute backend-b-tls-route-d backend-b ResolvedRefs &
+wait_route httproute backend-a-web-route backend-a &
+wait_route httproute backend-a-web-route backend-a ResolvedRefs &
+wait_route tlsroute backend-b-mtls-50051-route backend-b &
+wait_route tlsroute backend-b-mtls-50051-route backend-b ResolvedRefs &
+wait_route tlsroute backend-b-mtls-9443-route backend-b &
+wait_route tlsroute backend-b-mtls-9443-route backend-b ResolvedRefs &
+wait_route tlsroute backend-b-mtls-443-route backend-b &
+wait_route tlsroute backend-b-mtls-443-route backend-b ResolvedRefs &
 wait
 
 # --- Listener status assertions ---
-assert_listener_status https-tls-shared-port-multi-tls-ports-gateway gateway-system https-c 1 HTTPRoute GRPCRoute
-assert_listener_status https-tls-shared-port-multi-tls-ports-gateway gateway-system tls-a 1 TLSRoute
-assert_listener_status https-tls-shared-port-multi-tls-ports-gateway gateway-system tls-b 1 TLSRoute
-assert_listener_status https-tls-shared-port-multi-tls-ports-gateway gateway-system tls-d 1 TLSRoute
+assert_listener_status https-tls-shared-port-multi-tls-ports-gateway gateway-system https-443 1 HTTPRoute GRPCRoute
+assert_listener_status https-tls-shared-port-multi-tls-ports-gateway gateway-system tls-50051 1 TLSRoute
+assert_listener_status https-tls-shared-port-multi-tls-ports-gateway gateway-system tls-9443 1 TLSRoute
+assert_listener_status https-tls-shared-port-multi-tls-ports-gateway gateway-system tls-443 1 TLSRoute
 
 echo "PASS: all four listeners report one attached route"
 
@@ -50,23 +50,23 @@ kubectl get secret backend-b-mtls-server -n backend-b -o jsonpath='{.data.ca\.cr
 kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.crt}' | base64 -d >"$CERT_DIR/b-client.crt"
 kubectl get secret backend-b-mtls-client -n backend-b -o jsonpath='{.data.tls\.key}' | base64 -d >"$CERT_DIR/b-client.key"
 
-retry_until 10 curl -fsS --resolve "api.example.test:${PORT_50051}:127.0.0.1" \
+retry_until 10 curl -fsS --resolve "mtls-50051.example.test:${PORT_50051}:127.0.0.1" \
   --cacert "$CERT_DIR/b-ca.crt" --cert "$CERT_DIR/b-client.crt" --key "$CERT_DIR/b-client.key" \
-  "https://api.example.test:${PORT_50051}/" >/dev/null
-echo "PASS: TLS passthrough — api.example.test on port 50051"
+  "https://mtls-50051.example.test:${PORT_50051}/" >/dev/null
+echo "PASS: TLS passthrough — mtls-50051.example.test on port 50051"
 
-retry_until 10 curl -fsS --resolve "tls.example.test:${PORT_9443}:127.0.0.1" \
+retry_until 10 curl -fsS --resolve "mtls-9443.example.test:${PORT_9443}:127.0.0.1" \
   --cacert "$CERT_DIR/b-ca.crt" --cert "$CERT_DIR/b-client.crt" --key "$CERT_DIR/b-client.key" \
-  "https://tls.example.test:${PORT_9443}/" >/dev/null
-echo "PASS: TLS passthrough — tls.example.test on port 9443"
+  "https://mtls-9443.example.test:${PORT_9443}/" >/dev/null
+echo "PASS: TLS passthrough — mtls-9443.example.test on port 9443"
 
-retry_until 10 curl -fsS --resolve "mtls-b.example.test:${PORT_443}:127.0.0.1" \
+retry_until 10 curl -fsS --resolve "mtls-443.example.test:${PORT_443}:127.0.0.1" \
   --cacert "$CERT_DIR/b-ca.crt" --cert "$CERT_DIR/b-client.crt" --key "$CERT_DIR/b-client.key" \
-  "https://mtls-b.example.test:${PORT_443}/" >/dev/null
-echo "PASS: TLS passthrough — mtls-b.example.test on port 443"
+  "https://mtls-443.example.test:${PORT_443}/" >/dev/null
+echo "PASS: TLS passthrough — mtls-443.example.test on port 443, shared with HTTPS"
 
 # --- Status message checks ---
-for route in backend-b-tls-route-a backend-b-tls-route-b backend-b-tls-route-d; do
+for route in backend-b-mtls-50051-route backend-b-mtls-9443-route backend-b-mtls-443-route; do
   msg=$(kubectl get "tlsroute/${route}" -n backend-b -o jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].message}')
   assert_msg "$msg" "X_TLSROUTE_ACCEPTED_MSG" "$route"
 done

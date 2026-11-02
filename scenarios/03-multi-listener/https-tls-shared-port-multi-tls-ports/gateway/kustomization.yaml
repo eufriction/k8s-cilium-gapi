@@ -6,4 +6,4 @@ resources:
   - ../11-gateway-certificate.yaml
   - ../30-gateway.yaml
   - ../31-backend-a-httproute.yaml
-  - ../32-backend-b-tlsroute.yaml
+  - ../32-backend-b-tlsroutes.yaml

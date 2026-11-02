@@ -1,9 +1,11 @@
 ---
+# All three TLSRoutes passthrough to the same backend-mtls pod. Only the
+# listener and port differ, which is what this scenario exercises.
 # yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/gateway.networking.k8s.io/tlsroute_v1alpha2.json
 apiVersion: gateway.networking.k8s.io/v1alpha2
 kind: TLSRoute
 metadata:
-  name: backend-b-tls-route-a
+  name: backend-b-mtls-50051-route
   namespace: backend-b
   labels:
     app.kubernetes.io/part-of: demo
@@ -11,9 +13,9 @@ spec:
   parentRefs:
     - name: https-tls-shared-port-multi-tls-ports-gateway
       namespace: gateway-system
-      sectionName: tls-a
+      sectionName: tls-50051
   hostnames:
-    - api.example.test
+    - mtls-50051.example.test
   rules:
     - backendRefs:
         - name: backend-mtls
@@ -23,7 +25,7 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1alpha2
 kind: TLSRoute
 metadata:
-  name: backend-b-tls-route-b
+  name: backend-b-mtls-9443-route
   namespace: backend-b
   labels:
     app.kubernetes.io/part-of: demo
@@ -31,19 +33,20 @@ spec:
   parentRefs:
     - name: https-tls-shared-port-multi-tls-ports-gateway
       namespace: gateway-system
-      sectionName: tls-b
+      sectionName: tls-9443
   hostnames:
-    - tls.example.test
+    - mtls-9443.example.test
   rules:
     - backendRefs:
         - name: backend-mtls
           port: 9443
 ---
+# This route shares port 443 with the HTTPS-terminated listener.
 # yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/gateway.networking.k8s.io/tlsroute_v1alpha2.json
 apiVersion: gateway.networking.k8s.io/v1alpha2
 kind: TLSRoute
 metadata:
-  name: backend-b-tls-route-d
+  name: backend-b-mtls-443-route
   namespace: backend-b
   labels:
     app.kubernetes.io/part-of: demo
@@ -51,9 +54,9 @@ spec:
   parentRefs:
     - name: https-tls-shared-port-multi-tls-ports-gateway
       namespace: gateway-system
-      sectionName: tls-d
+      sectionName: tls-443
   hostnames:
-    - mtls-b.example.test
+    - mtls-443.example.test
   rules:
     - backendRefs:
         - name: backend-mtls

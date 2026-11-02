@@ -41,6 +41,9 @@ spec:
     - mtls.example.test
     - api.example.test
     - tls.example.test
+    - mtls-443.example.test
+    - mtls-9443.example.test
+    - mtls-50051.example.test
   usages:
     - server auth
   issuerRef:

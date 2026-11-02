@@ -11,26 +11,26 @@ spec:
   gatewayClassName: cilium
   listeners:
     # These two split-port listeners select the per-port TLS translation path.
-    - name: tls-a
+    - name: tls-50051
       protocol: TLS
       port: 50051
-      hostname: "api.example.test"
+      hostname: "mtls-50051.example.test"
       tls:
         mode: Passthrough
       allowedRoutes:
         namespaces:
           from: All
-    - name: tls-b
+    - name: tls-9443
       protocol: TLS
       port: 9443
-      hostname: "tls.example.test"
+      hostname: "mtls-9443.example.test"
       tls:
         mode: Passthrough
       allowedRoutes:
         namespaces:
           from: All
     # These disjoint listeners intentionally share port 443.
-    - name: https-c
+    - name: https-443
       protocol: HTTPS
       port: 443
       hostname: "web.example.test"
@@ -42,10 +42,10 @@ spec:
       allowedRoutes:
         namespaces:
           from: All
-    - name: tls-d
+    - name: tls-443
       protocol: TLS
       port: 443
-      hostname: "mtls-b.example.test"
+      hostname: "mtls-443.example.test"
       tls:
         mode: Passthrough
       allowedRoutes:
