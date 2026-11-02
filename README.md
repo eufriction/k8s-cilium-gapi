@@ -138,10 +138,13 @@ Available profiles in `versions/`:
 | ------------- | ----------- | ----------- | ----------------------------------- |
 | `1.19.6.toml` | 1.19.6      | 1.4.1       | Latest 1.19.x patch                 |
 | `1.20.0.toml` | 1.20.0      | 1.6.1       | Previous stable release             |
-| `1.20.1.toml` | 1.20.1      | 1.6.1       | Latest 1.20.x patch                 |
-| `branch.toml` | local build | 1.6.1       | Main/branch build from local images |
+| `1.20.1.toml` | 1.20.1      | 1.6.1       | Earlier 1.20.x patch                |
+| `1.20.4.toml` | 1.20.4      | 1.6.3       | Additional 1.20.x patch profile     |
+| `branch.toml` | local build | 1.6.3       | Main/branch build from local images |
 
 Each profile sets `CILIUM_VERSION`, `GATEWAY_API_VERSION`, and `X_*` env vars that control version-conditional verify behavior (expected status messages, TLSRoute API version).
+
+The 1.20.4 profile pins Gateway API 1.6.3 to match [Cilium's release dependency](https://github.com/cilium/cilium/blob/v1.20.4/go.mod). The runner installs the experimental CRD bundle, which serves both TLSRoute `v1` and the `v1alpha2` used by existing manifests. Cilium 1.20.4 does not include `CiliumEnvoyExtProcFilter`, so ext_proc scenarios skip that release. No full-suite results are recorded for this profile yet.
 
 #### Skip logic
 
