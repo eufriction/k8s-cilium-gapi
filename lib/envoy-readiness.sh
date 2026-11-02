@@ -7,7 +7,7 @@
 
 ENVOY_READINESS_NAMESPACE="kube-system"
 ENVOY_READINESS_CONTAINER="cilium-agent"
-ENVOY_GATEWAY_LABEL="io.x-k8s.cloud-provider-kind.gateway.name"
+ENVOY_LOADBALANCER_LABEL="io.x-k8s.cloud-provider-kind.loadbalancer.name"
 
 # envoy_agent_pods
 #
@@ -140,13 +140,13 @@ envoy_gateway_probe() {
 envoy_readiness_diagnostics() {
   local gw="$1" ns="$2"
   local service="cilium-gateway-${gw}"
-  local gateway_label="${KIND_CLUSTER_NAME:-k8s-cilium-gapi}/${ns}/${gw}"
+  local loadbalancer_label="${KIND_CLUSTER_NAME:-k8s-cilium-gapi}/${ns}/${service}"
   local pod node ingress_ips
 
   echo "--- Envoy readiness diagnostics ---" >&2
   kubectl get svc "$service" -n "$ns" -o yaml >&2 2>&1 || true
   kubectl get cec "$service" -n "$ns" -o yaml >&2 2>&1 || true
-  docker ps -a --filter "label=${ENVOY_GATEWAY_LABEL}=${gateway_label}" \
+  docker ps -a --filter "label=${ENVOY_LOADBALANCER_LABEL}=${loadbalancer_label}" \
     --format 'container={{.ID}} name={{.Names}} status={{.Status}} ports={{.Ports}}' >&2 2>&1 || true
 
   while IFS= read -r pod; do
@@ -233,8 +233,8 @@ EOF
 envoy_gateway_resources_gone() {
   local gw="$1" ns="$2"
   local service="cilium-gateway-${gw}"
-  local gateway_label="${KIND_CLUSTER_NAME:-k8s-cilium-gapi}/${ns}/${gw}"
-  local pod listeners routes
+  local loadbalancer_label="${KIND_CLUSTER_NAME:-k8s-cilium-gapi}/${ns}/${service}"
+  local pod listeners routes proxies
 
   if kubectl get svc "$service" -n "$ns" >/dev/null 2>&1; then
     return 1
@@ -242,7 +242,8 @@ envoy_gateway_resources_gone() {
   if kubectl get cec "$service" -n "$ns" >/dev/null 2>&1; then
     return 1
   fi
-  if docker ps -aq --filter "label=${ENVOY_GATEWAY_LABEL}=${gateway_label}" | grep -q .; then
+  proxies=$(docker ps -aq --filter "label=${ENVOY_LOADBALANCER_LABEL}=${loadbalancer_label}") || return 1
+  if [ -n "$proxies" ]; then
     return 1
   fi
 
