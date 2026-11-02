@@ -1,0 +1,67 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/gateway.networking.k8s.io/httproute_v1.json
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: route-cache-escape-route
+  namespace: backend-a
+  labels:
+    app.kubernetes.io/part-of: demo
+spec:
+  parentRefs:
+    - name: route-cache-escape-gateway
+      namespace: gateway-system
+      sectionName: http
+  hostnames:
+    - route-cache-escape.example.test
+  rules:
+    # Public rule: no external filters. Cilium emits a per-route config that
+    # disables ext_authz here, so anything that lands on this rule is served
+    # without authorization.
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /anything/public
+      filters:
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            set:
+              - name: X-Served-By
+                value: public-rule
+      backendRefs:
+        - name: api
+          port: 80
+    # Protected rule: the ext_proc processor rewrites `:path` into the public
+    # prefix and asks Envoy to clear the route cache. ext_proc runs before
+    # ext_authz, so if the cache is cleared the authorization filter resolves
+    # the public rule instead and never runs.
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /anything/protected
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: cilium.io
+            kind: CiliumEnvoyExtProcFilter
+            name: route-mutator
+        - type: ExternalAuth
+          externalAuth:
+            protocol: HTTP
+            backendRef:
+              name: external-authz
+              namespace: auth
+              port: 8080
+            http:
+              path: /check
+              allowedHeaders:
+                - X-Authz-Token
+              allowedResponseHeaders:
+                - X-Ext-Authz-Result
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            set:
+              - name: X-Served-By
+                value: protected-rule
+      backendRefs:
+        - name: api
+          port: 80

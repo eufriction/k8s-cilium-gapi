@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: route-mutator-extproc
+  labels:
+    app: route-mutator-extproc
+    app.kubernetes.io/name: route-mutator-extproc
+    app.kubernetes.io/part-of: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: route-mutator-extproc
+  template:
+    metadata:
+      labels:
+        app: route-mutator-extproc
+        app.kubernetes.io/name: route-mutator-extproc
+        app.kubernetes.io/part-of: demo
+    spec:
+      containers:
+        - name: route-mutator
+          image: route-mutator-extproc:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: grpc
+              containerPort: 4317
+          env:
+            - name: REWRITE_FROM
+              value: /anything/protected
+            - name: REWRITE_TO
+              value: /anything/public

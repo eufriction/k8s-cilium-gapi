@@ -155,6 +155,16 @@ load_apps() {
     exit 1
   fi
 
+  if [ "${verbose}" = true ]; then
+    docker build -t "route-mutator-extproc:${ROUTE_MUTATOR_EXTPROC_VERSION}" apps/route-mutator-extproc/image
+  else
+    docker build --quiet -t "route-mutator-extproc:${ROUTE_MUTATOR_EXTPROC_VERSION}" apps/route-mutator-extproc/image
+  fi
+  if ! docker image inspect "route-mutator-extproc:${ROUTE_MUTATOR_EXTPROC_VERSION}" >/dev/null 2>&1; then
+    echo "ERROR: route-mutator-extproc:${ROUTE_MUTATOR_EXTPROC_VERSION} build failed — image not found in Docker daemon" >&2
+    exit 1
+  fi
+
   remote_images=(
     "nicolaka/netshoot:${NETSHOOT_VERSION}"
     "mccutchen/go-httpbin:${HTTPBIN_VERSION}"
@@ -173,6 +183,7 @@ load_apps() {
     "backend-grpc:${BACKEND_GRPC_VERSION}"
     "coraza-waf-extproc:${CORAZA_WAF_EXTPROC_VERSION}"
     "external-authz:${EXTERNAL_AUTHZ_VERSION}"
+    "route-mutator-extproc:${ROUTE_MUTATOR_EXTPROC_VERSION}"
     "${remote_images[@]}"
   )
   if [ "${verbose}" = true ]; then
