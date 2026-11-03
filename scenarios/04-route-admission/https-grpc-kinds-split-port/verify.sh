@@ -11,11 +11,16 @@ wait_parallel \
   "pod/grpc-api -n backend-b --for=condition=Ready --timeout=${POD_READY_TIMEOUT:-10}s" \
   "certificate/allowed-routes-gateway-certificate -n gateway-system --for=condition=Ready --timeout=10s"
 wait_gateway allowed-routes-gateway gateway-system
+route_pids=()
 wait_route httproute backend-a-https-route backend-a &
+route_pids+=("$!")
 wait_route httproute backend-b-https-route backend-b &
+route_pids+=("$!")
 wait_route grpcroute backend-a-grpc-route backend-a &
+route_pids+=("$!")
 wait_route grpcroute backend-b-grpc-route backend-b &
-wait
+route_pids+=("$!")
+wait_pids "${route_pids[@]}"
 
 # --- Listener status assertions ---
 # Explicit allowedRoutes.kinds on split ports — assert counts and kinds.

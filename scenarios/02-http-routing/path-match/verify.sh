@@ -13,9 +13,12 @@ wait_parallel \
 wait_gateway path-match-gateway gateway-system
 
 # Tier 3: routes in parallel
+route_pids=()
 wait_route httproute backend-a-route backend-a &
+route_pids+=("$!")
 wait_route httproute backend-b-route backend-b &
-wait
+route_pids+=("$!")
+wait_pids "${route_pids[@]}"
 
 # --- Listener status assertions ---
 assert_listener_status path-match-gateway gateway-system http 2 HTTPRoute GRPCRoute

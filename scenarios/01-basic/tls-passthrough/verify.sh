@@ -16,9 +16,12 @@ wait_parallel \
 # Tier 2: gateway
 wait_gateway mtls-multi-namespace-gateway gateway-system
 # Tier 3: routes in parallel
+route_pids=()
 wait_route tlsroute backend-a-mtls-route backend-a &
+route_pids+=("$!")
 wait_route tlsroute backend-b-mtls-route backend-b &
-wait
+route_pids+=("$!")
+wait_pids "${route_pids[@]}"
 
 # --- Listener status assertions ---
 assert_listener_status mtls-multi-namespace-gateway gateway-system mtls 2 TLSRoute

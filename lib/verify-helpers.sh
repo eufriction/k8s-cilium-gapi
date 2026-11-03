@@ -23,6 +23,17 @@ require_crd() {
   return 1
 }
 
+# wait_pids <pid...>
+#
+# Reap every child even after a failure so cleanup cannot race unfinished checks.
+wait_pids() {
+  local pid rc=0
+  for pid in "$@"; do
+    if ! wait "$pid"; then rc=1; fi
+  done
+  return "$rc"
+}
+
 # wait_parallel <wait_args...>
 #
 # Runs multiple `kubectl wait` calls in parallel and waits for all to finish.

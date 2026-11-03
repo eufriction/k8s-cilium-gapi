@@ -13,9 +13,12 @@ wait_parallel \
 wait_gateway http-shared-port-gateway gateway-system
 
 # Tier 3: routes in parallel
+route_pids=()
 wait_route httproute backend-a-route backend-a &
+route_pids+=("$!")
 wait_route httproute backend-b-route backend-b &
-wait
+route_pids+=("$!")
+wait_pids "${route_pids[@]}"
 
 # --- Listener status assertions ---
 assert_listener_status http-shared-port-gateway gateway-system http-a 1 HTTPRoute GRPCRoute

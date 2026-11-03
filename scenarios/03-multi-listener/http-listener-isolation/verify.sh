@@ -13,11 +13,16 @@ wait_parallel \
 wait_gateway http-listener-isolation-gateway gateway-system
 
 # Tier 3: routes accepted in parallel
+route_pids=()
 wait_route httproute route-catch-all backend-a &
+route_pids+=("$!")
 wait_route httproute route-wildcard-example backend-a &
+route_pids+=("$!")
 wait_route httproute route-wildcard-foo backend-b &
+route_pids+=("$!")
 wait_route httproute route-exact-abc-foo backend-b &
-wait
+route_pids+=("$!")
+wait_pids "${route_pids[@]}"
 
 # --- Listener status assertions ---
 assert_listener_status http-listener-isolation-gateway gateway-system catch-all 1 HTTPRoute GRPCRoute

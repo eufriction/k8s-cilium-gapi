@@ -20,9 +20,12 @@ wait_parallel \
 wait_gateway tls-passthrough-split-ports-gateway gateway-system
 
 # --- Tier 3: routes (parallel, manual & + wait) ---
+route_pids=()
 wait_route tlsroute backend-a-tls-route backend-a &
+route_pids+=("$!")
 wait_route tlsroute backend-b-tls-route backend-b &
-wait
+route_pids+=("$!")
+wait_pids "${route_pids[@]}"
 
 # --- Listener status assertions ---
 assert_listener_status tls-passthrough-split-ports-gateway gateway-system tls-443 1 TLSRoute

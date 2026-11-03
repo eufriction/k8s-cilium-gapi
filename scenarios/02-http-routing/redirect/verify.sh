@@ -13,9 +13,12 @@ wait_parallel \
 wait_gateway redirect-gateway gateway-system
 
 # Tier 3: routes in parallel
+route_pids=()
 wait_route httproute http-redirect gateway-system &
+route_pids+=("$!")
 wait_route httproute backend-a-route backend-a &
-wait
+route_pids+=("$!")
+wait_pids "${route_pids[@]}"
 
 # --- Listener status assertions ---
 assert_listener_status redirect-gateway gateway-system http 1 HTTPRoute GRPCRoute

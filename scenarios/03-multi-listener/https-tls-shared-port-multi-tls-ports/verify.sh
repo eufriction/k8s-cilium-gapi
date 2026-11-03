@@ -19,15 +19,24 @@ wait_parallel \
 wait_gateway https-tls-shared-port-multi-tls-ports-gateway gateway-system
 
 # --- Routes ---
+route_pids=()
 wait_route httproute backend-a-web-route backend-a &
+route_pids+=("$!")
 wait_route httproute backend-a-web-route backend-a ResolvedRefs &
+route_pids+=("$!")
 wait_route tlsroute backend-b-mtls-50051-route backend-b &
+route_pids+=("$!")
 wait_route tlsroute backend-b-mtls-50051-route backend-b ResolvedRefs &
+route_pids+=("$!")
 wait_route tlsroute backend-b-mtls-9443-route backend-b &
+route_pids+=("$!")
 wait_route tlsroute backend-b-mtls-9443-route backend-b ResolvedRefs &
+route_pids+=("$!")
 wait_route tlsroute backend-b-mtls-443-route backend-b &
+route_pids+=("$!")
 wait_route tlsroute backend-b-mtls-443-route backend-b ResolvedRefs &
-wait
+route_pids+=("$!")
+wait_pids "${route_pids[@]}"
 
 # --- Listener status assertions ---
 assert_listener_status https-tls-shared-port-multi-tls-ports-gateway gateway-system https-443 1 HTTPRoute GRPCRoute

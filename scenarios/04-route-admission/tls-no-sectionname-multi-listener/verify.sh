@@ -14,10 +14,14 @@ wait_parallel \
   "certificate/backend-b-mtls-server -n backend-b --for=condition=Ready --timeout=10s" \
   "certificate/backend-b-mtls-client -n backend-b --for=condition=Ready --timeout=10s"
 wait_gateway mixed-listener-gateway gateway-system
+route_pids=()
 wait_route httproute backend-a-web-route backend-a &
+route_pids+=("$!")
 kubectl wait httproute/backend-a-web-route -n backend-a --for='jsonpath={.status.parents[1].conditions[?(@.type=="Accepted")].status}=True' --timeout="${ROUTE_READY_TIMEOUT:-30}s" &
+route_pids+=("$!")
 wait_route tlsroute backend-b-mtls-route backend-b &
-wait
+route_pids+=("$!")
+wait_pids "${route_pids[@]}"
 
 # --- Listener status assertions ---
 assert_listener_status mixed-listener-gateway gateway-system http 1 HTTPRoute GRPCRoute

@@ -17,9 +17,12 @@ wait_parallel \
 wait_gateway https-tls-same-port-gateway gateway-system
 
 # --- Tier 3: routes in parallel ---
+route_pids=()
 wait_route httproute backend-a-web-route backend-a &
+route_pids+=("$!")
 wait_route tlsroute backend-b-mtls-route backend-b &
-wait
+route_pids+=("$!")
+wait_pids "${route_pids[@]}"
 
 # --- Listener status assertions ---
 # Catches cilium#45371: isKindAllowed cross-counts TLSRoute on HTTPS listener.

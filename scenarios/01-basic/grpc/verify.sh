@@ -14,9 +14,12 @@ wait_parallel \
 wait_gateway grpc-multi-namespace-gateway gateway-system
 
 # Tier 3: routes in parallel
+route_pids=()
 wait_route grpcroute grpc-backend-a-route grpc-backend-a &
+route_pids+=("$!")
 wait_route grpcroute grpc-backend-b-route grpc-backend-b &
-wait
+route_pids+=("$!")
+wait_pids "${route_pids[@]}"
 
 # --- Listener status assertions ---
 assert_listener_status grpc-multi-namespace-gateway gateway-system grpcs 2 HTTPRoute GRPCRoute

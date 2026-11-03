@@ -20,9 +20,12 @@ wait_parallel \
 wait_gateway kind-restricted-https-tls-split-port-gateway gateway-system
 
 # Tier 3 — routes (parallel, manual & + wait)
+route_pids=()
 wait_route httproute backend-a-https-route backend-a &
+route_pids+=("$!")
 wait_route tlsroute backend-b-tls-route backend-b &
-wait
+route_pids+=("$!")
+wait_pids "${route_pids[@]}"
 
 # --- HTTPS termination (api.example.test on port 443, kinds: [HTTPRoute]) ---
 retry_until 10 curl -kfsS --resolve "api.example.test:${PORT_443}:127.0.0.1" https://api.example.test:"${PORT_443}"/headers >/dev/null
