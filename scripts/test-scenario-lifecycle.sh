@@ -108,6 +108,7 @@ awk '
   body && /^"""$/ { exit }
   body {
     sub(/\{% if usage.verbose %\} --verbose\{% endif %\}/, "")
+    gsub(/\\\\/, "\\")
     print
   }
   END { if (!body) exit 1 }
@@ -122,6 +123,7 @@ chmod +x "$work_dir/bin/mise"
 reset_state
 printf 'kindccm-leftover\tCreated\t\n' >"$work_dir/proxies"
 : >"$work_dir/mise-calls"
+export RUN_LOG="$work_dir/runner log.txt" RUN_RESULTS="$work_dir/runner results.tsv"
 runner_status=0
 bash "$work_dir/run-all.sh" >"$work_dir/output" 2>&1 || runner_status=$?
 if [ "$runner_status" -ne 2 ] || [ -s "$work_dir/mise-calls" ]; then
@@ -131,6 +133,88 @@ if [ "$runner_status" -ne 2 ] || [ -s "$work_dir/mise-calls" ]; then
 fi
 grep -F kindccm-leftover "$work_dir/output" >/dev/null
 printf 'PASS: rejected suite start invokes neither fixture setup nor fixture cleanup\n'
+
+cat >"$work_dir/bin/mise" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "$*" >>"$MOCK_DIR/mise-calls"
+case "$*" in
+  'run fixture:start') exit "$MOCK_START_STATUS" ;;
+  'run fixture:delete')
+    if [ "$MOCK_CLEANUP_STATUS" -eq 0 ]; then
+      echo 'PASS: fixture cleanup'
+    else
+      echo 'FAIL: fixture cleanup'
+    fi
+    exit "$MOCK_CLEANUP_STATUS"
+    ;;
+  'run --continue-on-error --jobs 1 //scenarios/...:start --delete')
+    printf 'SCENARIO_START\tgroup/http\n'
+    if [ "$MOCK_TERMINAL" = true ]; then
+      outcome=PASS
+      [ "$MOCK_VERIFY_STATUS" -eq 0 ] || outcome=FAIL
+      printf 'SCENARIO_RESULT\tgroup/http\t%s\t%s\n' "$outcome" "$MOCK_VERIFY_STATUS"
+    fi
+    exit "$MOCK_VERIFY_STATUS"
+    ;;
+  *) echo "Unexpected mise call: $*" >&2; exit 99 ;;
+esac
+EOF
+
+while read -r name start verify cleanup terminal expected overall scenario; do
+  reset_state
+  : >"$work_dir/mise-calls"
+  export MOCK_START_STATUS="$start" MOCK_VERIFY_STATUS="$verify"
+  export MOCK_CLEANUP_STATUS="$cleanup" MOCK_TERMINAL="$terminal"
+  runner_status=0
+  bash "$work_dir/run-all.sh" >"$work_dir/output" 2>&1 || runner_status=$?
+  if [ "$runner_status" -ne "$expected" ]; then
+    cat "$work_dir/output" >&2
+    echo "FAIL: $name returned $runner_status, expected $expected" >&2
+    exit 1
+  fi
+  grep -qx "$(printf 'status\t%s' "$overall")" "$RUN_RESULTS"
+  if [ "$scenario" = - ]; then
+    if grep -q '^scenario' "$RUN_RESULTS"; then
+      echo "FAIL: $name published an unrun scenario" >&2
+      exit 1
+    fi
+  else
+    grep -F "$(printf 'scenario\tgroup/http\t%s\t' "$scenario")" "$RUN_RESULTS" >/dev/null
+  fi
+  {
+    printf 'run fixture:start\n'
+    if [ "$start" -eq 0 ]; then
+      printf 'run --continue-on-error --jobs 1 //scenarios/...:start --delete\n'
+    fi
+    printf 'run fixture:delete\n'
+  } >"$work_dir/expected-calls"
+  diff -u "$work_dir/expected-calls" "$work_dir/mise-calls"
+  run_result="$start"
+  if [ "$run_result" -eq 0 ]; then run_result="$verify"; fi
+  if [ "$run_result" -eq 0 ]; then run_result="$cleanup"; fi
+  grep -qx "$(printf 'RUN_RESULT\t%s' "$run_result")" "$RUN_LOG"
+  printf 'PASS: runner %s\n' "$name"
+done <<'EOF'
+success 0 0 0 true 0 PASS PASS
+verify-failure 0 7 0 true 7 FAIL FAIL
+cleanup-only-failure 0 0 9 true 9 FAIL PASS
+original-failure-wins 0 7 9 true 7 FAIL FAIL
+fixture-start-failure 4 0 0 true 4 FAIL -
+incomplete-scenario 0 0 0 false 1 FAIL FAIL
+EOF
+
+reset_state
+printf 'kindccm-leftover\tCreated\t\n' >"$work_dir/proxies"
+printf 'status\tPASS\n' >"$RUN_RESULTS"
+: >"$work_dir/mise-calls"
+runner_status=0
+bash "$work_dir/run-all.sh" >"$work_dir/output" 2>&1 || runner_status=$?
+[ "$runner_status" -eq 2 ]
+[ ! -e "$RUN_RESULTS" ]
+[ ! -s "$work_dir/mise-calls" ]
+grep -qx RUN_START "$RUN_LOG"
+printf 'PASS: rejected preflight removes stale PASS without fixture calls\n'
 
 # Stub the API/Envoy probes; only the Docker identity check is under test here.
 source lib/envoy-readiness.sh

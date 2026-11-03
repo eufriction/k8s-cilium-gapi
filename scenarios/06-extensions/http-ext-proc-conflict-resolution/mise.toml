@@ -6,15 +6,7 @@ extends = "scenario:start"
 description = "Deploy the ext_proc conflict-resolution scenario"
 depends = ["//:kind:load:apps{% if usage.verbose %} --verbose{% endif %}"]
 run = """
-echo "SCENARIO: {{config_root}}"
-if [ -n "${SCENARIO_SKIP_VERSIONS:-}" ]; then
-  for _v in ${SCENARIO_SKIP_VERSIONS}; do
-    if [ "$_v" = "${CILIUM_VERSION}" ]; then
-      echo "SKIP: known broken on Cilium ${CILIUM_VERSION}"
-      exit 0
-    fi
-  done
-fi
+source "{{config_root}}/../../../lib/scenario-result.sh" "{{config_root}}"
 kubectl rollout status daemonset/cilium -n kube-system --timeout=60s >/dev/null
 if [ "${FIXTURE_DEPLOYED:-}" = "true" ] && [ -d gateway ]; then
   kubectl kustomize gateway/ --load-restrictor=LoadRestrictionsNone | kubectl apply -f -

@@ -92,6 +92,8 @@ Read the TSV result file instead of parsing the log. It contains:
 - `counts<TAB>pass=<n><TAB>fail=<n><TAB>skip=<n>`
 - one `scenario` row per scenario with its status, failure detail, and rerun command
 
+Check overall `status` and any run-level `detail`, not just scenario counts: fixture teardown can fail after all scenarios pass. Missing reports or final outcome records cannot certify success. The summarizer's exit code indicates report publication, not whether the scenarios passed.
+
 Present the PASS, FAIL, and SKIP counts, every failed scenario, its failure detail, and its copy-pasteable rerun command.
 
 ## 5. Re-run failing scenarios

@@ -89,15 +89,7 @@ flag "-v --verbose" env="VERBOSE" help="Enable verbose output for image pulls an
 flag "-d --delete" env="DELETE" help="Delete scenario resources after verify"
 '''
 run = """
-echo "SCENARIO: {{config_root}}"
-if [ -n "${SCENARIO_SKIP_VERSIONS:-}" ]; then
-  for _v in ${SCENARIO_SKIP_VERSIONS}; do
-    if [ "$_v" = "${CILIUM_VERSION}" ]; then
-      echo "SKIP: known broken on Cilium ${CILIUM_VERSION}"
-      exit 0
-    fi
-  done
-fi
+source "{{config_root}}/../../../lib/scenario-result.sh" "{{config_root}}"
 kubectl rollout status daemonset/cilium -n kube-system --timeout=60s >/dev/null
 if [ "${FIXTURE_DEPLOYED:-}" = "true" ] && [ -d gateway ]; then
   kubectl kustomize gateway/ --load-restrictor=LoadRestrictionsNone | kubectl apply -f -
@@ -174,27 +166,35 @@ usage = 'flag "-v --verbose" env="VERBOSE"'
 run = """
 set -euo pipefail
 
+run_log="${RUN_LOG:-run-all.log}"
+run_results="${RUN_RESULTS:-run-all-results.tsv}"
+if [ "$run_log" = "$run_results" ]; then
+  echo "ERROR: RUN_LOG and RUN_RESULTS must be different files" >&2
+  exit 2
+fi
+rm -f "$run_results"
+printf "RUN_START\\n" >"$run_log"
 bash lib/scenario-preflight.sh
 
 cleanup_fixture() {
-  local run_status=$?
+  local run_status=$? cleanup_status=0
   trap - EXIT
-  if ! mise run fixture:delete; then
-    echo "WARNING: shared fixture cleanup failed" >&2
+  mise run fixture:delete 2>&1 | tee -a "$run_log" || cleanup_status=$?
+  if [ "$run_status" -eq 0 ]; then run_status="$cleanup_status"; fi
+  printf "RUN_RESULT\\t%s\\n" "$run_status" >>"$run_log"
+  if ! bash scripts/summarize-results.sh --results "$run_results" --cilium-version "${CILIUM_VERSION:-unknown}" "$run_log"; then
+    echo "ERROR: could not generate scenario results file" >&2
+    if [ "$run_status" -eq 0 ]; then run_status=1; fi
+  elif ! grep -qx $'status\\tPASS' "$run_results"; then
+    if [ "$run_status" -eq 0 ]; then run_status=1; fi
   fi
   exit "$run_status"
 }
 trap cleanup_fixture EXIT
 
-run_log="${RUN_LOG:-run-all.log}"
-run_results="${RUN_RESULTS:-run-all-results.tsv}"
 scenario_status=0
-
-mise run fixture:start{% if usage.verbose %} --verbose{% endif %}
-FIXTURE_DEPLOYED=true mise run --continue-on-error --jobs 1 '//scenarios/...:start' --delete 2>&1 | tee "$run_log" || scenario_status=$?
-if ! bash scripts/summarize-results.sh --results "$run_results" --cilium-version "${CILIUM_VERSION:-unknown}" "$run_log"; then
-  echo "WARNING: could not generate scenario results file" >&2
-fi
+mise run fixture:start{% if usage.verbose %} --verbose{% endif %} 2>&1 | tee -a "$run_log"
+FIXTURE_DEPLOYED=true mise run --continue-on-error --jobs 1 '//scenarios/...:start' --delete 2>&1 | tee -a "$run_log" || scenario_status=$?
 exit "$scenario_status"
 """
 
