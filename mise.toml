@@ -15,7 +15,7 @@ CILIUM_VERSION = "1.19.10"
 CILIUM_CHART_DIR = ""
 CILIUM_AGENT_IMAGE = ""
 CILIUM_OPERATOR_IMAGE = ""
-CLOUD_PROVIDER_KIND_VERSION = "0.11.1"
+CLOUD_PROVIDER_KIND_VERSION = "0.12.0"
 CERT_MANAGER_VERSION = "1.20.2"
 GATEWAY_API_VERSION = "1.4.1"
 KYVERNO_CHART_VERSION = "3.7.1"
@@ -392,7 +392,7 @@ GOBIN=$PWD/.bin go install sigs.k8s.io/cloud-provider-kind@v$CLOUD_PROVIDER_KIND
 [tasks."cloud-provider-kind:start"]
 description = "Start cloud-provider-kind in a dedicated terminal for load-balancer scenarios"
 depends = ["cloud-provider-kind:install"]
-run = "sudo --preserve-env=KUBECONFIG ./.bin/cloud-provider-kind --enable-lb-port-mapping --gateway-channel disabled"
+run = "sudo --preserve-env=KUBECONFIG ./.bin/cloud-provider-kind --enable-lb-port-mapping --gateway-channel disabled -v 1"
 
 [tasks."cert-manager:install"]
 description = "Install cert-manager for TLS-focused scenarios"
