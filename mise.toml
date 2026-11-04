@@ -166,23 +166,38 @@ usage = 'flag "-v --verbose" env="VERBOSE"'
 run = """
 set -euo pipefail
 
-run_log="${RUN_LOG:-run-all.log}"
-run_results="${RUN_RESULTS:-run-all-results.tsv}"
+run_stamp=$(date '+%m%d-%H%M%S')
+version_tag="${CILIUM_VERSION:-unknown}"
+version_tag="${version_tag//[^a-zA-Z0-9._-]/-}"
+if [ -n "${RUN_LOG:-}" ]; then
+  run_log="$RUN_LOG"
+else
+  run_base="run-${version_tag}-${run_stamp}"
+  run_log="${run_base}.log"
+  run_suffix=1
+  while [ -e "$run_log" ] || [ -e "${run_log%.log}-results.tsv" ]; do
+    run_suffix=$((run_suffix + 1))
+    run_log="${run_base}-${run_suffix}.log"
+  done
+fi
+run_results="${RUN_RESULTS:-${run_log%.log}-results.tsv}"
 if [ "$run_log" = "$run_results" ]; then
   echo "ERROR: RUN_LOG and RUN_RESULTS must be different files" >&2
   exit 2
 fi
 rm -f "$run_results"
 printf "RUN_START\\n" >"$run_log"
-bash lib/scenario-preflight.sh
+fixture_started=false
 
-cleanup_fixture() {
+finish_run() {
   local run_status=$? cleanup_status=0
   trap - EXIT
-  mise run fixture:delete 2>&1 | tee -a "$run_log" || cleanup_status=$?
-  if [ "$run_status" -eq 0 ]; then run_status="$cleanup_status"; fi
+  if [ "$fixture_started" = true ]; then
+    mise run fixture:delete 2>&1 | tee -a "$run_log" || cleanup_status=$?
+    if [ "$run_status" -eq 0 ]; then run_status="$cleanup_status"; fi
+  fi
   printf "RUN_RESULT\\t%s\\n" "$run_status" >>"$run_log"
-  if ! bash scripts/summarize-results.sh --results "$run_results" --cilium-version "${CILIUM_VERSION:-unknown}" "$run_log"; then
+  if ! bash scripts/summarize-results.sh --results "$run_results" --cilium-version "${CILIUM_VERSION:-unknown}" "$run_log" 2>&1 | tee -a "$run_log"; then
     echo "ERROR: could not generate scenario results file" >&2
     if [ "$run_status" -eq 0 ]; then run_status=1; fi
   elif ! grep -qx $'status\\tPASS' "$run_results"; then
@@ -190,8 +205,10 @@ cleanup_fixture() {
   fi
   exit "$run_status"
 }
-trap cleanup_fixture EXIT
+trap finish_run EXIT
 
+bash lib/scenario-preflight.sh 2>&1 | tee -a "$run_log"
+fixture_started=true
 scenario_status=0
 mise run fixture:start{% if usage.verbose %} --verbose{% endif %} 2>&1 | tee -a "$run_log"
 FIXTURE_DEPLOYED=true mise run --continue-on-error --jobs 1 '//scenarios/...:start' --delete 2>&1 | tee -a "$run_log" || scenario_status=$?

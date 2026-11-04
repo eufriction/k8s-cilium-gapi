@@ -100,6 +100,8 @@ for failure in gateways services docker; do
   check_preflight 2
 done
 printf 'PASS: preflight checks fixture overlays and rejects leftover resources\n'
+rm -rf "$work_dir/scenarios"
+ln -s "$(pwd)/scenarios" "$work_dir/scenarios"
 
 # Execute the real task body with verbose disabled and fixture tasks mocked.
 awk '
@@ -119,6 +121,13 @@ printf '%s\n' "$*" >>"$MOCK_DIR/mise-calls"
 exit 99
 EOF
 chmod +x "$work_dir/bin/mise"
+ln -s "$(pwd)/lib" "$work_dir/lib"
+ln -s "$(pwd)/scripts" "$work_dir/scripts"
+cat >"$work_dir/bin/date" <<'EOF'
+#!/usr/bin/env bash
+printf '1103-223045\n'
+EOF
+chmod +x "$work_dir/bin/date"
 
 reset_state
 printf 'kindccm-leftover\tCreated\t\n' >"$work_dir/proxies"
@@ -132,7 +141,9 @@ if [ "$runner_status" -ne 2 ] || [ -s "$work_dir/mise-calls" ]; then
   exit 1
 fi
 grep -F kindccm-leftover "$work_dir/output" >/dev/null
-printf 'PASS: rejected suite start invokes neither fixture setup nor fixture cleanup\n'
+grep -F "$(printf 'RUN_RESULT\t2')" "$RUN_LOG" >/dev/null
+grep -F "$(printf 'status\tFAIL')" "$RUN_RESULTS" >/dev/null
+printf 'PASS: rejected suite start is logged and invokes neither fixture setup nor fixture cleanup\n'
 
 cat >"$work_dir/bin/mise" <<'EOF'
 #!/usr/bin/env bash
@@ -205,16 +216,52 @@ incomplete-scenario 0 0 0 false 1 FAIL FAIL
 EOF
 
 reset_state
+: >"$work_dir/mise-calls"
+export MOCK_START_STATUS=0 MOCK_VERIFY_STATUS=0 MOCK_CLEANUP_STATUS=0 MOCK_TERMINAL=true
+runner_status=0
+(
+  cd "$work_dir"
+  unset RUN_LOG RUN_RESULTS
+  CILIUM_VERSION=1.20.4 bash ./run-all.sh >output 2>&1
+) || runner_status=$?
+if [ "$runner_status" -ne 0 ]; then
+  cat "$work_dir/output" >&2
+  echo "FAIL: default named run returned $runner_status" >&2
+  exit 1
+fi
+run_log="$work_dir/run-1.20.4-1103-223045.log"
+run_results="$work_dir/run-1.20.4-1103-223045-results.tsv"
+grep -qx RUN_START "$run_log"
+grep -F "$(printf 'SCENARIO_START\tgroup/http')" "$run_log" >/dev/null
+grep -F "$(printf 'RUN_RESULT\t0')" "$run_log" >/dev/null
+grep -F "$(printf 'status\tPASS')" "$run_results" >/dev/null
+(
+  cd "$work_dir"
+  unset RUN_LOG RUN_RESULTS
+  CILIUM_VERSION=1.20.4 bash ./run-all.sh >output 2>&1
+) || runner_status=$?
+[ "$runner_status" -eq 0 ]
+[ -f "$work_dir/run-1.20.4-1103-223045-2.log" ]
+[ -f "$work_dir/run-1.20.4-1103-223045-2-results.tsv" ]
+printf 'PASS: default run artifacts use versioned timestamped names, preserve same-second runs, and log the complete run\n'
+
+export RUN_LOG="$work_dir/runner log.txt" RUN_RESULTS="$work_dir/runner results.tsv"
+reset_state
 printf 'kindccm-leftover\tCreated\t\n' >"$work_dir/proxies"
 printf 'status\tPASS\n' >"$RUN_RESULTS"
 : >"$work_dir/mise-calls"
 runner_status=0
 bash "$work_dir/run-all.sh" >"$work_dir/output" 2>&1 || runner_status=$?
 [ "$runner_status" -eq 2 ]
-[ ! -e "$RUN_RESULTS" ]
+grep -F "$(printf 'status\tFAIL')" "$RUN_RESULTS" >/dev/null
+if grep -q '^scenario' "$RUN_RESULTS"; then
+  echo 'FAIL: preflight published an unrun scenario' >&2
+  exit 1
+fi
 [ ! -s "$work_dir/mise-calls" ]
 grep -qx RUN_START "$RUN_LOG"
-printf 'PASS: rejected preflight removes stale PASS without fixture calls\n'
+grep -F "$(printf 'RUN_RESULT\t2')" "$RUN_LOG" >/dev/null
+printf 'PASS: rejected preflight replaces stale PASS and records failure without fixture calls\n'
 
 # Stub the API/Envoy probes; only the Docker identity check is under test here.
 source lib/envoy-readiness.sh

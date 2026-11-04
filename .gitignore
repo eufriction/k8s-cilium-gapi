@@ -133,6 +133,7 @@ mise.local.toml
 
 # Scenario run logs and machine-readable summaries
 *.log
+run-*-results.tsv
 run-all-results.tsv
 
 # OS generated files
